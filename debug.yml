@@ -1,0 +1,40 @@
+---
+
+- name: debug hosts
+  hosts: all
+  gather_facts: true
+
+  tasks:
+  # - name: find files matching pattern
+  #   find:
+  #     paths: "*/systemd/network"
+  #     patterns: "*ens18.network"
+  #     file_type: file
+  #     depth: 1
+  #   register: found_files
+  #   become: true
+
+  # - name: find files matching pattern
+  #   shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*ens18.network' -print)
+  #   register: find_output
+  #   become: true
+
+  # - name: print matching file paths
+  #   debug:
+  #     var: find_output.stdout
+
+  # - name: Just force systemd to reread configs (2.4 and above)
+  #   ansible.builtin.systemd:
+  #     daemon_reload: true
+  #   become: true
+
+  # - name: print facts
+  #   debug:
+  #     msg: "{{ hostvars[inventory_hostname] }}"
+
+  # - name: dump facts
+  #   delegate_to: localhost
+  #   run_once: true
+  #   copy:
+  #     content: "{{ hostvars[inventory_hostname] | to_nice_json }}"
+  #     dest: /tmp/setup-dump.json

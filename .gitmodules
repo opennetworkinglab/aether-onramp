@@ -1,0 +1,9 @@
+[submodule "deps/5gc"]
+	path = deps/5gc
+	url = https://gitlab.com/onf-internship/5gc.git
+[submodule "deps/gnbsim"]
+	path = deps/gnbsim
+	url = https://gitlab.com/onf-internship/gnbsim.git
+[submodule "deps/amp"]
+	path = deps/amp
+	url = https://gitlab.com/onf-internship/amp.git
