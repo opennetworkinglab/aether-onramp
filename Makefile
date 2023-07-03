@@ -7,7 +7,7 @@ export 5GC_ROOT_DIR ?= $(PLATFORM_ROOT_DIR)/deps/5gc
 export GNBSIM_ROOT_DIR ?= $(PLATFORM_ROOT_DIR)/deps/gnbsim
 export K8S_ROOT_DIR ?= $(5GC_ROOT_DIR)/deps/k8s
 
-export ANSIBLE_NAME ?= ansible-platform
+export ANSIBLE_NAME ?= ansible-platform1
 export ANSIBLE_CONFIG ?= $(PLATFORM_ROOT_DIR)/ansible.cfg
 export HOSTS_INI_FILE ?= $(PLATFORM_ROOT_DIR)/hosts.ini
 
@@ -45,7 +45,7 @@ platform-uninstall: gnbsim-simulator-setup-uninstall 5gc-uninstall
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall k8s-uninstall
 
 # 		run gnbsim-docker-install before running setup
-# 	gnbsim-simulator-setup-install: gnbsim-docker-router-install gnbsim-docker-start gnbsim-simulator-start
+# 	gnbsim-simulator-setup-install: gnbsim-docker-router-install gnbsim-docker-start 
 # 	gnbsim-simulator-setup-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
 
 #	#### b. Provision k8s ####

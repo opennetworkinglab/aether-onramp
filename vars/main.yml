@@ -26,7 +26,9 @@ gnbsim:
   docker:
     container:
       # image: jingqih/5gc-gnbsim:dev-1.1.2
-      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b #5gc-gnbsim:0.0.1-dev #
+      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
+      # image: mbilals/5gc-gnbsim:1milisecdelay
+      # image: mbilals/5gc-gnbsim:1secdelay
       prefix: gnbsim
       count: 2
 
@@ -35,7 +37,7 @@ gnbsim:
       id:
         base: "00010"
     amf:
-      ip: "172.16.41.103"
+      ip: "172.16.144.5"
 
     ueid_base: 208930100007488
     ue_per_pod: 3
