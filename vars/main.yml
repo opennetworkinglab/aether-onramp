@@ -26,11 +26,11 @@ gnbsim:
   docker:
     container:
       # image: jingqih/5gc-gnbsim:dev-1.1.2
-      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
-      # image: mbilals/5gc-gnbsim:1milisecdelay
+      # image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
+      image: mbilals/5gc-gnbsim:1milisecdelay
       # image: mbilals/5gc-gnbsim:1secdelay
       prefix: gnbsim
-      count: 2
+      count: 5
 
   simulator:
     gnb:
