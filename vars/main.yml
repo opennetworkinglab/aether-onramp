@@ -37,7 +37,7 @@ gnbsim:
       id:
         base: "00010"
     amf:
-      ip: "172.16.144.5"
+      ip: "172.16.41.103"
 
     ueid_base: 208930100007488
     ue_per_pod: 3

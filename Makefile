@@ -7,7 +7,7 @@ export 5GC_ROOT_DIR ?= $(PLATFORM_ROOT_DIR)/deps/5gc
 export GNBSIM_ROOT_DIR ?= $(PLATFORM_ROOT_DIR)/deps/gnbsim
 export K8S_ROOT_DIR ?= $(5GC_ROOT_DIR)/deps/k8s
 
-export ANSIBLE_NAME ?= ansible-platform1
+export ANSIBLE_NAME ?= ansible-platform0
 export ANSIBLE_CONFIG ?= $(PLATFORM_ROOT_DIR)/ansible.cfg
 export HOSTS_INI_FILE ?= $(PLATFORM_ROOT_DIR)/hosts.ini
 
@@ -36,9 +36,22 @@ platform-pingall:
 
 #### b. Provision platform ####
 
-platform-install: 5gc-install gnbsim-simulator-setup-install
+platform-install:
+	$(MAKE) 5gc-install;
+	sleep 10.0;
+	$(MAKE) 5gc-core-uninstall;
+	sleep 5.0;
+	$(MAKE) 5gc-core-install;
+	sleep 60.0;
+	$(MAKE) gnbsim-simulator-setup-install
+
 platform-uninstall: gnbsim-simulator-setup-uninstall 5gc-uninstall
 
+resetcore: 
+	$(MAKE) 5gc-core-uninstall;
+	sleep 5.0;
+	$(MAKE) 5gc-core-install;
+# sleep 180.0;
 # Rules:
 
 #	5gc-install: k8s-install 5gc-router-install 5gc-core-install
