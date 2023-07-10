@@ -5,8 +5,8 @@ k8s:
       token: purdue-k8s-rke2
       port: 9345
       params_file: 
-        master: "deps/5gc/templates/rke2/master-params.yaml"
-        worker: "deps/5gc/templates/rke2/worker-params.yaml"
+        master: "config/master-params.yaml" #"deps/5gc/templates/rke2/master-params.yaml"
+        worker: "config/worker-params.yaml" #"deps/5gc/templates/rke2/worker-params.yaml"
 
   kubectl:
     version: v1.23.15
@@ -17,14 +17,14 @@ k8s:
 core:
   standalone: "true"
   data_iface: ens18
-  values_file: "templates/core/hpa-5g-values.yaml"
+  values_file: "/workdir/config/hpa-5g-values.yaml"
   custome_ran_subnet: "172.20.0.0/16"
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6 
 
 gnbsim:
-  SameMachineAsCore: true
+  SameMachineAsCore: false
   docker:
     container:
       # image: jingqih/5gc-gnbsim:dev-1.1.2
@@ -42,13 +42,15 @@ gnbsim:
       ip: "172.16.41.103"
 
     ueid_base: 208930100007488
-    ue_per_pod: 3
+    ue_per_pod: 10
 
     gnbsims:
       - "1":
-          config_file: "config/gnbsim.template.yaml"
-      - "2":
-          config_file: "config/gnbsim.template.yaml"
+          config_file: "/workdir/config/gnbsim.template.yaml"
+      # - "2":
+      #     config_file: "/workdir/config/gnbsim.template.yaml"
+      # - "3":
+      #     config_file: "/workdir/config/gnbsim.template.yaml"
 
   network:
     data_iface: ens18

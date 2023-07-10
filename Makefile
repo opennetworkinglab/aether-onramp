@@ -38,11 +38,6 @@ platform-pingall:
 
 platform-install:
 	$(MAKE) 5gc-install;
-	sleep 10.0;
-	$(MAKE) 5gc-core-uninstall;
-	sleep 5.0;
-	$(MAKE) 5gc-core-install;
-	sleep 60.0;
 	$(MAKE) gnbsim-simulator-setup-install
 
 platform-uninstall: gnbsim-simulator-setup-uninstall 5gc-uninstall
