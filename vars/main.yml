@@ -18,11 +18,13 @@ core:
   standalone: "true"
   data_iface: ens18
   values_file: "templates/core/hpa-5g-values.yaml"
+  custome_ran_subnet: "172.20.0.0/16"
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6 
 
 gnbsim:
+  SameMachineAsCore: true
   docker:
     container:
       # image: jingqih/5gc-gnbsim:dev-1.1.2
@@ -45,13 +47,11 @@ gnbsim:
     gnbsims:
       - "1":
           config_file: "config/gnbsim.template.yaml"
-          # config_file: "config/gnbsim-1.yaml"
       - "2":
           config_file: "config/gnbsim.template.yaml"
-          # config_file: "config/gnbsim-2.yaml"
 
   network:
     data_iface: ens18
-    mcavlan_iface: access
-    macvlan_network_name: access-net
+    mcavlan_iface: gnbInterface
+    macvlan_network_name: gnb-net
     subnet_prefix: "172.20"
