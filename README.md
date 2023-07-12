@@ -13,11 +13,6 @@ It is build upon following repositories.
 
 The 5gc repository builds a standalone Aether core with a physical RAN setup. It utilizes the k8 repository as a submodule to create a multi-node cluster and run the 5g-aether core on top.
 
-To download the 5gc repository, use the following command:
-```
-git clone --recursive https://gitlab.com/onf-internship/5gc.git
-```
-
 ### Step-by-Step Installation
 To install the 5g-core, follow these steps:
 1. Set the configuration variables in the vars/main.yaml file.
@@ -48,10 +43,6 @@ To install 5gc in one go, run `make 5gc-install`.
 
 The amp repository builds Aether Management Platform that has Aether-ROC and Monitoring system. It utilizes the k8 repository as a submodule to create a multi-node cluster.
 
-To download the AMP repository, use the following command:
-```
-git clone --recursive https://gitlab.com/onf-internship/amp.git
-```
 ### Step-by-Step Installation
 To install the amp, follow these steps:
 1. Install k8 cluster
@@ -77,11 +68,6 @@ To install AMF in one go, run `amp-install`.
 ## gNbsim
 
 The gnbsim repository enables the building of a multi-container and multi-node cluster of gNbsim using Docker. This allows you to run gNbsim simulations on multiple VMs, with the flexibility to run multiple containers on each VM.
-
-To download the gnbsim repository, use the following command:
-```
-git clone https://gitlab.com/onf-internship/gnbsim.git
-```
 
 ### Step-by-Step Installation
 To install gnbsim, follow these steps:
@@ -145,19 +131,17 @@ sudo /var/lib/rancher/rke2/bin/kubectl get nodes --kubeconfig /etc/rancher/rke2/
 #### Uninstall
 To destroy k8 cluster use `make k8s-uninstall`
 
-
 <br />
 
 ---
 ---
 
 # TODOs
-### Add a node to cluster
-TODO
-### Remove Node from cluster
-TODO
-### Add more gNbsim container
-TODO
+1. Explain host.ini structure
+2. Add a node to cluster
+3. Remove Node from cluster
+4. Add more gNbsim container
+
 <!-- 
 ### To make multiNode setup to single Node
 1. Destroy cluster using `make aether-uninstall`
