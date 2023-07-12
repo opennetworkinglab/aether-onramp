@@ -43,19 +43,21 @@ To install 5gc in one go, run `make 5gc-install`.
 
 ## AMP - Aether Management Platform
 
-The amp repository builds Aether Management Platform that has Aether-ROC and Monitoring system. It utilizes the k8 repository as a submodule to create a multi-node cluster.
+The AMP repository is responsible for building the Aether Management Platform, which includes Aether-ROC and a monitoring system. It utilizes the k8 repository as a submodule to create a multi-node cluster.
 
-### Step-by-Step Installation
-To install the amp, follow these steps:
-1. Install k8 cluster
-   - As AMP uses K8 submodule, install k8 cluster using `make k8s-install`
-2. Install ROC
-   - Specify helm charts for `atomix, onosproject, aether_roc`
-   - Run `roc-install`.
-   - Run `make 5g-roc-install` for 5G or `make 4g-roc-install` for 5G 
-3. Install Monitering
-   - Specify helm charts for `monitor, monitor-crd`
-   - Run `monitor-install`.
+To install AMP, follow these step-by-step instructions:
+
+1. Install the K8 cluster:
+   - Use the `make k8s-install` command to install the K8 cluster.
+
+2. Install ROC:
+   - Specify the Helm charts for `atomix`, `onosproject`, and `aether_roc`.
+   - Run the `roc-install` command.
+   - For 5G, use the `make 5g-roc-install` command. For 4G, use the `make 4g-roc-install` command.
+
+3. Install Monitoring:
+   - Specify the Helm charts for `monitor` and `monitor-crd`.
+   - Run the `monitor-install` command.
 
 #### One-Step Installation
 To install AMF in one go, run `amp-install`.
@@ -108,30 +110,30 @@ To uninstall gnbsim, run `make gnbsim-simulator-setup-uninstall`.
 <br />
 
 ---
-## K8 Cluster
+The K8 Cluster repository is responsible for building a multi-node K8 cluster using rke2 and installing Helm. To set up the K8 cluster, you need to provide the following configurations:
 
-The K8 repository builds a multi-node K8 cluster using rke2 and installs Helm.
-To set up the K8 cluster, you need to provide the following:
+1. Node configurations with IP addresses in the `host.ini` file.
+   - You can specify both master and worker nodes in this file.
 
-1. Node configurations with IP addresses in the host.ini file.
-   - You can specify both master and worker nodes.
-2. rke2 configuration parameters, such as the rke2 version, in the ./var/main.yaml file.
-3. Rke2 cluster parameters file in config folder
-4. run `make k8s-install`
+2. rke2 configuration parameters in the `./var/main.yaml` file.
+   - Here, you can define the rke2 version and other relevant configurations.
 
-The repository will build a multi-node cluster. To check the ststus of cluster, run the following command on the master node
+3. Rke2 cluster parameters file in the `config` folder.
+   - This file contains the necessary parameters for the cluster setup.
+
+To install the K8 cluster, run the command `make k8s-install`. Once the installation is complete, you can check the status of the cluster by executing the following command on the master node:
+
 ```
 sudo /var/lib/rancher/rke2/bin/kubectl get nodes --kubeconfig /etc/rancher/rke2/rke2.yaml
 ```
 
-#### Useful commands:
+Here are some useful commands for managing the K8 cluster:
 ```
-1. kubectl get nodes
-2. sudo /var/lib/rancher/rke2/bin/kubectl get nodes --kubeconfig /etc/rancher/rke2/rke2.yaml
+1. kubectl get nodes - Displays the list of nodes in the cluster.
+2. sudo /var/lib/rancher/rke2/bin/kubectl get nodes --kubeconfig /etc/rancher/rke2/rke2.yaml - Retrieves the nodes using the specified kubeconfig file.
 ```
 
-#### Uninstall
-To destroy k8 cluster use `make k8s-uninstall`
+To uninstall the K8 cluster, you can use the command `make k8s-uninstall`. This will destroy the cluster and remove all associated resources.
 
 <br />
 
