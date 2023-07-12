@@ -26,11 +26,7 @@ aether-pingall:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AETHER_ROOT_DIR)/pingall.yml \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
-### NOTE
-# run gnbsim-docker-install before running setup
-# if first time core gets stuck on 1 pod init state with no reason, use 5gc-core-uninstall and 5gc-core-install
-
-#### b. Provision AETHER ####
+#### Provision AETHER ####
 
 aether-install:
 	$(MAKE) 5gc-install;
@@ -48,40 +44,40 @@ resetcore:
 #	5gc-install: k8s-install 5gc-router-install 5gc-core-install
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall k8s-uninstall
 
-### 		run gnbsim-docker-install before running setup
+##   run gnbsim-docker-install before running setup
 # 	gnbsim-simulator-setup-install: gnbsim-docker-router-install gnbsim-docker-start 
 # 	gnbsim-simulator-setup-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
 
-#	#### b. Provision k8s ####
+###  Provision k8s ####
 #	k8s-install
 #	k8s-uninstall
 
-#### c. Provision router ####
+### Provision router ####
 #	5gc-router-install
 #	5gc-router-uninstall
 
-#### d. Provision core ####
+### Provision core ####
 #	5gc-core-install
 #	5gc-core-uninstall
 
 
-#### b.  AMP ####
+### Provision  AMP ####
 # amp-install: k8s-install roc-install 5g-roc-install monitor-install 
 # amp-uninstall: monitor-uninstall roc-uninstall k8s-uninstall
 
-#### c. Provision ROC ####
+### Provision ROC ###
 # roc-install
 # roc-uninstall
 
-### c.1 Provision 5G-ROC ###
+### Provision 5G-ROC ###
 # 5g-roc-install
 # 5g-roc-uninstall
 
-#### d. Provision Monitoring ####
+### Provision Monitoring ###
 # monitor-install
 # monitor-uninstall
 
-# #### c. Provision docker ####
+### Provision gnbsim ###
 # 	gnbsim-docker-install
 # 	gnbsim-docker-uninstall
 
@@ -91,12 +87,11 @@ resetcore:
 # 	gnbsim-docker-start
 # 	gnbsim-docker-stop
 
-# #### d. Provision gnbsim ####
+### Simulation ###
 # 	gnbsim-simulator-start
 
 
 #include at the end so rules are not overwritten
-#### Provisioning k8s ####
 include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile

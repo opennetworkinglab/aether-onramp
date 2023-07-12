@@ -1,11 +1,13 @@
 # Aether-On-Ramp
 This repo builds a standalone Aether core with a physical RAN setup, AMF and gNbsimulation.
 
-To download the Aether-On-Ramp repository, use the following command:
+Download the Aether-On-Ramp using the following command:
 ```
 git clone --recursive https://gitlab.com/onf-internship/aetheronramp.git
 ```
-It is build upon following repositories.  
+then start Ansible docker with `make ansible`
+
+Repo uses following repos as submodule  
 
 ---
 
@@ -138,6 +140,7 @@ To destroy k8 cluster use `make k8s-uninstall`
 
 # TODOs
 1. Explain host.ini structure
+2. Check node connectivity (ping)
 2. Add a node to cluster
 3. Remove Node from cluster
 4. Add more gNbsim container
