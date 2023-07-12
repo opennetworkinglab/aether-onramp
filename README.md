@@ -110,6 +110,8 @@ To uninstall gnbsim, run `make gnbsim-simulator-setup-uninstall`.
 <br />
 
 ---
+## K8 Cluster
+
 The K8 Cluster repository is responsible for building a multi-node K8 cluster using rke2 and installing Helm. To set up the K8 cluster, you need to provide the following configurations:
 
 1. Node configurations with IP addresses in the `host.ini` file.
