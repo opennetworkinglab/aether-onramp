@@ -1,6 +1,6 @@
 ---
 
-- name: provision platform
+- name: provision aether
   hosts: all
   gather_facts: true
     
@@ -8,4 +8,4 @@
     - "vars/main.yml"
 
   roles:
-    - platform
+    - aether

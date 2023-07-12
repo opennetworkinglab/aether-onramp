@@ -80,7 +80,7 @@ configuration:
       #   "repeat": 100
       # - "name": "iteration3"
       #   "1": "UE-INITIATED-DEREGISTRATION-PROCEDURE 1"
-          # "next":  "quit" #default value quit. i.e. no further iteration to run
+      #   "next":  "quit" #default value quit. i.e. no further iteration to run
       
       # PDU
       # - "name": "iteration1"

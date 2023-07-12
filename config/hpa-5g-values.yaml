@@ -17,10 +17,10 @@ omec-control-plane:
   enable5G: true
   images:
     repository: "registry.opennetworking.org/docker.io/"
-    tags:
+    # tags:
       # sctplb: ajaythakuronf/sctplb:0.0.1-dev-june13-1
-      sctplb: ajaythakuronf/sctplb:0.0.1-dev-june13-5
-      amf: ajaythakuronf/5gc-amf:0.0.1-dev-July2-8
+      # sctplb: ajaythakuronf/sctplb:0.0.1-dev-june13-5
+      # amf: ajaythakuronf/5gc-amf:0.0.1-dev-July2-8
     # refer to above Helm Chart to add other NF images
 
   kafka:

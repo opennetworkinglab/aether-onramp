@@ -27,12 +27,9 @@ gnbsim:
   SameMachineAsCore: false
   docker:
     container:
-      # image: jingqih/5gc-gnbsim:dev-1.1.2
-      # image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
-      image: mbilals/5gc-gnbsim:1milisecdelay
-      # image: mbilals/5gc-gnbsim:1secdelay
+      image: omecproject/5gc-gnbsim:main-latest
       prefix: gnbsim
-      count: 5
+      count: 1
 
   simulator:
     gnb:
@@ -47,13 +44,41 @@ gnbsim:
     gnbsims:
       - "1":
           config_file: "/workdir/config/gnbsim.template.yaml"
-      # - "2":
-      #     config_file: "/workdir/config/gnbsim.template.yaml"
-      # - "3":
-      #     config_file: "/workdir/config/gnbsim.template.yaml"
 
   network:
     data_iface: ens18
     mcavlan_iface: gnbInterface
     macvlan_network_name: gnb-net
     subnet_prefix: "172.20"
+
+amp:
+  data_iface: ens18
+
+  aether_roc:
+    helm:
+      chart_ref: aether/aether-roc-umbrella
+      chart_version: 2.1.36
+
+  atomix:
+    helm:
+      chart_ref: atomix/atomix
+      chart_version: 1.1.2
+
+  onosproject:
+    helm:
+      chart_ref: onosproject/onos-operator
+      chart_version: 0.5.6
+
+  store:
+    lpp:
+      version: v0.0.24
+
+  monitor:
+    helm:
+      chart_ref: rancher/rancher-monitoring
+      chart_version: 101.0.0+up19.0.3
+
+  monitor-crd:
+    helm:
+      chart_ref: rancher/rancher-monitoring-crd
+      chart_version: 101.0.0+up19.0.3
