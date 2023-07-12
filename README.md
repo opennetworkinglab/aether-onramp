@@ -1,13 +1,13 @@
 # Aether-On-Ramp
-This repo builds a standalone Aether core with a physical RAN setup, AMF and gNbsimulation.
+This repository builds a standalone Aether core with a physical RAN setup, including AMF and gNbsimulation.
 
-Download the Aether-On-Ramp using the following command:
+To download the Aether-On-Ramp repository, use the following command:
 ```
 git clone --recursive https://gitlab.com/onf-internship/aetheronramp.git
 ```
-then start Ansible docker with `make ansible`
 
-Repo uses following repos as submodule  
+After cloning the repository, start the Ansible Docker environment using `make ansible`.
+This repository utilizes the following repositories as submodules.
 
 ---
 
