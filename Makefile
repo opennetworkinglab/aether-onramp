@@ -27,12 +27,12 @@ aether-pingall:
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 #### Provision AETHER ####
+aether-k8s-install: k8s-install
+aether-5gc-install: 5gc-install
+aether-gnbsim-install: gnbsim-install
+aether-amp-install: amp-install
 
-aether-install:
-	$(MAKE) 5gc-install;
-	$(MAKE) gnbsim-simulator-setup-install
-
-aether-uninstall: monitor-uninstall roc-uninstall gnbsim-simulator-setup-uninstall 5gc-uninstall
+aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 resetcore: 
 	$(MAKE) 5gc-core-uninstall;
@@ -40,6 +40,9 @@ resetcore:
 	$(MAKE) 5gc-core-install;
 
 # Rules:
+
+#	amp-install: roc-install 5g-roc-install monitor-install 
+#	amp-uninstall: monitor-uninstall roc-uninstall
 
 #	5gc-install: k8s-install 5gc-router-install 5gc-core-install
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall k8s-uninstall
@@ -89,7 +92,6 @@ resetcore:
 
 ### Simulation ###
 # 	gnbsim-simulator-start
-
 
 #include at the end so rules are not overwritten
 include $(K8S_ROOT_DIR)/Makefile
