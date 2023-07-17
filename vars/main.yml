@@ -18,13 +18,13 @@ core:
   standalone: "true"
   data_iface: ens18
   values_file: "/workdir/config/hpa-5g-values.yaml"
-  custome_ran_subnet: "172.20.0.0/16"
+  ran_subnet: "172.20.0.0/16"
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6 
 
 gnbsim:
-  SameMachineAsCore: false
+  SameMachineAsCore: true
   docker:
     container:
       image: omecproject/5gc-gnbsim:main-latest
@@ -36,7 +36,7 @@ gnbsim:
       id:
         base: "00010"
     amf:
-      ip: "172.16.41.103"
+      ip: "172.16.201.66"
 
     ueid_base: 208930100007488
     ue_per_pod: 10
