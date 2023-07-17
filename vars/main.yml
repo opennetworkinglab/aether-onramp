@@ -4,9 +4,9 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
-      params_file: 
-        master: "config/master-params.yaml" #"deps/5gc/templates/rke2/master-params.yaml"
-        worker: "config/worker-params.yaml" #"deps/5gc/templates/rke2/worker-params.yaml"
+      # params_file: 
+      #   master: "config/master-params.yaml" #"deps/5gc/templates/rke2/master-params.yaml"
+      #   worker: "config/worker-params.yaml" #"deps/5gc/templates/rke2/worker-params.yaml"
 
   kubectl:
     version: v1.23.15
@@ -27,7 +27,7 @@ gnbsim:
   SameMachineAsCore: true
   docker:
     container:
-      image: omecproject/5gc-gnbsim:main-latest
+      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
       prefix: gnbsim
       count: 1
 
