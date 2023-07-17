@@ -1,9 +1,0 @@
-# Copyright 2022-present Open Networking Foundation
-# SPDX-License-Identifier: Apache-2.0
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c "sudo iptables -t nat -C POSTROUTING -s 172.250.0.0/16 -o {{ core.data_iface }} -j MASQUERADE || sudo iptables -t nat -A POSTROUTING -s 172.250.0.0/16 -o {{ core.data_iface }} -j MASQUERADE"
-
-[Install]
-WantedBy=sys-subsystem-net-devices-core.device

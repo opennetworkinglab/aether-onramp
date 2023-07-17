@@ -1,9 +1,0 @@
-core:
-  standalone: "true"
-  data_iface: ens18
-  values_file: "templates/core/hpa-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16" # set it to empty to get subnet from 'data_iface'
-  
-  helm:
-    chart_ref: aether/sd-core
-    chart_version: 0.12.6 
