@@ -22,38 +22,28 @@ core:
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6 
+  upf:
+    ip_prefix: "192.168.252.0/24"
+  amf:
+    ip: "172.16.201.66"  
 
 gnbsim:
-  SameMachineAsCore: true
   docker:
     container:
-      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
+      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
       prefix: gnbsim
-      count: 1
+      count: 2
+    network:
+      macvlan:
+        name: gnbnet
 
-  simulator:
-    gnb:
-      id:
-        base: "00010"
-    amf:
-      ip: "172.16.201.66"
-
-    ueid_base: 208930100007488
-    ue_per_pod: 10
-
-    gnbsims:
-      - "1":
-          config_file: "/workdir/config/gnbsim.template.yaml"
-
-  network:
+  router:
     data_iface: ens18
-    mcavlan_iface: gnbInterface
-    macvlan_network_name: gnb-net
-    subnet_prefix: "172.20"
+    macvlan:
+      iface: gnbaccess
+      subnet_prefix: "172.20"
 
 amp:
-  data_iface: ens18
-
   aether_roc:
     helm:
       chart_ref: aether/aether-roc-umbrella
