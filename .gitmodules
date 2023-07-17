@@ -6,7 +6,7 @@
 	path = deps/k8s
 	url = https://gitlab.com/onf-internship/k8s.git
 	branch = k8s-v2
-[submodule "5gc"]
-	path = 5gc
+[submodule "deps/5gc"]
+	path = deps/5gc
 	url = https://gitlab.com/onf-internship/5gc.git
 	branch = 5gc-v2

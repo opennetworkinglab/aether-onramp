@@ -1,0 +1,9 @@
+# Copyright 2022-present Open Networking Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[Match]
+Name=access
+
+[Network]
+IPForward=yes
+Address=192.168.252.1/24

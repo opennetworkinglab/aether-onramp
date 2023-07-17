@@ -1,0 +1,9 @@
+---
+
+- name: install 5gc/router
+  include: roles/router/tasks/install.yml
+  tags: install
+
+- name: uninstall 5gc/router
+  include: roles/router/tasks/uninstall.yml
+  tags: uninstall

@@ -1,0 +1,153 @@
+---
+
+# TODO: running on master node for now (fix to run on multiple nodes)
+
+- set_fact:
+    systemd_network_dir: /etc/systemd/network
+    systemd_system_dir: /etc/systemd/system
+
+# - name: "delete iptable rule: forward from {{ core.data_iface }} to access"
+#   iptables:
+#     chain: FORWARD
+#     in_interface: "{{ core.data_iface }}"
+#     out_interface: access
+#     jump: ACCEPT
+#     state: absent
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+
+# - name: "delete iptable rule: forward from access to {{ core.data_iface }}"
+#   iptables:
+#     chain: FORWARD
+#     in_interface: access
+#     out_interface: "{{ core.data_iface }}"
+#     jump: ACCEPT
+#     state: absent
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+
+- name: delete {{ systemd_system_dir }}/aether-ue-nat.service
+  file:
+    path: "{{ systemd_system_dir }}/aether-ue-nat.service"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: find {{ core.data_iface }}'s netplan network directory
+  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ core.data_iface }}.network' -print)
+  register: result
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/{{ result.stdout }}.d
+  file:
+    path: "{{ systemd_network_dir }}/{{ result.stdout }}.d"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/20-aether-core.network
+  file:
+    path: "{{ systemd_network_dir }}/20-aether-core.network"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/10-aether-core.netdev
+  file:
+    path: "{{ systemd_network_dir }}/10-aether-core.netdev"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/20-aether-access.network
+  file:
+    path: "{{ systemd_network_dir }}/20-aether-access.network"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: delete  {{ systemd_network_dir }}/10-aether-access.netdev
+  file:
+    path: "{{ systemd_network_dir }}/10-aether-access.netdev"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# TODO: fix this hack (make a proper cleanup service)
+- name: post-delete steps
+  shell: |
+    ip link del access || true
+    ip link del core || true
+    iptables -t nat -D POSTROUTING -s 172.250.0.0/16 -o {{ core.data_iface }} -j MASQUERADE || true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_filter to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# - name: stop aether-ue-nat.service
+#   systemd:
+#     name: aether-ue-nat.service
+#     state: stopped
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+
+# - name: disbale aether-ue-nat.service
+#   systemd:
+#     name: aether-ue-nat.service
+#     enabled: false
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+
+# - name: force systemd to reread configs
+#   systemd:
+#     daemon_reload: true
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+
+# - name: restart systemd-networkd
+#   systemd:
+#     name: systemd-networkd
+#     state: restarted
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true

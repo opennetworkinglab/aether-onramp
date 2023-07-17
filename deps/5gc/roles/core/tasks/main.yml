@@ -1,0 +1,9 @@
+---
+
+- name: install 5gc/core
+  include: roles/core/tasks/install.yml
+  tags: install
+
+- name: uninstall 5gc/core
+  include: roles/core/tasks/uninstall.yml
+  tags: uninstall

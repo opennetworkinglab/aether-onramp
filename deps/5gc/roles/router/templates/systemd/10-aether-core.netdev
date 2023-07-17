@@ -1,0 +1,9 @@
+# Copyright 2022-present Open Networking Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[NetDev]
+Name=core
+Kind=macvlan
+
+[MACVLAN]
+Mode=bridge
