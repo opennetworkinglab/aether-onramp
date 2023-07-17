@@ -10,3 +10,7 @@
 	path = deps/5gc
 	url = https://gitlab.com/onf-internship/5gc.git
 	branch = 5gc-v2
+[submodule "deps/amp"]
+	path = deps/amp
+	url = https://gitlab.com/onf-internship/amp.git
+	branch = amp-v2
