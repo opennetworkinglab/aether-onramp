@@ -6,7 +6,7 @@ export AETHER_ROOT_DIR ?= $(ROOT_DIR)
 export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
-export K8S_ROOT_DIR ?= $(5GC_ROOT_DIR)/deps/k8s
+export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 
 export ANSIBLE_NAME ?= ansible-aether
 export ANSIBLE_CONFIG ?= $(AETHER_ROOT_DIR)/ansible.cfg

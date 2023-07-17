@@ -2,14 +2,11 @@
 	path = deps/gnbsim
 	url = https://gitlab.com/onf-internship/gnbsim.git
 	branch = gnbsim-v2
-[submodule "deps/amp"]
-	path = deps/amp
-	url = https://gitlab.com/onf-internship/amp.git
 [submodule "deps/k8s"]
 	path = deps/k8s
 	url = https://gitlab.com/onf-internship/k8s.git
 	branch = k8s-v2
-[submodule "deps/--force"]
-	path = deps/--force
+[submodule "5gc"]
+	path = 5gc
 	url = https://gitlab.com/onf-internship/5gc.git
 	branch = 5gc-v2
