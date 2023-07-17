@@ -44,12 +44,13 @@ resetcore:
 #	amp-install: roc-install 5g-roc-install monitor-install 
 #	amp-uninstall: monitor-uninstall roc-uninstall
 
-#	5gc-install: k8s-install 5gc-router-install 5gc-core-install
-#	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall k8s-uninstall
+#	5gc-install: 5gc-router-install 5gc-core-install
+#	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall
 
-##   run gnbsim-docker-install before running setup
-# 	gnbsim-simulator-setup-install: gnbsim-docker-router-install gnbsim-docker-start 
-# 	gnbsim-simulator-setup-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
+## run gnbsim-docker-install before running setup
+#	gnbsim-install: gnbsim-docker-router-install gnbsim-docker-start 
+#	gnbsim-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
+
 
 ###  Provision k8s ####
 #	k8s-install
@@ -62,7 +63,6 @@ resetcore:
 ### Provision core ####
 #	5gc-core-install
 #	5gc-core-uninstall
-
 
 ### Provision  AMP ####
 # amp-install: k8s-install roc-install 5g-roc-install monitor-install 
@@ -84,8 +84,8 @@ resetcore:
 # 	gnbsim-docker-install
 # 	gnbsim-docker-uninstall
 
-# 	gnbsim-docker-router-install:
-# 	gnbsim-docker-router-uninstall:
+# 	gnbsim-docker-router-install
+# 	gnbsim-docker-router-uninstall
 
 # 	gnbsim-docker-start
 # 	gnbsim-docker-stop

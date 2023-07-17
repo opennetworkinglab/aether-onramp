@@ -23,11 +23,10 @@ To install the 5g-core, follow these steps:
    - Set the "values_file" parameter:
      - Use "hpa-5g-values.yaml" for a stateless 5g core.
      - Use "nohpa-5g-values.yaml" for a stateful 5g core.
-   - The "custom_ran_subnet" parameter if left empty, core will use the subnet of "data_iface" for UPF.
+   - The "ran_subnet" parameter if left empty, core will use the subnet of "data_iface" for UPF.
 2. Add the hosts to the init file.
 3. Run `make ansible`.
 4. In the running Ansible docker terminal, run `make 5gc-install`.
-   - This command installs the k8 cluster using `k8s-install`.
    - It creates networking interfaces for UPF, such as access/core, using `5gc-router-install`.
    - Finally, it installs the 5g core using the values specified in `5gc-core-install`.
      - The installation process may take up to 3 minutes.
@@ -43,12 +42,9 @@ To install 5gc in one go, run `make 5gc-install`.
 
 ## AMP - Aether Management Platform
 
-The AMP repository is responsible for building the Aether Management Platform, which includes Aether-ROC and a monitoring system. It utilizes the k8 repository as a submodule to create a multi-node cluster.
+The AMP repository is responsible for building the Aether Management Platform, which includes Aether-ROC and a monitoring system.
 
 To install AMP, follow these step-by-step instructions:
-
-1. Install the K8 cluster:
-   - Use the `make k8s-install` command to install the K8 cluster.
 
 2. Install ROC:
    - Specify the Helm charts for `atomix`, `onosproject`, and `aether_roc`.

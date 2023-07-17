@@ -31,7 +31,7 @@ configuration:
           mnc: 93 # Mobile Network Code (2 or 3 digits string, digit: 0~9)
         gNbId: 
           bitLength: 24
-          gNBValue: "001002" # gNB identifier (3 bytes hex string, range: 000000~FFFFFF)
+          gNBValue: "001004" # gNB identifier (3 bytes hex string, range: 000000~FFFFFF)
       supportedTaList:
         - tac: 000001 # Tracking Area Code (3 bytes hex string, range: 000000~FFFFFF)
           broadcastPlmnList:
