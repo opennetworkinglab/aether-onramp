@@ -17,3 +17,4 @@
 [submodule "deps/4gc"]
 	path = deps/4gc
 	url = https://gitlab.com/onf-internship/4gc.git
+	branch = 4gc-v2
