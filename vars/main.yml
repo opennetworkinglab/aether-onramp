@@ -17,7 +17,7 @@ k8s:
 core:
   standalone: "true"
   data_iface: ens18
-  values_file: "/workdir/config/hpa-5g-values.yaml"
+  values_file: "deps/5gc/templates/core/hpa-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"
   helm:
     chart_ref: aether/sd-core
@@ -45,11 +45,11 @@ gnbsim:
 
   servers:
     0:
-      - "config/gnbsim-s1-p1.yaml"
-      - "config/gnbsim-s1-p2.yaml"
+      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
+      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
     1:
-      - "config/gnbsim-s1-p2.yaml"
-      - "config/gnbsim-s1-p1.yaml"
+      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
+      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
 
 amp:
   aether_roc:
