@@ -14,3 +14,6 @@
 	path = deps/amp
 	url = https://gitlab.com/onf-internship/amp.git
 	branch = amp-v2
+[submodule "deps/4gc"]
+	path = deps/4gc
+	url = https://gitlab.com/onf-internship/4gc.git
