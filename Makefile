@@ -4,6 +4,7 @@ export ROOT_DIR ?= $(PWD)
 export AETHER_ROOT_DIR ?= $(ROOT_DIR)
 
 export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
+export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
@@ -30,14 +31,15 @@ aether-pingall:
 aether-k8s-install: k8s-install
 aether-5gc-install: 5gc-install
 aether-gnbsim-install: gnbsim-install
-aether-amp-install: amp-install
+aether-amp-5gc-install: amp-5g-install
 
 aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
-resetcore: 
-	$(MAKE) 5gc-core-uninstall;
-	sleep 5.0;
-	$(MAKE) 5gc-core-install;
+aether-4gc-install: 4gc-install
+aether-4gc-uninstall: 4gc-uninstall
+
+aether-amp-4gc-install: amp-4gc-install
+
 
 # Rules:
 
@@ -97,4 +99,5 @@ resetcore:
 include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
+include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
