@@ -4,10 +4,7 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
-      # params_file: 
-      #   master: "config/master-params.yaml" #"deps/5gc/templates/rke2/master-params.yaml"
-      #   worker: "config/worker-params.yaml" #"deps/5gc/templates/rke2/worker-params.yaml"
-
+ 
   kubectl:
     version: v1.23.15
 
@@ -17,12 +14,11 @@ k8s:
 core:
   standalone: "true"
   data_iface: ens18
-  values_file: "deps/4gc/templates/core/sdcore-4g-values.yaml"
-  # values_file: "deps/5gc/templates/core/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"
+  values_file: "deps/5gc/templates/core/sdcore-5g-values.yaml"
+  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
   helm:
     chart_ref: aether/sd-core
-    chart_version: 0.12.6 
+    chart_version: 0.12.8 
   upf:
     ip_prefix: "192.168.252.0/24"
   amf:
@@ -33,7 +29,7 @@ gnbsim:
     container:
       image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
       prefix: gnbsim
-      count: 2
+      count: 1
     network:
       macvlan:
         name: gnbnet
@@ -46,11 +42,12 @@ gnbsim:
 
   servers:
     0:
-      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
-      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
-    1:
-      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
-      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
+       - "deps/gnbsim/config/gnbsim-default.yaml"     
+#      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
+#      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
+#    1:
+#      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
+#      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
 
 amp:
   aether_roc:
