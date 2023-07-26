@@ -4,9 +4,10 @@ export ROOT_DIR ?= $(PWD)
 export AETHER_ROOT_DIR ?= $(ROOT_DIR)
 
 export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
+export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
-export K8S_ROOT_DIR ?= $(5GC_ROOT_DIR)/deps/k8s
+export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 
 export ANSIBLE_NAME ?= ansible-aether
 export ANSIBLE_CONFIG ?= $(AETHER_ROOT_DIR)/ansible.cfg
@@ -27,26 +28,31 @@ aether-pingall:
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 #### Provision AETHER ####
+aether-k8s-install: k8s-install
+aether-5gc-install: 5gc-install
+aether-gnbsim-install: gnbsim-install
+aether-amp-5gc-install: amp-5g-install
 
-aether-install:
-	$(MAKE) 5gc-install;
-	$(MAKE) gnbsim-simulator-setup-install
+aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
-aether-uninstall: monitor-uninstall roc-uninstall gnbsim-simulator-setup-uninstall 5gc-uninstall
+aether-4gc-install: 4gc-install
+aether-4gc-uninstall: 4gc-uninstall
 
-resetcore: 
-	$(MAKE) 5gc-core-uninstall;
-	sleep 5.0;
-	$(MAKE) 5gc-core-install;
+aether-amp-4gc-install: amp-4gc-install
+
 
 # Rules:
 
-#	5gc-install: k8s-install 5gc-router-install 5gc-core-install
-#	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall k8s-uninstall
+#	amp-install: roc-install 5g-roc-install monitor-install 
+#	amp-uninstall: monitor-uninstall roc-uninstall
 
-##   run gnbsim-docker-install before running setup
-# 	gnbsim-simulator-setup-install: gnbsim-docker-router-install gnbsim-docker-start 
-# 	gnbsim-simulator-setup-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
+#	5gc-install: 5gc-router-install 5gc-core-install
+#	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall
+
+## run gnbsim-docker-install before running setup
+#	gnbsim-install: gnbsim-docker-router-install gnbsim-docker-start 
+#	gnbsim-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
+
 
 ###  Provision k8s ####
 #	k8s-install
@@ -59,7 +65,6 @@ resetcore:
 ### Provision core ####
 #	5gc-core-install
 #	5gc-core-uninstall
-
 
 ### Provision  AMP ####
 # amp-install: k8s-install roc-install 5g-roc-install monitor-install 
@@ -81,8 +86,8 @@ resetcore:
 # 	gnbsim-docker-install
 # 	gnbsim-docker-uninstall
 
-# 	gnbsim-docker-router-install:
-# 	gnbsim-docker-router-uninstall:
+# 	gnbsim-docker-router-install
+# 	gnbsim-docker-router-uninstall
 
 # 	gnbsim-docker-start
 # 	gnbsim-docker-stop
@@ -90,9 +95,9 @@ resetcore:
 ### Simulation ###
 # 	gnbsim-simulator-start
 
-
 #include at the end so rules are not overwritten
 include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
+include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
