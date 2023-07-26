@@ -38,7 +38,7 @@ aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall
 aether-4gc-install: 4gc-install
 aether-4gc-uninstall: 4gc-uninstall
 
-aether-amp-4gc-install: amp-4gc-install
+aether-amp-4g-install: amp-4g-install
 
 
 # Rules:
