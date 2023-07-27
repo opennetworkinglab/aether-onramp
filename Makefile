@@ -33,14 +33,16 @@ aether-5gc-install: 5gc-install
 aether-gnbsim-install: gnbsim-install
 aether-amp-install: amp-install
 
+aether-install: k8s-install 5gc-install gnbsim-install amp-install
 aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 aether-4gc-install: 4gc-install
 aether-4gc-uninstall: 4gc-uninstall
 
 
+aether-resetcore: 5gc-uninstall 5gc-install
 
-
+aether-gnbsim-run: gnbsim-simulator-run
 # Rules:
 
 #	amp-install: roc-install roc-load monitor-install monitor-load
