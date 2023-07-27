@@ -31,19 +31,19 @@ aether-pingall:
 aether-k8s-install: k8s-install
 aether-5gc-install: 5gc-install
 aether-gnbsim-install: gnbsim-install
-aether-amp-5gc-install: amp-5g-install
+aether-amp-install: amp-install
 
 aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 aether-4gc-install: 4gc-install
 aether-4gc-uninstall: 4gc-uninstall
 
-aether-amp-4g-install: amp-4g-install
+
 
 
 # Rules:
 
-#	amp-install: roc-install 5g-roc-install monitor-install 
+#	amp-install: roc-install roc-load monitor-install monitor-load
 #	amp-uninstall: monitor-uninstall roc-uninstall
 
 #	5gc-install: 5gc-router-install 5gc-core-install
@@ -67,19 +67,17 @@ aether-amp-4g-install: amp-4g-install
 #	5gc-core-uninstall
 
 ### Provision  AMP ####
-# amp-install: k8s-install roc-install 5g-roc-install monitor-install 
+# amp-install: k8s-install roc-install roc-load monitor-install monitor-load
 # amp-uninstall: monitor-uninstall roc-uninstall k8s-uninstall
 
 ### Provision ROC ###
 # roc-install
+# roc-load
 # roc-uninstall
-
-### Provision 5G-ROC ###
-# 5g-roc-install
-# 5g-roc-uninstall
 
 ### Provision Monitoring ###
 # monitor-install
+# monitor-load
 # monitor-uninstall
 
 ### Provision gnbsim ###

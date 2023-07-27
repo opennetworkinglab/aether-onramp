@@ -50,6 +50,9 @@ gnbsim:
 #      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
 
 amp:
+  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
+  monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
+
   aether_roc:
     helm:
       chart_ref: aether/aether-roc-umbrella
