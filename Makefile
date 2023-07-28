@@ -40,7 +40,7 @@ aether-4gc-install: 4gc-install
 aether-4gc-uninstall: 4gc-uninstall
 
 
-aether-resetcore: 5gc-uninstall 5gc-install
+aether-resetcore: 5gc-core-uninstall 5gc-core-install
 
 aether-gnbsim-run: gnbsim-simulator-run
 # Rules:
