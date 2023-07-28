@@ -29,7 +29,7 @@ gnbsim:
     container:
       image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
       prefix: gnbsim
-      count: 1
+      count: 2
     network:
       macvlan:
         name: gnbnet
@@ -42,7 +42,11 @@ gnbsim:
 
   servers:
     0:
-       - "deps/gnbsim/config/gnbsim-default.yaml"     
+      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
+      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
+#    1:
+#      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
+#      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"

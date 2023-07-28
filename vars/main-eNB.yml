@@ -12,10 +12,10 @@ k8s:
     version: v3.10.3      
 
 core:
-  standalone: "true"
+  standalone: "true"	# set to 'false' to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
+  ran_subnet: ""	# empty string implies subnet comes from 'data_iface'
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6
@@ -24,29 +24,9 @@ core:
   amf:
     ip: "172.16.41.103"
 
-gnbsim:
-  docker:
-    container:
-      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
-      prefix: gnbsim
-      count: 1
-    network:
-      macvlan:
-        name: gnbnet
-
-  router:
-    data_iface: ens18
-    macvlan:
-      iface: gnbaccess
-      subnet_prefix: "172.20"
-
-  servers:
-    0:
-       - "deps/gnbsim/config/gnbsim-default.yaml"     
-
 amp:
-  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
-  monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
+  roc_models: "deps/amp/roles/roc-load/templates/radio-4g-models.json"
+  monitor_dashboard: "deps/amp/roles/monitor-load/templates/4g-monitoring"
 
   aether_roc:
     helm:
