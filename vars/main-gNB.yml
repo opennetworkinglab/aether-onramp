@@ -14,7 +14,7 @@ k8s:
 core:
   standalone: "true"	# set to 'false' to place under control of ROC
   data_iface: ens18
-  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  values_file: "deps/5gc/roles/core/templates/radio-5g-values.yaml"
   ran_subnet: ""	# empty string implies subnet comes from 'data_iface'
   helm:
     chart_ref: aether/sd-core
@@ -25,7 +25,7 @@ core:
     ip: "172.16.41.103"
 
 amp:
-  roc_models: "deps/amp/roles/roc-load/templates/radio-5g-models.json"
+  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-radio-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
 
   aether_roc:
