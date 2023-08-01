@@ -28,7 +28,7 @@ find the following.
    potentially need to modify to specify your deployment scenario.
    This file is the union of all the per-component ``var/main.yml``
    files you find in the corresponding ``deps`` directory. This
-   top-level variable file overrides the per-component files, so
+    top-level variable file overrides the per-component files, so
    you will not need to modify the latter. The ``vars`` directory
    contains several variants of ``main.yml``, each tailored for a
    different deployment scenario, with the default ``main.yml``
@@ -123,4 +123,19 @@ $ make aether-uninstall
 ## Beyond Quick Start
 
 Being able to support more complex configurations of Aether is whole
-point of OnRamp. See the OnRamp documentation for details: *URL is TBD.*
+point of OnRamp. See the OnRamp documentation for details: *URL is
+TBD.* Until the OnRamp docs have a permanent home, you can view the
+latest version by doing the following:
+
+```
+$ git clone https://github.com/SystemsApproach/private5g.git
+$ cd private5g
+$ git checkout v2
+$ make html
+```
+
+You can then view the OnRamp Guide at following URL:
+
+```
+file:///...your home directory.../private5g/_build/html/software/overview.html
+```
