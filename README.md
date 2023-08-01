@@ -125,7 +125,7 @@ $ make aether-uninstall
 Being able to support more complex configurations of Aether is whole
 point of OnRamp. See the OnRamp documentation for details: *URL is
 TBD.* Until the OnRamp docs have a permanent home, you can view the
-latest version by doing the following:
+latest by doing the following:
 
 ```
 $ git clone https://github.com/SystemsApproach/private5g.git
