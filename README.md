@@ -124,14 +124,14 @@ $ make aether-uninstall
 
 Being able to support more complex configurations of Aether is whole
 point of OnRamp. See the OnRamp documentation available as part of
-the Aether Guide for details:
-
-https://docs.aetherproject.org/master/
+the [Aether Guide](https://docs.aetherproject.org) for details.
 
 You might also check the
-[README](https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md).
+[README](https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md)
  in the ``vars`` directory of this
-repo, which explains how each of the variants of ``vars/main.yml``
-in that directory serves as a general blueprint for the
-different configurations of Aether that OnRamp currently supports.
+repo, which explains how each of the variants of ``main.yml``
+in that directory serves as a general blueprint for one of the
+configurations of Aether that OnRamp currently supports.
+For example, ``vars/main-gNB.yml`` is tailored for a deployment
+with a physical RAN built with one or more 5G radios.
 
