@@ -129,7 +129,7 @@ the Aether Guide for details:
 https://docs.aetherproject.org/master/
 
 You might also check the
-`README <https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md>`_.
+[README](https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md).
  in the ``vars`` directory of this
 repo, which explains how each of the variants of ``vars/main.yml``
 in that directory serves as a general blueprint for the
