@@ -123,19 +123,15 @@ $ make aether-uninstall
 ## Beyond Quick Start
 
 Being able to support more complex configurations of Aether is whole
-point of OnRamp. See the OnRamp documentation for details: *URL is
-TBD.* Until the OnRamp docs have a permanent home, you can view the
-latest by doing the following:
+point of OnRamp. See the OnRamp documentation available as part of
+the Aether Guide for details:
 
-```
-$ git clone https://github.com/SystemsApproach/private5g.git
-$ cd private5g
-$ git checkout v2
-$ make html
-```
+https://docs.aetherproject.org/master/
 
-You can then view the OnRamp Guide at following URL:
+You might also check the
+`README <https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md>`_.
+ in the ``vars`` directory of this
+repo, which explains how each of the variants of ``vars/main.yml``
+in that directory serves as a general blueprint for the
+different configurations of Aether that OnRamp currently supports.
 
-```
-file:///...your home directory.../private5g/_build/html/software/overview.html
-```
