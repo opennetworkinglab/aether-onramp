@@ -126,12 +126,25 @@ Being able to support more complex configurations of Aether is whole
 point of OnRamp. See the OnRamp documentation available as part of
 the [Aether Guide](https://docs.aetherproject.org) for details.
 
-You might also check the
-[README](https://github.com/opennetworkinglab/aether-onramp/blob/master/vars/README.md)
- in the ``vars`` directory of this
-repo, which explains how each of the variants of ``main.yml``
-in that directory serves as a general blueprint for one of the
-configurations of Aether that OnRamp currently supports.
-For example, ``vars/main-gNB.yml`` is tailored for a deployment
-with a physical RAN built with one or more 5G radios.
+You might also check the `vars` directory of this repo, where file
+`main.yml` specifies global variables used to configure how Aether is
+deployed. By default, it is configured for the Quick Start deployment.
+The other files define other common configurations, any one of which
+you can copy to `main.yml`, and then edit to account for your local
+details. These alternative configurations include:
 
+* `main-quickstart.yml`: Configures the RAN emulator (gNBsim) to run
+   in the same server as the Core. Equivalent to `main.yml` by default.
+
+* `main-gnbsim.yml`: Configures the RAN emulator (gNBsim) to run in
+   one or more servers, independent of the Core.
+
+* `main-gNB.yml`: Configures the Core to work with an external 5G
+   radio (gNB), with the Core running independent of AMP. (Change
+   variable `standalone` to `false` to have the Core running under
+   AMP's control.)
+
+* `main-eNB.yml`: Configures the Core to work with an external 4G
+   radio (eNB), with the Core running independent of AMP. (Change
+   variable `standalone` to false to have the Core running under AMP's
+   control.)
