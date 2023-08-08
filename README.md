@@ -40,9 +40,10 @@ find the following.
    everything on a single server (the one you've cloned the
    repo onto). Example multi-node inventories are commented out.
     
-Aether OnRamp assumes Ansible is installed. Once you edit
-``hosts.ini`` to match your local details, type the following
-to verify the setup:
+Aether OnRamp assumes Ansible is installed. (See the
+[Aether Guide](https://docs.aetherproject.org/master/onramp/start.html#prep-environment)
+for instructions on doing this.) Then, once you edit ``hosts.ini`` to
+match your local details, type the following to verify the setup:
 
 ```
 $ make aether-pingall
@@ -54,7 +55,9 @@ Edit ``vars/main.yml`` to reflect your local scenario. For
 the Quick Start deployment, this means setting variable
 ``data_iface`` to your server's network interface. Note there are
 **two** lines that define this variable, one in the ``core`` section
-and one in the ``gnbsim`` section.
+and one in the ``gnbsim`` section. You also need to set the
+IP address of the AMF (in the ``core`` section) to your servers's
+IP address.
 
 You are now ready to install a one-node Kubernetes cluster. Type:
 
