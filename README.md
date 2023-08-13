@@ -42,7 +42,8 @@ find the following.
     
 Aether OnRamp assumes Ansible is installed. (See the
 [Aether Guide](https://docs.aetherproject.org/master/onramp/start.html#prep-environment)
-for instructions on doing this.) Then, once you edit ``hosts.ini`` to
+for instructions on doing this, along with additional guidance if this
+is your first attempt to install OnRamp.) Then, once you edit ``hosts.ini`` to
 match your local details, type the following to verify the setup:
 
 ```
