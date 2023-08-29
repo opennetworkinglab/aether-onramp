@@ -22,6 +22,20 @@ core:
   upf:
     ip_prefix: "192.168.252.0/24"
     iface: "access"
+    helm:
+      chart_ref: aether/bess-upf
+    values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
+    # additional_upfs:
+      # "1":
+      #   ip:
+      #     access: "192.168.252.6/24"
+      #     core:   "192.168.250.6/24"
+      #   ue_ip_pool: "172.248.0.0/16"
+      # "2":
+      #   ip:
+      #     access: "192.168.252.7/24"
+      #     core:   "192.168.250.7/24"
+      #   ue_ip_pool: "172.247.0.0/16"
   amf:
     ip: "172.16.41.103"
 
@@ -44,7 +58,10 @@ gnbsim:
   servers:
     0:
        - "deps/gnbsim/config/gnbsim-default.yaml"     
-
+    1:
+       - "deps/gnbsim/config/gnbsim-s1-p2.yaml"     
+    2:
+       - "deps/gnbsim/config/gnbsim-s2-p2.yaml"     
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"

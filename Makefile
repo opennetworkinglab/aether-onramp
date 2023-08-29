@@ -39,12 +39,14 @@ aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall
 aether-4gc-install: 4gc-install
 aether-4gc-uninstall: 4gc-uninstall
 
-
 aether-resetcore: 5gc-core-uninstall 5gc-core-install
 
 aether-gnbsim-run: gnbsim-simulator-run
-# Rules:
 
+aether-add-upfs: 5gc-upf-install
+aether-remove-upfs: 5gc-upf-uninstall
+
+# Rules:
 #	amp-install: roc-install roc-load monitor-install monitor-load
 #	amp-uninstall: monitor-uninstall roc-uninstall
 
