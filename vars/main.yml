@@ -15,7 +15,7 @@ core:
   standalone: "true"
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
+  ran_subnet: "172.20.0.0/16"
   helm:
     chart_ref: aether/sd-core
     chart_version: 0.12.6
@@ -26,7 +26,7 @@ core:
       chart_ref: aether/bess-upf
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
   amf:
-    ip: "172.16.41.103"
+    ip: "10.76.28.113"
 
 gnbsim:
   docker:
