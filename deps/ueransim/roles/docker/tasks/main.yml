@@ -1,0 +1,17 @@
+---
+
+- name: install ueransim/docker
+  include: roles/docker/tasks/install.yml
+  tags: install
+
+- name: uninstall ueransim/docker
+  include: roles/docker/tasks/uninstall.yml
+  tags: uninstall
+
+- name: start ueransim/dockers
+  include: roles/docker/tasks/start.yml
+  tags: start
+
+- name: stop ueransim/dockers
+  include: roles/docker/tasks/stop.yml
+  tags: stop

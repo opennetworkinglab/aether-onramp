@@ -1,0 +1,150 @@
+---
+
+- set_fact:
+    systemd_network_dir: /etc/systemd/network
+
+- name: "remove a static route on ueransim host for {{ core.upf.ip_prefix }} via {{ core.amf.ip }}"
+  shell: |
+    ip route del {{ core.upf.ip_prefix }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove a static route on core host for {{ ueransim.router.macvlan.subnet_prefix }}.0.0/24 via {{ hostvars[item]['ansible_default_ipv4']['address'] }}"
+  shell: |
+    ip route del {{ ueransim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', item) }}.0/24 via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  with_items: "{{ play_hosts | intersect(groups['ueransim_nodes']) | difference(groups['master_nodes']) }}"
+  when: (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ ueransim.router.macvlan.iface }} to access"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ core.upf.iface }}"
+    out_interface: "{{ ueransim.router.macvlan.iface }}"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ ueransim.router.macvlan.iface }} to access"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.macvlan.iface }}"
+    out_interface: "{{ core.upf.iface }}"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ ueransim.router.data_iface }} to {{ ueransim.router.macvlan.iface }} "
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.data_iface }}"
+    out_interface: "{{ ueransim.router.macvlan.iface }}"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "delete iptable rule: forward from {{ ueransim.router.macvlan.iface }} to {{ ueransim.router.data_iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.macvlan.iface }}"
+    out_interface: "{{ ueransim.router.data_iface }}"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: find {{ ueransim.router.data_iface }}'s netplan network directory
+  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ ueransim.router.data_iface }}.network' -print)
+  register: result
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/{{ result.stdout }}.d
+  file:
+    path: "{{ systemd_network_dir }}/{{ result.stdout }}.d"
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: delete {{ systemd_network_dir }}/20-ueransim-access.network
+  file:
+    path: "{{ systemd_network_dir }}/20-ueransim-access.network"
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: delete  {{ systemd_network_dir }}/10-ueransim-access.netdev
+  file:
+    path: "{{ systemd_network_dir }}/10-ueransim-access.netdev"
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+# TODO: fix this hack (make a proper cleanup service)
+- name: remove {{ ueransim.router.macvlan.iface }} macvlan interface 
+  shell: |
+    ip link del {{ ueransim.router.macvlan.iface }} || true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_filter to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true

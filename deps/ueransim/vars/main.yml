@@ -1,0 +1,31 @@
+ueransim:
+  docker:
+    container:
+      image: omecproject/5gc-ueransim:main-PR_88-cc0d21b      
+      prefix: ueransim
+      count: 2
+    network:
+      macvlan:
+        name: gnbnet
+
+  router:
+    data_iface: eth0
+    macvlan:
+      iface: gnbaccess
+      subnet_prefix: "172.20"
+
+  servers:
+    0:
+      - "config/ueransim-s1-p1.yaml"
+      - "config/ueransim-s1-p2.yaml"
+    # 1:
+    #   - "config/ueransim-s2-p1.yaml"
+    #   - "config/ueransim-s2-p2.yaml"
+
+core:
+  upf:
+    ip_prefix: "192.168.252.0/24"
+    iface: "access"
+  amf:
+    ip: "172.16.248.6"
+    

@@ -1,0 +1,35 @@
+---
+
+- name: pull {{ ueransim.docker.container.image }} image
+  community.docker.docker_image:
+    name: "{{ ueransim.docker.container.image }}"
+    source: pull
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: create macvlan:{{ ueransim.docker.network.macvlan.name }} network
+  community.docker.docker_network:
+    name: "{{ ueransim.docker.network.macvlan.name }}"
+    driver: macvlan
+    driver_options:
+      parent: "{{ ueransim.router.macvlan.iface }}"
+    ipam_config:
+      - subnet: "{{ address_prefix }}.0/24"
+        gateway: "{{ address_prefix }}.1"
+    state: present
+  vars:
+    address_prefix: "{{ ueransim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname) }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: create {{ ueransim.docker.container.image }} containers
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.prefix }}-{{ item }}"
+    image: "{{ ueransim.docker.container.image }}"
+    network_mode: "{{ ueransim.docker.network.macvlan.name }}"
+    command: sleep 1d
+    state: started
+  with_sequence: count={{ ueransim.docker.container.count }}
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+

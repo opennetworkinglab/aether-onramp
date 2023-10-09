@@ -1,0 +1,71 @@
+---
+
+- set_fact:
+    network_macvlan_name: "{{ ueransim.docker.network.macvlan.name }}"
+
+- name: get info on ueransim containers
+  community.docker.docker_container_info:
+    name: "{{ ueransim.docker.container.prefix }}-{{ (item.0|int)+1 }}"
+  with_indexed_items: "{{ ueransim.servers[lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname)] }}"
+  register: container_info
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Remove config file on host
+  ansible.builtin.file:
+    path: "/tmp/ueransim-{{ (item.0|int)+1 }}.yaml"
+    state: absent
+  with_indexed_items: "{{ ueransim.servers[lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: copy config files to ueransim host
+  template:
+    src: "{{ ROOT_DIR }}/{{ item.1 }}"
+    dest: /tmp/ueransim-{{ (item.0|int)+1 }}.yaml
+  vars:
+    container_ip: "{{ container_info.results[item.0].container.NetworkSettings.Networks[network_macvlan_name].IPAddress }}"
+    amf_ip: "{{ core.amf.ip }}"
+  with_indexed_items: "{{ ueransim.servers[lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: copy config files into ueransim containers
+  shell: |
+    docker cp /tmp/ueransim-{{ (item.0|int)+1 }}.yaml \
+      ueransim-{{ (item.0|int)+1 }}:/tmp/ueransim.yaml
+  with_indexed_items: "{{ ueransim.servers[lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: async start ueransims
+  community.docker.docker_container_exec:
+    container: "{{ ueransim.docker.container.prefix }}-{{ (item.0|int)+1 }}"
+    command: /bin/bash -c "rm -rf /ueransim/bin/*.log; rm -f /ueransim/bin/*.config;
+        /ueransim/bin/ueransim --cfg /tmp/ueransim.yaml 2&> ueransim{{ (item.0|int)+1 }}-{{ ansible_date_time.iso8601_basic_short }}.log;
+        cp -f /tmp/ueransim.yaml ./ueransim{{ (item.0|int)+1 }}-{{ ansible_date_time.iso8601_basic_short }}.config;"
+  async: 100
+  poll: 0
+  with_indexed_items: "{{ ueransim.servers[lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+  
+- pause:
+    seconds: 1
+
+- name: async check ueransims
+  shell: |
+    ps aux | grep "\-\-cfg\ /tmp/ueransim" | wc -l
+  register: async_result
+  until: async_result.stdout == "0"
+  retries: 500
+  delay: 5
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- debug:
+    var: "async_result.stdout"
+
+- name: force stop ueransims
+  shell: |
+    pkill -9 -f /ueransim/bin/ueransim
+  become: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  ignore_errors: yes

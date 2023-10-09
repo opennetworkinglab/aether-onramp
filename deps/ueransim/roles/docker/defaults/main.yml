@@ -1,0 +1,15 @@
+  
+ueransim:
+  docker:
+    container:
+      image: kunal14kapoor/ueransim:latest
+      prefix: ueransim
+      count: 2
+    network:
+      macvlan:
+        name: ueransimnet
+
+  router:
+    mcavlan:
+      iface: ueransimaccess
+      subnet_prefix: "172.20"

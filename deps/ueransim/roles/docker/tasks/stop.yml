@@ -1,0 +1,25 @@
+---
+
+- name: delete {{ ueransim.docker.container.image }} containers
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.prefix }}-{{ item }}"
+    state: absent
+  with_sequence: count={{ ueransim.docker.container.count }}
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: delete macvlan:{{ ueransim.docker.network.macvlan.name }} network
+  community.docker.docker_network:
+    name: "{{ ueransim.docker.network.macvlan.name }}"
+    state: absent
+    force: yes
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: remove {{ ueransim.docker.container.image }} image
+  community.docker.docker_image:
+    name: "{{ ueransim.docker.container.image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true

@@ -1,0 +1,148 @@
+---
+
+- set_fact:
+    systemd_network_dir: /etc/systemd/network
+
+- name: set net.ipv4.conf.all.arp_filter to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "copy 10-ueransim-access.netdev to {{ systemd_network_dir }}/10-ueransim.netdev"
+  template:
+    src: roles/router/templates/10-ueransim-access.netdev
+    dest: "{{ systemd_network_dir }}/10-ueransim-access.netdev"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "copy 20-ueransim-access.network to {{ systemd_network_dir }}/20-ueransim.network"
+  template:
+    src: roles/router/templates/20-ueransim-access.network
+    dest: "{{ systemd_network_dir }}/20-ueransim.network"
+  vars:
+    subnet_address: "{{ ueransim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', inventory_hostname) }}.1/24"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: find {{ ueransim.router.data_iface }}'s netplan network directory
+  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ ueransim.router.data_iface }}.network' -print)
+  register: result
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: find {{ ueransim.router.data_iface }}'s netplan network directory
+  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ ueransim.router.data_iface }}.network' -print)
+  register: result
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "create {{ systemd_network_dir }}/{{ result.stdout }}.d"
+  file:
+    path: "{{ systemd_network_dir }}/{{ result.stdout }}.d"
+    state: directory
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "copy macvlan.conf to {{ systemd_network_dir }}/{{ result.stdout }}.d/macvlan.conf"
+  template:
+    src: roles/router/templates/macvlan.conf
+    dest: "{{ systemd_network_dir }}/{{ result.stdout }}.d/macvlan.conf"
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "add iptable rule: forward from {{ ueransim.router.data_iface }} to {{ ueransim.router.macvlan.iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.data_iface }}"
+    out_interface: "{{ ueransim.router.macvlan.iface }}"
+    jump: ACCEPT
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "add iptable rule: forward from {{ ueransim.router.macvlan.iface }} to {{ ueransim.router.data_iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.macvlan.iface }}"
+    out_interface: "{{ ueransim.router.data_iface }}"
+    jump: ACCEPT
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: "add iptable rule: forward from {{ ueransim.router.macvlan.iface }} to {{ core.upf.iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ ueransim.router.macvlan.iface }}"
+    out_interface: "{{ core.upf.iface }}"
+    jump: ACCEPT
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+
+- name: "add iptable rule: forward from {{ ueransim.router.macvlan.iface }} to {{ core.upf.iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ core.upf.iface }}"
+    out_interface: "{{ ueransim.router.macvlan.iface }}"
+    jump: ACCEPT
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+
+# TODO: use ansible's net_static_route module
+- name: configure static route for upf traffic on ueransim node
+  shell: |
+    ip route add {{ core.upf.ip_prefix }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+# TODO: use ansible's net_static_route module
+- name: configure static route for ueransim traffic on aether node
+  shell: |
+    ip route add {{ ueransim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['ueransim_nodes'], 'eq', item) }}.0/24 via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  with_items: "{{ play_hosts | intersect(groups['ueransim_nodes']) | difference(groups['master_nodes']) }}"
+  when: (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes

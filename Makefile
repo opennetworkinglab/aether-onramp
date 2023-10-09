@@ -8,6 +8,7 @@ export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
+export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
 
 export ANSIBLE_NAME ?= ansible-aether
 export ANSIBLE_CONFIG ?= $(AETHER_ROOT_DIR)/ansible.cfg
@@ -96,6 +97,8 @@ aether-remove-upfs: 5gc-upf-uninstall
 
 ### Simulation ###
 # 	gnbsim-simulator-start
+aether-ueransim-install: ueransim-install
+aether-ueransim-uninstall: ueransim-uninstall 
 
 #include at the end so rules are not overwritten
 include $(K8S_ROOT_DIR)/Makefile
@@ -103,3 +106,4 @@ include $(GNBSIM_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
 include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
+include $(UERANSIM_ROOT_DIR)/Makefile

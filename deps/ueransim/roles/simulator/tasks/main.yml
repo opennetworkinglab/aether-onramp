@@ -1,0 +1,5 @@
+---
+
+- name: start ueransim/simulator
+  include: roles/simulator/tasks/start.yml
+  tags: start

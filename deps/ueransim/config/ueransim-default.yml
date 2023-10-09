@@ -1,0 +1,209 @@
+# SPDX-FileCopyrightText: 2022 Great Software Laboratory Pvt. Ltd
+# SPDX-FileCopyrightText: 2021 Open Networking Foundation <info@opennetworking.org>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
+---
+info:
+  version: 1.0.0
+  description: GNBSIM initial local configuration
+
+configuration:
+  runConfigProfilesAtStart: true
+  singleInterface: false			# Default value
+  execInParallel: true				# Run all profiles in parallel
+  httpServer:					# API to manage profiles at runtime
+    enable: false
+    ipAddr: "{{ container_ip }}"
+    port: 8080
+  gnbs:						# Pool of gNBs
+    gnb1:
+      n2IpAddr:					# N2 IPaddr to connect to AMF
+      n2Port: 9487				# N2 Port to connect to AMF
+      n3IpAddr: "{{ container_ip }}"		# N3 IPaddr to connect to UPF
+      #n3IpAddr: "POD_IP"			# Use when in singleInterface mode
+      n3Port: 2152 #{ { container_port } }	# N3 Port to connect to UPF
+      name: gnb1				# Uniquely identify gNB within application
+      globalRanId:
+        plmnId:
+          mcc: 208				# Mobile Country Code
+          mnc: 93				# Mobile Network Code
+        gNbId: 
+          bitLength: 24
+          gNBValue: "001001"			# gNB id (3 bytes/hex: range 000000~FFFFFF)
+      supportedTaList:
+        - tac: 000001				# TAC (3 bytes/hex: range: 000000~FFFFFF)
+          broadcastPlmnList:
+            - plmnId:
+                mcc: 208
+                mnc: 93
+              taiSliceSupportList:
+                - sst: 1			# Slice/Service Type (uinteger: range 0~255)
+                  sd: 010203			# Slice Differentiator (3 bytes/hex)
+                - sst: 1
+                  sd: 000001
+                - sst: 2
+      defaultAmf:
+        hostName: amf				# Host name of AMF
+        ipAddr: "{{ amf_ip }}"			# AMF IP address
+        port: 38412				# AMF port
+
+
+  # Custom Profiles: Interate through combinations of supported Profiles
+  # Disabled by default
+  customProfiles:
+    customProfiles1:
+      profileType: custom			# Profile type
+      profileName: custom1			# Uniqely identifies profile within application
+      enable: false				# True to execute the profile
+      execInParallel: true			# Run all subscribers in parallel
+      stepTrigger: false			# Wait for trigger to move to next step
+      gnbName: gnb1				# gNB used for this profile
+      startImsi: "208930100007487"		# First IMSI (used in sequence for each UE)
+      ueCount: 3				# Number of UEs
+      perUserTimeout: 10
+      defaultAs: "192.168.250.1"		# Default ICMP destination (for UPF traffic)
+      opc: "981d464c7c52eb6e5036234984ad0bcf"
+      key: "5122250214c33e723a5dd523fc145fc0"
+      sequenceNumber: "16f3b3f70fc2"
+      plmnId:
+        mcc: 208
+        mnc: 93
+      startiteration: iteration1
+      iterations:
+
+      - "name": "iteration1"
+        "1": "REGISTRATION-PROCEDURE 1"
+        "2": "PDU-SESSION-ESTABLISHMENT-PROCEDURE 1"
+        "next": "iteration2"
+      - "name": "iteration2"
+        "1": "UE-TRIGGERED-SERVICE-REQUEST-PROCEDURE 0"
+        "repeat": 10
+        "next": "iteration3"
+      - "name": "iteration3"
+        "1": "UE-INITIATED-DEREGISTRATION-PROCEDURE 1"
+
+
+  # See https://github.com/omec-project/gnbsim
+  #   for a description of the supported profiles
+  # Parameters documented above (in comments on Custom Profile)
+  # Profile 2 (pdusessest) typically enabled by default
+
+  profiles:
+  - profileType: register	# UE Registration
+    profileName: profile1
+    enable: false
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007487
+    ueCount: 5
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    plmnId:
+      mcc: 208
+      mnc: 93
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: pdusessest         # UE Initiated Session
+    profileName: profile2
+    enable: true
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007487
+    ueCount: 5
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    plmnId:
+      mcc: 208
+      mnc: 93
+    dataPktCount: 5
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: anrelease          # AN Release
+    profileName: profile3
+    enable: false
+    execInParallel: false
+    gnbName: gnb1
+    startImsi: 208930100007497
+    ueCount: 5
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    plmnId:
+      mcc: 208
+      mnc: 93
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: uetriggservicereq  # UE Initiated Service Request
+    profileName: profile4
+    enable: false
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007497
+    ueCount: 5
+    plmnId:
+      mcc: 208
+      mnc: 93
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: deregister         # UE Initiated De-registration
+    profileName: profile5
+    enable: false
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007497
+    ueCount: 5
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    plmnId:
+      mcc: 208
+      mnc: 93
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: nwtriggeruedereg   # N/W Initiated De-registration
+    profileName: profile6
+    enable: false
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007497
+    ueCount: 5
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    plmnId:
+      mcc: 208
+      mnc: 93
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+  - profileType: uereqpdusessrelease  # UE Initiated Session Release
+    profileName: profile7
+    enable: false
+    gnbName: gnb1
+    execInParallel: false
+    startImsi: 208930100007497
+    ueCount: 5
+    plmnId:
+      mcc: 208
+      mnc: 93
+    defaultAs: "192.168.250.1"
+    perUserTimeout: 100
+    opc: "981d464c7c52eb6e5036234984ad0bcf"
+    key: "5122250214c33e723a5dd523fc145fc0"
+    sequenceNumber: "16f3b3f70fc2"
+
+# Set logging level
+logger:
+  logLevel: info		# trace, debug, info, warn, error, fatal, panic

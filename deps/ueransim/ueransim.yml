@@ -1,0 +1,11 @@
+---
+
+- name: provision ue ran sim simulator
+  hosts: ueransim_nodes
+  gather_facts: true
+    
+  vars_files:
+    - "vars/main.yml"
+
+  roles:
+    - simulator

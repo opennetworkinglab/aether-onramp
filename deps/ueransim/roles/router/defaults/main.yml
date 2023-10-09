@@ -1,0 +1,13 @@
+ueransimsim:
+  router:
+    data_iface: data
+    macvlan:
+      iface: ueransimaccess
+      subnet_prefix: "172.20"
+
+core:
+  upf:
+    ip_prefix: "192.168.252.0/24"
+    iface: "access"    
+  amf:
+    ip: "172.16.248.6"  

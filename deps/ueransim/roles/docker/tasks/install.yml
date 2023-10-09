@@ -1,0 +1,78 @@
+---
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: install required system packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: latest
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: add docker GPG apt Key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: add docker Repository
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: install docker-ce
+  apt:
+    name: docker-ce
+    state: latest
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: install docker module for Python
+  pip:
+    name: docker
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: pull hello-world docker image
+  community.docker.docker_image:
+    name: "hello-world"
+    source: pull
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: create hello-world container
+  community.docker.docker_container:
+    name: "hello-world"
+    image: "hello-world"
+    state: started
+    auto_remove: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+# hack for docker to run as user
+- name: run docker without sudo (HACK)
+  shell:
+    cmd: |
+      chown {{ ansible_user }} /var/run/docker.sock
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
