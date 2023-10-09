@@ -47,10 +47,7 @@ gnbsim:
   servers:
     0:
        - "deps/gnbsim/config/gnbsim-default.yaml"     
-    1:
-       - "deps/gnbsim/config/gnbsim-s1-p2.yaml"     
-    2:
-       - "deps/gnbsim/config/gnbsim-s2-p2.yaml"     
+
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
