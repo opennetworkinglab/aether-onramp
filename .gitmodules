@@ -18,3 +18,7 @@
 	path = deps/4gc
 	url = https://github.com/opennetworkinglab/aether-4gc.git
 	branch = master
+[submodule "deps/ueransim"]
+	path = deps/ueransim
+	url = https://github.com/opennetworkinglab/aether-ueransim.git
+	branch = master
