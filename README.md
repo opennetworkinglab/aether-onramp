@@ -90,12 +90,17 @@ running the test. You can access that file by typing:
 $ docker exec -it gnbsim-1 cat summary.log
 ```
 
+
 Finally, you can bring up the Aether Management Platform (AMP) to view
 dashboards showing different aspects of Aether's runtime behavior. Type:
 
 ```
 $ make aether-amp-install
 ```
+To deploy aether-onramp with AMP on ubuntu 22.04 make below target before
+AMP deployment
+
+$ make amp-install-22.04
 
 You can access the dashboards for Aether's Runtime Control system and
 Aether's Monitoring system at the following URLs:
@@ -152,3 +157,4 @@ details. These alternative configurations include:
    radio (eNB), with the Core running independent of AMP. (Change
    variable `standalone` to false to have the Core running under AMP's
    control.)
+

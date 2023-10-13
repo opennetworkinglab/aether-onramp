@@ -96,7 +96,15 @@ aether-remove-upfs: 5gc-upf-uninstall
 
 ### Simulation ###
 # 	gnbsim-simulator-start
-
+#
+#
+# Please run below target before deployment on ubuntu 22.04
+#
+amp-install-22.04: 
+	sudo cp limits.conf /etc/security/limits.conf
+	sudo cp common-session /etc/pam.d/common-session
+	sudo cp sysctl.conf /etc/sysctl.conf
+	sudo sysctl -p	
 #include at the end so rules are not overwritten
 include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
