@@ -45,7 +45,7 @@ gnbsim:
     container:
       image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
       prefix: gnbsim
-      count: 1
+      count: 2
     network:
       macvlan:
         name: gnbnet
@@ -58,6 +58,7 @@ gnbsim:
 
   servers:
     0:
+      - "deps/gnbsim/config/gnbsim-upf-1.yaml"
       - "deps/gnbsim/config/gnbsim-upf-2.yaml"
 
 amp:
