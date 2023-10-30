@@ -39,7 +39,7 @@ aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall
 #### Provision AETHER for 4G ####
 #### 4G/5G share router role ####
 aether-4gc-install: 4gc-core-install 5g-router-install
-aether-4gc-uninstall: 4gc-core-uninstall 5g-router-uninstall
+aether-4gc-uninstall: 4gc-core-uninstall 5gc-router-uninstall
 
 aether-resetcore: 5gc-core-uninstall 5gc-core-install
 aether-reset4gcore: 4gc-core-uninstall 4gc-core-install
