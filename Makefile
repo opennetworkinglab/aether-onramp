@@ -27,7 +27,7 @@ aether-pingall:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AETHER_ROOT_DIR)/pingall.yml \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
-#### Provision AETHER ####
+#### Provision AETHER for 5G ####
 aether-k8s-install: k8s-install
 aether-5gc-install: 5gc-install
 aether-gnbsim-install: gnbsim-install
@@ -36,10 +36,13 @@ aether-amp-install: amp-install
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
 aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
-aether-4gc-install: 4gc-install
-aether-4gc-uninstall: 4gc-uninstall
+#### Provision AETHER for 4G ####
+#### 4G/5G share router role ####
+aether-4gc-install: 4gc-core-install 5g-router-install
+aether-4gc-uninstall: 4gc-core-uninstall 5g-router-uninstall
 
 aether-resetcore: 5gc-core-uninstall 5gc-core-install
+aether-reset4gcore: 4gc-core-uninstall 4gc-core-install
 
 aether-gnbsim-run: gnbsim-simulator-run
 
