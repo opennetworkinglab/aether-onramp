@@ -3,6 +3,7 @@
 export ROOT_DIR ?= $(PWD)
 export AETHER_ROOT_DIR ?= $(ROOT_DIR)
 
+export SDRAN_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/sdran
 export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
 export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
@@ -32,9 +33,11 @@ aether-k8s-install: k8s-install
 aether-5gc-install: 5gc-install
 aether-gnbsim-install: gnbsim-install
 aether-amp-install: amp-install
+aether-sdran-install: sdran-install
+aether-sdran-uninstall: sdran-uninstall
 
-aether-install: k8s-install 5gc-install gnbsim-install amp-install
-aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
+aether-install: k8s-install 5gc-install gnbsim-install amp-install sdran-install
+aether-uninstall: sdran-uninstall monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 #### Provision AETHER for 4G ####
 #### 4G/5G share router role ####
@@ -106,3 +109,4 @@ include $(GNBSIM_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
 include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
+include $(SDRAN_ROOT_DIR)/Makefile
