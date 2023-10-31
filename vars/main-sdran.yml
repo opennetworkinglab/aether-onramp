@@ -1,0 +1,65 @@
+k8s:
+  rke2:
+    version: v1.23.4+rke2r1
+    config:
+      token: purdue-k8s-rke2
+      port: 9345
+
+  kubectl:
+    version: v1.23.15
+
+  helm:
+    version: v3.10.3
+
+core:
+  standalone: "true"
+  data_iface: ens18
+  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  ran_subnet: "172.20.0.0/16"
+  helm:
+    chart_ref: aether/sd-core
+    chart_version: 0.12.8
+  upf:
+    ip_prefix: "192.168.252.0/24"
+    iface: "access"
+    helm:
+      chart_ref: aether/bess-upf
+    values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
+  amf:
+    ip: "10.76.28.113"
+
+sdran:
+  platform:
+    atomix:
+      helm:
+        chart_ref: atomix/atomix
+        chart_version: 1.1.2
+
+    onosproject:
+      helm:
+        chart_ref: onosproject/onos-operator
+        chart_version: 0.5.6
+
+    store:
+      lpp:
+        version: v0.0.24
+
+  sdran:
+    helm:
+      chart_ref: "sdran/sd-ran"
+      chart_version: 1.4.135
+    import:
+      e2t: true
+      a1t: true
+      uenib: true
+      topo: true
+      config: true
+      ransim: true
+      kpimon: true
+      pci: false		# true for PCI and MLB use-case
+      mho: false		# true for MHO use-case
+      mlb: false		# true for MLB use-case
+      ts: false			# true for traffic steering use-case
+    ransim:
+      model: model # default: model; mlb: three-cell-n-node-model; mho: two-cell-two-node-model; ts: two-cell-two-node-model
+      metric: metrics # default: model; mlb: three-cell-n-node-model

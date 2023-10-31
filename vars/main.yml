@@ -4,12 +4,12 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
- 
+
   kubectl:
     version: v1.23.15
 
   helm:
-    version: v3.10.3      
+    version: v3.10.3
 
 core:
   standalone: "true"
@@ -31,7 +31,7 @@ core:
 gnbsim:
   docker:
     container:
-      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b      
+      image: omecproject/5gc-gnbsim:main-PR_88-cc0d21b
       prefix: gnbsim
       count: 1
     network:
@@ -46,7 +46,7 @@ gnbsim:
 
   servers:
     0:
-       - "deps/gnbsim/config/gnbsim-default.yaml"     
+       - "deps/gnbsim/config/gnbsim-default.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
@@ -80,39 +80,3 @@ amp:
     helm:
       chart_ref: rancher/rancher-monitoring-crd
       chart_version: 101.0.0+up19.0.3
-
-sdran:
-  platform:
-    atomix:
-      helm:
-        chart_ref: atomix/atomix
-        chart_version: 1.1.2
-        
-    onosproject:
-      helm:
-        chart_ref: onosproject/onos-operator
-        chart_version: 0.5.6
-    
-    store:
-      lpp:
-        version: v0.0.24
-
-  sdran:
-    helm:
-      chart_ref: "sdran/sd-ran"
-      chart_version: 1.4.135
-    import:
-      e2t: true
-      a1t: true
-      uenib: true
-      topo: true
-      config: true
-      ransim: true
-      kpimon: true
-      pci: false # true for PCI and MLB use-case
-      mho: false # true for MHO use-case
-      mlb: false # true for MLB use-case
-      ts: false # true for traffic steering use-case
-    ransim:
-      model: model # default: model; mlb: three-cell-n-node-model; mho: two-cell-two-node-model; ts: two-cell-two-node-model
-      metric: metrics # default: model; mlb: three-cell-n-node-model
