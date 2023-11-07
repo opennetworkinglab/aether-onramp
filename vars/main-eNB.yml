@@ -14,7 +14,7 @@ k8s:
 core:
   standalone: "true"	# set to 'false' to place under control of ROC
   data_iface: ens18
-  values_file: "deps/4gc/roles/core/templates/sdcore-4g-values.yaml"
+  values_file: "deps/4gc/roles/core/templates/radio-4g-values.yaml"
   ran_subnet: ""	# empty string implies subnet comes from 'data_iface'
   helm:
     chart_ref: aether/sd-core
