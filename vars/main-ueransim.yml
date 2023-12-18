@@ -44,19 +44,10 @@ ueransim:
   servers:
     0:
       - "deps/ueransim/config/ueransim-default.yml"
-#      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
-#    1:
-#      - "deps/gnbsim/config/gnbsim-s1-p2.yaml"
-#      - "deps/gnbsim/config/gnbsim-s1-p1.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
-
-  aether_roc:
-    helm:
-      chart_ref: aether/aether-roc-umbrella
-      chart_version: 2.1.36
 
   atomix:
     helm:
@@ -67,6 +58,11 @@ amp:
     helm:
       chart_ref: onosproject/onos-operator
       chart_version: 0.5.6
+
+  aether_roc:
+    helm:
+      chart_ref: aether/aether-roc-umbrella
+      chart_version: 2.1.36
 
   store:
     lpp:
