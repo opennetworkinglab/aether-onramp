@@ -8,6 +8,7 @@ export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
 export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
+export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 
 export ANSIBLE_NAME ?= ansible-aether
@@ -40,6 +41,8 @@ aether-amp-install: amp-install
 aether-amp-uninstall: amp-uninstall
 aether-sdran-install: sdran-install
 aether-sdran-uninstall: sdran-uninstall
+aether-ueransim-install: ueransim-install
+aether-ueransim-uninstall: ueransim-uninstall
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
@@ -56,6 +59,7 @@ aether-reset4gcore: 4gc-core-uninstall 4gc-core-install
 aether-gnbsim-run: gnbsim-simulator-run
 aether-add-upfs: 5gc-upf-install
 aether-remove-upfs: 5gc-upf-uninstall
+aether-ueransim-run: ueransim-run
 
 # Rules:
 #	amp-install: roc-install roc-load monitor-install monitor-load
@@ -85,17 +89,17 @@ aether-remove-upfs: 5gc-upf-uninstall
 # amp-install: k8s-install roc-install roc-load monitor-install monitor-load
 # amp-uninstall: monitor-uninstall roc-uninstall k8s-uninstall
 
-### Provision ROC ###
+### Provision and load ROC ###
 # roc-install
 # roc-load
 # roc-uninstall
 
-### Provision Monitoring ###
+### Provision and load Monitoring ###
 # monitor-install
 # monitor-load
 # monitor-uninstall
 
-### Provision gnbsim ###
+### Provision and run gnbsim ###
 # 	gnbsim-docker-install
 # 	gnbsim-docker-uninstall
 
@@ -105,8 +109,13 @@ aether-remove-upfs: 5gc-upf-uninstall
 # 	gnbsim-docker-start
 # 	gnbsim-docker-stop
 
-### Simulation ###
 # 	gnbsim-simulator-start
+
+### Provision and run ueransim     ###
+# 	ueransim-install
+# 	ueransim-run
+# 	ueransim-uninstall
+
 
 #include at the end so rules are not overwritten
 include $(K8S_ROOT_DIR)/Makefile
@@ -115,3 +124,5 @@ include $(5GC_ROOT_DIR)/Makefile
 include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
 include $(SDRAN_ROOT_DIR)/Makefile
+include $(UERANSIM_ROOT_DIR)/Makefile
+

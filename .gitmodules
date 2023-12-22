@@ -22,3 +22,7 @@
 	path = deps/sdran
 	url = https://github.com/opennetworkinglab/aether-sdran.git
 	branch = master
+[submodule "deps/ueransim"]
+	path = deps/ueransim
+	url = https://github.com/opennetworkinglab/aether-ueransim.git
+	branch = master
