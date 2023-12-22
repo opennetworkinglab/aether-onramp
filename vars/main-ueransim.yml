@@ -46,8 +46,8 @@ ueransim:
       - "deps/ueransim/config/ueransim-default.yml"
 #      - "deps/ueransim/config/ueransim-default.yml"
 #    1:
-#      - "deps/gnbsim/config/ueransim-default.yml"
-#      - "deps/gnbsim/config/ueransim-default.yml"
+#      - "deps/ueransim/config/ueransim-default.yml"
+#      - "deps/ueransim/config/ueransim-default.yml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
