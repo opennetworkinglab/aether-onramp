@@ -29,3 +29,13 @@ blueprints include:
    `standalone` being set to false so the Core runs under AMP's control.
    Details documented
    [here](https://docs.aetherproject.org/master/onramp/blueprints.html#multiple-upfs).
+
+* `main-sdran.yml`: Configures the Core and SD-RAN in tandem, with
+  RANSIM (running in the same Kubernetes namespace as SD-RAN)
+  emulating various RAN elements. Details documented
+  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#sdran).
+
+* `main-ueransim.yml`: Configures UERANSIM in place of gNBsim,
+  providing a second way to direct workload at the Core. Details documented
+  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#ueransim).
+
