@@ -33,7 +33,7 @@ blueprints include:
 * `main-sdran.yml`: Configures the Core and SD-RAN in tandem, with
   RANSIM (running in the same Kubernetes namespace as SD-RAN)
   emulating various RAN elements. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#sdran).
+  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#sd-ran).
 
 * `main-ueransim.yml`: Configures UERANSIM in place of gNBsim,
   providing a second way to direct workload at the Core. Details documented
