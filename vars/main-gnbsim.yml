@@ -17,6 +17,7 @@ core:
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"
   helm:
+    local_charts: false
     chart_ref: aether/sd-core
     chart_version: 0.12.8
   upf:
