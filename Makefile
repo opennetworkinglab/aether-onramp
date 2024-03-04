@@ -84,6 +84,7 @@ aether-ueransim-run: ueransim-run
 ### Provision core ####
 #	5gc-core-install
 #	5gc-core-uninstall
+#	5gc-core-reset
 
 ### Provision  AMP ####
 # amp-install: k8s-install roc-install roc-load monitor-install monitor-load
