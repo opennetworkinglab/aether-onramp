@@ -26,28 +26,10 @@ core:
     ip: "10.76.28.113"
 
 ueransim:
-  docker:
-    container:
-      image: kunal14kapoor/ueransim:latest      
-      prefix: ueransim
-      count: 1
-    network:
-      macvlan:
-        name: ueransimnet
-
-  router:
-    data_iface: ens18
-    macvlan:
-      iface: ueransimaccess
-      subnet_prefix: "172.20"
-
   servers:
     0:
-      - "deps/ueransim/config/ueransim-default.yml"
-#      - "deps/ueransim/config/ueransim-default.yml"
-#    1:
-#      - "deps/ueransim/config/ueransim-default.yml"
-#      - "deps/ueransim/config/ueransim-default.yml"
+      - "custom-gnb.yaml"
+      - "custom-ue.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
