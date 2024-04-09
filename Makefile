@@ -69,7 +69,7 @@ aether-ueransim-run: ueransim-run
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall
 
 ## run gnbsim-docker-install before running setup
-#	gnbsim-install: gnbsim-docker-router-install gnbsim-docker-start 
+#	gnbsim-install: gnbsim-docker-router-install gnbsim-docker-start
 #	gnbsim-uninstall:  gnbsim-docker-stop gnbsim-docker-router-uninstall
 
 
@@ -126,4 +126,3 @@ include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
 include $(SDRAN_ROOT_DIR)/Makefile
 include $(UERANSIM_ROOT_DIR)/Makefile
-

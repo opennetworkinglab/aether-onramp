@@ -13,7 +13,7 @@ type:
 $ git clone --recursive https://github.com/opennetworkinglab/aether-onramp.git
 ```
 
-Taking a quick look at your ``aether-onramp`` directory, you will 
+Taking a quick look at your ``aether-onramp`` directory, you will
 find the following.
 
 1. The ``deps`` directory contains Ansible deployment
@@ -39,7 +39,7 @@ find the following.
    default version included with OnRamp is simplified to run
    everything on a single server (the one you've cloned the
    repo onto). Example multi-node inventories are commented out.
-    
+
 Aether OnRamp assumes Ansible is installed. (See the
 [Aether Guide](https://docs.aetherproject.org/master/onramp/start.html#prep-environment)
 for instructions on doing this, along with additional guidance if this

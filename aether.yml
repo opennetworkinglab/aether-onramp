@@ -3,7 +3,7 @@
 - name: provision aether
   hosts: all
   gather_facts: true
-    
+
   vars_files:
     - "vars/main.yml"
 

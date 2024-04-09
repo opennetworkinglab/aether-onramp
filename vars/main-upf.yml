@@ -4,12 +4,12 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
- 
+
   kubectl:
     version: v1.23.15
 
   helm:
-    version: v3.10.3      
+    version: v3.10.3
 
 core:
   standalone: "false"
@@ -39,7 +39,7 @@ core:
       #   ue_ip_pool: "172.247.0.0/16"
   amf:
     ip: "10.76.28.113"
-    
+
 
 gnbsim:
   docker:
@@ -65,7 +65,7 @@ gnbsim:
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   # for UPF - comment above line and uncomment following line
-  # roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models-upf2.json" 
+  # roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models-upf2.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
 
   aether_roc:

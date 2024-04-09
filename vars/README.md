@@ -14,13 +14,13 @@ blueprints include:
    servers, independent of the Core. Details documented
    [here](https://docs.aetherproject.org/master/onramp/gnbsim.html).
 
-* `main-gNB.yml`: Configures the Core to work with an external 5G radio (gNB), with 
+* `main-gNB.yml`: Configures the Core to work with an external 5G radio (gNB), with
    the Core running independent of AMP. (Change variable `standalone` to false to have
    the Core running under AMP's control.) Details documented
    [here](https://docs.aetherproject.org/master/onramp/gnb.html).
 
-* `main-eNB.yml`: Configures the Core to work with an external 4G radio (eNB), with 
-   the Core running independent of AMP. (Change variable `standalone` to false to have 
+* `main-eNB.yml`: Configures the Core to work with an external 4G radio (eNB), with
+   the Core running independent of AMP. (Change variable `standalone` to false to have
    the Core running under AMP's control.) Details documented
    [here](https://docs.aetherproject.org/master/onramp/gnb.html#support-for-enbs).
 
@@ -38,4 +38,3 @@ blueprints include:
 * `main-ueransim.yml`: Configures UERANSIM in place of gNBsim,
   providing a second way to direct workload at the Core. Details documented
   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#ueransim).
-
