@@ -14,7 +14,7 @@ k8s:
 core:
   standalone: "true"
   data_iface: ens18
-  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  values_file: "deps/5gc/roles/core/templates/sdcore-5g-xput-values.yaml"
   ran_subnet: "172.20.0.0/16"
   helm:
     local_charts: false
