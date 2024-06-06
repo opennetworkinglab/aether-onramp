@@ -23,6 +23,14 @@ core:
   upf:
     ip_prefix: "192.168.252.0/24"
     iface: "access"
+    # af_packet or dpdk
+    # when using 'dpdk' mode please make sure atleast two VF devices are
+    # created out of 'data_iface' and both these devices attached to the
+    # vfio-pci driver
+    mode: af_packet
+    sriov: false        # set to true if mode is dpdk
+    cniPlugin: macvlan  # macvlan(for af_packet) or vfioveth(for dpdk mode)
+    ddp: false          # set to true if mode is dpdk and NIC supports DDP
   amf:
     ip: "10.76.28.113"
 
