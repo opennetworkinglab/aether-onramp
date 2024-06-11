@@ -33,7 +33,7 @@ core:
     # It will be used for N3, N6 interfaces. Configure these values only if
     # mode is set to 'dpdk' otherwise just leave this parameter as it is.
     pci_devices: [0000:b1:01.0, 0000:b1:01.1]
-    cniPlugin: vfioveth     # macvlan(for af_packet) or vfioveth(for dpdk mode)
+    cniPlugin: vfioveth     # macvlan (for af_packet) or vfioveth (for dpdk mode)
     # set to true if mode is dpdk. This is INTEL NIC's specific feature
     # (supported in E810 series) which helps to improve UPF packet processing.
     # For more details on DDP feature and its usage please refer
