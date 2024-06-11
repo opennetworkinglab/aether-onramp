@@ -38,3 +38,6 @@ blueprints include:
 * `main-ueransim.yml`: Configures UERANSIM in place of gNBsim,
   providing a second way to direct workload at the Core. Details documented
   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#ueransim).
+
+* `main-sriov.yml`: Configures UPF in DPDK/SRIOV mode. It will help to improve
+  UPF packet processing performance
