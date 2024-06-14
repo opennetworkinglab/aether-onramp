@@ -14,8 +14,10 @@ k8s:
 core:
   standalone: "true"
   data_iface: ens18
+  # If upf.mode set to 'dpdk' then use below file for 'values_file',
+  # "deps/5gc/roles/core/templates/sdcore-5g-sriov-values.yaml"
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"
+  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
   helm:
     local_charts: false
     chart_ref: aether/sd-core
@@ -23,22 +25,10 @@ core:
   upf:
     ip_prefix: "192.168.252.0/24"
     iface: "access"
-    # when using 'dpdk' mode please make sure atleast two VF devices are
-    # created out of 'data_iface'
+    # when using 'dpdk' mode please make sure at least two VF devices are
+    # created out of 'data_iface' and these devices are attached to
+    # vfio-pci driver
     mode: af_packet          # Options: af_packet or dpdk
-    # set to true if mode is dpdk. This will enable the required resources
-    # like hugepage, sriov, etc...
-    enable_resources: false
-    # configure the PCI address of VF's which created out of 'data_iface'.
-    # It will be used for N3, N6 interfaces. Configure these values only if
-    # mode is set to 'dpdk' otherwise just leave this parameter as it is.
-    pci_devices: [0000:b1:01.0, 0000:b1:01.1]
-    cniPlugin: macvlan     # macvlan (for af_packet) or vfioveth (for dpdk mode)
-    # set to true if mode is dpdk. This is INTEL NIC's specific feature
-    # (supported in E810 series) which helps to improve UPF packet processing.
-    # For more details on DDP feature and its usage please refer
-    # "https://www.intel.com/content/www/us/en/download/19660/intel-ethernet-800-series-dynamic-device-personalization-ddp-for-telecommunication-comms-package.html"
-    ddp: false
   amf:
     ip: "10.76.28.113"
 
