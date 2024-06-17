@@ -3,6 +3,7 @@
 export ROOT_DIR ?= $(PWD)
 export AETHER_ROOT_DIR ?= $(ROOT_DIR)
 
+
 export SDRAN_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/sdran
 export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
 export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
