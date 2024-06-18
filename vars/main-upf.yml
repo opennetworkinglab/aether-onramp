@@ -12,7 +12,7 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: "false"
+  standalone: false
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'

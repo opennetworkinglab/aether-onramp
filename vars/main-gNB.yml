@@ -12,7 +12,7 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: "true"	# set to 'false' to place under control of ROC
+  standalone: true	# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/radio-5g-values.yaml"
   ran_subnet: ""	# empty string implies subnet comes from 'data_iface'
