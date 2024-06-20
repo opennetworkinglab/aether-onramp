@@ -12,13 +12,14 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: "true"
+  standalone: true
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"
   helm:
     local_charts: false
     chart_ref: aether/sd-core
+    # chart_ref: /home/opennetworkinglab/sdcore-helm-charts/sdcore-helm-charts
     chart_version: 1.0.4
   upf:
     ip_prefix: "192.168.252.0/24"
