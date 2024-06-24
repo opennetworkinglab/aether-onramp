@@ -14,8 +14,6 @@ k8s:
 core:
   standalone: true
   data_iface: ens18
-  # If upf.mode set to 'dpdk' then use below file for 'values_file',
-  # "deps/5gc/roles/core/templates/sdcore-5g-sriov-values.yaml"
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
   helm:
@@ -29,6 +27,9 @@ core:
     # when using 'dpdk' mode please make sure at least two VF devices are
     # created out of 'data_iface' and these devices are attached to
     # vfio-pci driver
+    # If mode set to 'dpdk', use 'sdcore-5g-sriov-values.yaml' file
+    # for 'values_file' above. i.e.,
+    # 'values_file: "deps/5gc/roles/core/templates/sdcore-5g-sriov-values.yaml"'
     mode: af_packet          # Options: af_packet or dpdk
   amf:
     ip: "10.76.28.113"
