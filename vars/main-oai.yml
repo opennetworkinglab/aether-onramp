@@ -25,7 +25,7 @@ core:
     iface: "access"
     mode: af_packet		# Options: af_packet or dpdk
   amf:
-    ip: "172.16.233.219"
+    ip: "10.76.28.113"
 
 oai:
   docker:
@@ -38,7 +38,7 @@ oai:
       subnet: "172.20.0.0/16"
       bridge:
         name: rfsim5g-public
-  simulation: false
+  simulation: true
   gnb:
     conf_file: deps/aether-oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
   ue:
