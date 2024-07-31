@@ -40,9 +40,10 @@ oai:
         name: rfsim5g-public
   simulation: true
   gnb:
-    conf_file: deps/aether-oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
+    conf_file: deps/oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
+    ip: "172.20.0.2"
   ue:
-    conf_file: deps/aether-oai/roles/uEsimulator/templates/ue.conf
+    conf_file: deps/oai/roles/uEsimulator/templates/ue.conf
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
