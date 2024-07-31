@@ -8,7 +8,7 @@ export 5GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/5gc
 export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
-export OAI_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/aether-oai
+export OAI_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oai
 export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 

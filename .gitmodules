@@ -27,5 +27,5 @@
 	url = https://github.com/opennetworkinglab/aether-ueransim.git
 	branch = master
 [submodule "deps/aether-oai"]
-	path = deps/aether-oai
+	path = deps/oai
 	url = https://github.com/opennetworkinglab/aether-oai.git
