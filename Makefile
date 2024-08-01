@@ -44,10 +44,10 @@ aether-sdran-install: sdran-install
 aether-sdran-uninstall: sdran-uninstall
 aether-ueransim-install: ueransim-install
 aether-ueransim-uninstall: ueransim-uninstall
-aether-oai-gNb-install: oai-gNb-install
-aether-oai-gNb-uninstall: oai-gNb-uninstall
-aether-oai-uEsim-start: oai-uEsim-start
-aether-oai-uEsim-stop: oai-uEsim-stop
+aether-oai-gnb-install: oai-gnb-install
+aether-oai-gnb-uninstall: oai-gnb-uninstall
+aether-oai-uesim-start: oai-uesim-start
+aether-oai-uesim-stop: oai-uesim-stop
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
