@@ -4,6 +4,9 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
+      cpu_manager_policy: none  # Options: none or static
+      kube_reserved_cpu: 1
+      system_reserved_cpu: 1
 
   kubectl:
     version: v1.23.15
