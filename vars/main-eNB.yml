@@ -5,8 +5,8 @@ k8s:
       token: purdue-k8s-rke2
       port: 9345
       cpu_manager_policy: none  # Options: none or static
-      kube_reserved_cpu: 1
-      system_reserved_cpu: 1
+      kube_reserved_cpu: 1      # used only when cpu_manager_policy is set to static
+      system_reserved_cpu: 1    # used only when cpu_manager_policy is set to static
 
   kubectl:
     version: v1.23.15
