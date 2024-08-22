@@ -39,5 +39,12 @@ blueprints include:
   providing a second way to direct workload at the Core. Details documented
   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#ueransim).
 
-* `main-sriov.yml`: Configures UPF in DPDK/SRIOV mode. It will help to improve
-  UPF packet processing performance
+* `main-sriov.yml`: Configures UPF in DPDK/SRIOV mode. It will help to improve 
+  UPF packet processing performance. Details documented 
+  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#enable-sr-iov-and-dpdk). 
+
+* `main-oai.yml`: Configures the Core with an OAI-based 5G RAN,
+  supporting another gNB option. Boolean variable `simulation` selects
+  emulated or physical UE. Details documented
+  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#oai-5g-ran). 
+
