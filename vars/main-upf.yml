@@ -27,7 +27,7 @@ core:
     helm:
       local_charts: false
       chart_ref: aether/bess-upf
-      chart_version: 1.0.2
+      chart_version: 1.0.5
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
     additional_upfs:
       "1":
