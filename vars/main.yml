@@ -4,6 +4,9 @@ k8s:
     config:
       token: purdue-k8s-rke2
       port: 9345
+      params_file:
+        master: "deps/k8s/roles/rke2/templates/master-config.yaml"
+        worker: "deps/k8s/roles/rke2/templates/worker-config.yaml"
 
   kubectl:
     version: v1.23.15
