@@ -15,14 +15,14 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: false
+  standalone: false		# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
   helm:
-    local_charts: false
+    local_charts: false		# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 1.0.12
+    chart_version: 1.0.18
   upf:
     ip_prefix: "192.168.252.0/24"
     iface: "access"
@@ -46,11 +46,10 @@ core:
   amf:
     ip: "10.76.28.113"
 
-
 gnbsim:
   docker:
     container:
-      image: omecproject/5gc-gnbsim:rel-1.4.3
+      image: omecproject/5gc-gnbsim:rel-1.4.5
       prefix: gnbsim
       count: 2
     network:
