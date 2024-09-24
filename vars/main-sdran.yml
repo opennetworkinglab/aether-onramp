@@ -55,7 +55,7 @@ sdran:
     helm:
       local_charts: false
       chart_ref: sdran/sd-ran
-      chart_version: 1.4.135
+      chart_version: 1.4.143
     import:
       e2t: true
       a1t: true
