@@ -31,6 +31,11 @@ core:
     #    - make sure at least two VF devices are created out of 'data_iface'
     #      and these devices are attached to vfio-pci driver;
     #    - use 'sdcore-5g-sriov-values.yaml' file for 'values_file' (above).
+    default_upf:
+      ip:
+        access: "192.168.252.3/24"
+        core:   "192.168.250.3/24"
+      ue_ip_pool: "172.250.0.0/16"
   amf:
     ip: "10.76.28.113"
 
