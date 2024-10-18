@@ -37,12 +37,12 @@ core:
 
 ueransim:
   servers:
-    0:
-      - "deps/ueransim/config/custom-gnb.yaml"
-      - "deps/ueransim/config/custom-ue.yaml"
-    # 1:
-    #   - "config/custom-gnb-1.yaml"
-    #   - "config/custom-ue-1.yaml"
+    "0":
+      gnb: "deps/ueransim/config/custom-gnb.yaml"
+      ue: "deps/ueransim/config/custom-ue.yaml"
+    # "1":
+    #   gnb: "deps/ueransim/config/custom-gnb-1.yaml"
+    #   ue: "deps/ueransim/config/custom-ue-1.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
