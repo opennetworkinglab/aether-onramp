@@ -15,17 +15,17 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: true		# set to false to place under control of ROC
+  standalone: true			# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/4gc/roles/core/templates/radio-4g-values.yaml"
-  ran_subnet: ""	# set to empty string to get subnet from 'data_iface'
+  ran_subnet: ""			# set to empty string to get subnet from 'data_iface'
   helm:
     chart_ref: aether/sd-core
     chart_version: 1.1.0
   upf:
-    ip_prefix: "192.168.252.0/24"
-    iface: "access"
-    mode: af_packet		# Options: af_packet or dpdk
+    access_subnet: "192.168.252.1/24"	# access subnet & gateway
+    core_subnet: "192.168.250.1/24"	# core subnet & gateway
+    mode: af_packet			# Options: af_packet or dpdk
   mme:
     ip: "10.76.28.113"
 
