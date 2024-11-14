@@ -38,8 +38,8 @@ core:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:0.0.1-dev
-      ue_image: aetherproject/srsran-ue:0.0.1-dev
+      gnb_image: aetherproject/srsran-gnb:rel-0.0.1
+      ue_image: aetherproject/srsran-ue:rel-0.0.1
     network:
       data_iface: ens18
       name: host
