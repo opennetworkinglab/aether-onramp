@@ -48,6 +48,6 @@ blueprints include:
   emulated or physical UE. Details documented
   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#oai-5g-ran). 
 
-* `main-srsran.yml`: Configures the Core with an SRSRAN-based 5G RAN,
+* `main-srsran.yml`: Configures the SD-Core with a srsRAN-based 5G RAN,
   supporting another gNB option. Details documented
   TODO:.
