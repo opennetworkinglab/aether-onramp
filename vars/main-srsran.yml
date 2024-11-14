@@ -48,7 +48,7 @@ srsran:
         name: rfsim5g-public
   simulation: true
   gnb:
-    conf_file: deps/srsran/roles/gNb/templates/gnb_zmq.conf
+    conf_file: deps/srsran/roles/gNB/templates/gnb_zmq.conf
     ip: "172.20.0.2"
   ue:
     conf_file: deps/srsran/roles/uEsimulator/templates/ue_zmq.conf
