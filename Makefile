@@ -9,6 +9,7 @@ export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
 export OAI_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oai
+export SRSRAN_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/srsran
 export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 
@@ -48,6 +49,10 @@ aether-oai-gnb-install: oai-gnb-install
 aether-oai-gnb-uninstall: oai-gnb-uninstall
 aether-oai-uesim-start: oai-uesim-start
 aether-oai-uesim-stop: oai-uesim-stop
+aether-srsran-gnb-install: srsran-gnb-install
+aether-srsran-gnb-uninstall: srsran-gnb-uninstall
+aether-srsran-uesim-start: srsran-uesim-start
+aether-srsran-uesim-stop: srsran-uesim-stop
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
@@ -127,6 +132,7 @@ aether-ueransim-run: ueransim-run
 include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
 include $(OAI_ROOT_DIR)/Makefile
+include $(SRSRAN_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
 include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
