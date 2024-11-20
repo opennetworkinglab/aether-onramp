@@ -22,7 +22,7 @@ core:
   helm:
     local_charts: false		# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 1.1.0
+    chart_version: 2.0.0
   upf:
     ip_prefix: "192.168.252.0/24"
     iface: "access"
@@ -42,7 +42,7 @@ core:
 gnbsim:
   docker:
     container:
-      image: omecproject/5gc-gnbsim:rel-1.5.0
+      image: omecproject/5gc-gnbsim:rel-1.6.0
       prefix: gnbsim
       count: 1
     network:
