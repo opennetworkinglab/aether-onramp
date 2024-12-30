@@ -15,26 +15,26 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: true		# set to false to place under control of ROC
+  standalone: true			# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-sriov-values.yaml"
-  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
+  ran_subnet: "172.20.0.0/16"		# set to empty string to get subnet from 'data_iface'
   helm:
-    local_charts: false		# set chart_ref to local path name if true
+    local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
     chart_version: 2.0.0
   upf:
-    ip_prefix: "192.168.252.0/24"
-    iface: "access"
-    mode: dpdk		# Options: af_packet or dpdk
+    access_subnet: "192.168.252.1/24"	# access subnet & gateway
+    core_subnet: "192.168.250.1/24"	# core subnet & gateway
+    mode: dpdk				# Options: af_packet or dpdk
     # If mode set to 'dpdk':
     #    - make sure at least two VF devices are created out of 'data_iface'
     #      and these devices are attached to vfio-pci driver;
     #    - use 'sdcore-5g-sriov-values.yaml' file for 'values_file' (above).
     default_upf:
       ip:
-        access: "192.168.252.3/24"
-        core:   "192.168.250.3/24"
+        access: "192.168.252.3"
+        core:   "192.168.250.3"
       ue_ip_pool: "172.250.0.0/16"
   amf:
     ip: "10.76.28.113"
@@ -52,7 +52,6 @@ gnbsim:
   router:
     data_iface: ens18
     macvlan:
-      iface: gnbaccess
       subnet_prefix: "172.20"
 
   servers:
