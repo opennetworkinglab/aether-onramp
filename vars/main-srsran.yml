@@ -15,18 +15,18 @@ k8s:
     version: v3.10.3
 
 core:
-  standalone: true		# set to false to place under control of ROC
+  standalone: true			# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"	# set to empty string to get subnet from 'data_iface'
+  ran_subnet: ""		# set to empty string to get subnet from 'data_iface'
   helm:
-    local_charts: false		# set chart_ref to local path name if true
+    local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 2.0.0
+    chart_version: 2.1.0
   upf:
     access_subnet: "192.168.252.1/24"	# access subnet & gateway
     core_subnet: "192.168.250.1/24"	# core subnet & gateway
-    mode: af_packet		# Options: af_packet or dpdk
+    mode: af_packet			# Options: af_packet or dpdk
     default_upf:
       ip:
         access: "192.168.252.3"
@@ -38,18 +38,18 @@ core:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:rel-0.0.1
-      ue_image: aetherproject/srsran-ue:rel-0.0.1
+      gnb_image: aetherproject/srsran-gnb:rel-0.1.0
+      ue_image: aetherproject/srsran-ue:rel-0.1.0
     network:
       data_iface: ens18
       name: host
-      subnet: "172.20.0.0/16"
+      subnet: "172.20.0.0/16"		# The subnet to which `data_iface` is part of
       bridge:
         name: rfsim5g-public
   simulation: true
   gnb:
     conf_file: deps/srsran/roles/gNB/templates/gnb_zmq.conf
-    ip: "172.20.0.2"
+    ip: "172.20.0.2"		# Host interface used for the gNB
   ue:
     conf_file: deps/srsran/roles/uEsimulator/templates/ue_zmq.conf
 
