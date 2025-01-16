@@ -20,12 +20,6 @@ export HOSTS_INI_FILE ?= $(AETHER_ROOT_DIR)/hosts.ini
 export EXTRA_VARS ?= "@$(AETHER_ROOT_DIR)/vars/main.yml"
 
 
-#### Start Ansible docker (no longer supported) ####
-
-ansible:
-	export ANSIBLE_NAME=$(ANSIBLE_NAME); \
-	sh $(AETHER_ROOT_DIR)/scripts/ansible ssh-agent bash
-
 #### Validate Ansible Configuration ####
 aether-pingall:
 	echo $(AETHER_ROOT_DIR)
