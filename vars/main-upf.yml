@@ -30,7 +30,7 @@ core:
     helm:
       local_charts: false
       chart_ref: aether/bess-upf
-      chart_version: 1.1.1
+      chart_version: 1.2.0
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
     default_upf:
       ip:
