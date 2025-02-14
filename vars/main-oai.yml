@@ -38,8 +38,8 @@ core:
 oai:
   docker:
     container:
-      gnb_image: oaisoftwarealliance/oai-gnb:develop
-      ue_image: oaisoftwarealliance/oai-nr-ue:develop
+      gnb_image: oaisoftwarealliance/oai-gnb:2025.w05
+      ue_image: oaisoftwarealliance/oai-nr-ue:2025.w05
     network:
       data_iface: ens18
       name: public_net
