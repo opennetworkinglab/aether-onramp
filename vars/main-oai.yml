@@ -1,6 +1,6 @@
 k8s:
   rke2:
-    version: v1.23.4+rke2r1
+    version: v1.25.16+rke2r2
     config:
       token: purdue-k8s-rke2
       port: 9345
@@ -8,11 +8,8 @@ k8s:
         master: "deps/k8s/roles/rke2/templates/master-config.yaml"
         worker: "deps/k8s/roles/rke2/templates/worker-config.yaml"
 
-  kubectl:
-    version: v1.23.15
-
   helm:
-    version: v3.10.3
+    version: v3.17.0
 
 core:
   standalone: true			# set to false to place under control of ROC
@@ -42,14 +39,14 @@ oai:
       ue_image: oaisoftwarealliance/oai-nr-ue:2025.w05
     network:
       data_iface: ens18
-      name: public_net
-      subnet: "172.20.0.0/16"
+      name: public_net      # Set to `host` when connecting RU/USRP (i.e., simulation: false)
+      subnet: "172.20.0.0/16"        # Set to data_iface's subnet when `name: host`
       bridge:
         name: rfsim5g-public
   simulation: true
   gnb:
     conf_file: deps/oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
-    ip: "172.20.0.2"
+    ip: "172.20.0.2"        # Host interface used for the gNB
   ue:
     conf_file: deps/oai/roles/uEsimulator/templates/ue.conf
 
