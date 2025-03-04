@@ -1,6 +1,6 @@
 k8s:
   rke2:
-    version: v1.25.16+rke2r2
+    version: v1.24.17+rke2r1
     config:
       token: purdue-k8s-rke2
       port: 9345
@@ -19,14 +19,15 @@ core:
   helm:
     local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 2.1.0
+    chart_version: 2.2.2
   upf:
     access_subnet: "192.168.252.1/24"	# access subnet & gateway
     core_subnet: "192.168.250.1/24"	# core subnet & gateway
     mode: af_packet			# Options: af_packet or dpdk
+    multihop_gnb: false # when set to true, external gNB may be on the same subnet as data_iface or multiple hops away
     default_upf:
       ip:
-        access: "192.168.252.3"
+        access: "192.168.252.3" # when multihop_gnb set to true, make sure to assign IP from same subnet of data_iface
         core:   "192.168.250.3"
       ue_ip_pool: "172.250.0.0/16"
   amf:
@@ -35,7 +36,7 @@ core:
 gnbsim:
   docker:
     container:
-      image: omecproject/5gc-gnbsim:rel-1.6.0
+      image: omecproject/5gc-gnbsim:rel-1.6.1
       prefix: gnbsim
       count: 1
     network:
