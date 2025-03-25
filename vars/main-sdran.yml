@@ -19,7 +19,7 @@ core:
   helm:
     local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 2.2.2
+    chart_version: 2.2.4
   upf:
     access_subnet: "192.168.252.1/24"	# access subnet & gateway
     core_subnet: "192.168.250.1/24"	# core subnet & gateway
@@ -29,7 +29,7 @@ core:
       ip:
         access: "192.168.252.3" # when multihop_gnb set to true, make sure to assign IP from same subnet of data_iface
         core:   "192.168.250.3"
-      ue_ip_pool: "172.250.0.0/16"
+      ue_ip_pool: "192.168.100.0/24"
   amf:
     ip: "10.76.28.113"
 
