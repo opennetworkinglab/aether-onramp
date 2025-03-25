@@ -58,8 +58,8 @@ aether-4gc-install: 4gc-core-install 5gc-router-install
 aether-4gc-uninstall: 4gc-core-uninstall 5gc-router-uninstall
 
 #### Other Useful Targets ####
-aether-resetcore: 5gc-core-uninstall 5gc-core-install
-aether-reset4gcore: 4gc-core-uninstall 4gc-core-install
+aether-5gc-reset: 5gc-core-reset
+aether-4gc-reset: 4gc-core-uninstall 4gc-core-install
 aether-gnbsim-run: gnbsim-simulator-run
 aether-add-upfs: 5gc-upf-install
 aether-remove-upfs: 5gc-upf-uninstall
