@@ -19,12 +19,12 @@ core:
   helm:
     local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
-    chart_version: 2.2.4
+    chart_version: 2.2.5
   upf:
     access_subnet: "192.168.252.1/24"	# access subnet & gateway
     core_subnet: "192.168.250.1/24"	# core subnet & gateway
     mode: af_packet			# Options: af_packet or dpdk
-    multihop_gnb: false # when set to true, external gNB may be on the same subnet as data_iface or multiple hops away
+    multihop_gnb: false			# set to true to override default N3 subnet
     helm:
       local_charts: false
       chart_ref: aether/bess-upf
@@ -32,7 +32,7 @@ core:
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
     default_upf:
       ip:
-        access: "192.168.252.3" # when multihop_gnb set to true, make sure to assign IP from same subnet of data_iface
+        access: "192.168.252.3"
         core:   "192.168.250.3"
       ue_ip_pool: "192.168.100.0/24"
     additional_upfs:
@@ -45,7 +45,7 @@ core:
       #   ip:
       #     access: "192.168.252.7"
       #     core:   "192.168.250.7"
-      #   ue_ip_pool: "172.247.0.0/16"
+      #   ue_ip_pool: "192.168.102.0/24"
   amf:
     ip: "10.76.28.113"
 
