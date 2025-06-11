@@ -26,10 +26,6 @@
 	path = deps/ueransim
 	url = https://github.com/opennetworkinglab/aether-ueransim.git
 	branch = main
-[submodule "deps/aether-oai"]
-	path = deps/oai
-	url = https://github.com/opennetworkinglab/aether-oai.git
-	branch = main
 [submodule "deps/srsran"]
 	path = deps/srsran
 	url = https://github.com/opennetworkinglab/aether-srsran.git
@@ -37,4 +33,8 @@
 [submodule "deps/oscric"]
 	path = deps/oscric
 	url = https://github.com/opennetworkinglab/aether-oscric.git
+	branch = main
+[submodule "deps/oai"]
+	path = deps/oai
+	url = https://github.com/opennetworkinglab/aether-oai.git
 	branch = main
