@@ -37,3 +37,4 @@
 [submodule "deps/oai"]
 	path = deps/oai
 	url = https://github.com/opennetworkinglab/aether-oai.git
+	branch = main
