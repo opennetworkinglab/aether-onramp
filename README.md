@@ -106,7 +106,7 @@ http://<server_ip>:30950
 ```
 
 You will probably want to rerun ``make aether-gnbsim-run`` to generate
-trafffic for the monitoring system to display.
+traffic for the monitoring system to display.
 
 When you are ready to tear down your Quick Start deployment of Aether,
 execute the following commands:
