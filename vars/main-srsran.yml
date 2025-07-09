@@ -36,20 +36,18 @@ core:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:rel-0.2.0
-      ue_image: aetherproject/srsran-ue:rel-0.2.0
+      gnb_image: aetherproject/srsran-gnb:rel-0.4.0
+      ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
-      data_iface: ens18
       name: host
-      subnet: "10.76.28.0/24"		# The subnet to which `data_iface` is part of
       bridge:
         name: rfsim5g-public
   simulation: true
-  gnb:
-    conf_file: deps/srsran/roles/gNB/templates/gnb_zmq.yaml
-    ip: "10.76.28.115"		# Host interface used for the gNB
-  ue:
-    conf_file: deps/srsran/roles/uEsimulator/templates/ue_zmq.conf
+  servers:
+    0:
+      gnb_ip: "10.76.28.115"            # Host interface used for the gNB
+      gnb_conf: deps/srsran/roles/gNB/templates/gnb_zmq.yaml
+      ue_conf: deps/srsran/roles/uEsimulator/templates/ue_zmq.conf
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
