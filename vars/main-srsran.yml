@@ -40,8 +40,6 @@ srsran:
       ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
       name: host
-      bridge:
-        name: rfsim5g-public
   simulation: true
   servers:
     0:
