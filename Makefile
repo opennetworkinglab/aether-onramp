@@ -64,6 +64,7 @@ aether-gnbsim-run: gnbsim-simulator-run
 aether-add-upfs: 5gc-upf-install
 aether-remove-upfs: 5gc-upf-uninstall
 aether-ueransim-run: ueransim-run
+aether-ueransim-stop: ueransim-stop
 
 # Rules:
 #	amp-install: roc-install roc-load monitor-install monitor-load
