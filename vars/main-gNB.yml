@@ -41,7 +41,7 @@ amp:
     helm:
       local_charts: false
       chart_ref: aether/aether-roc-umbrella
-      chart_version: 2.1.36
+      chart_version: 2.1.37
 
   atomix:
     helm:
