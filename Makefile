@@ -9,8 +9,10 @@ export 4GC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/4gc
 export AMP_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/amp
 export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
 export OAI_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oai
+export OSCRIC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oscric
 export SRSRAN_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/srsran
 export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
+export N3IWF_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/n3iwf
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
 
 export ANSIBLE_NAME ?= ansible-aether
@@ -47,6 +49,10 @@ aether-srsran-gnb-install: srsran-gnb-install
 aether-srsran-gnb-uninstall: srsran-gnb-uninstall
 aether-srsran-uesim-start: srsran-uesim-start
 aether-srsran-uesim-stop: srsran-uesim-stop
+aether-oscric-ric-install: oscric-ric-install
+aether-oscric-ric-uninstall: oscric-ric-uninstall
+aether-n3iwf-install: n3iwf-install
+aether-n3iwf-uninstall: n3iwf-uninstall
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
@@ -133,3 +139,5 @@ include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
 include $(SDRAN_ROOT_DIR)/Makefile
 include $(UERANSIM_ROOT_DIR)/Makefile
+include $(OSCRIC_ROOT_DIR)/Makefile
+include $(N3IWF_ROOT_DIR)/Makefile

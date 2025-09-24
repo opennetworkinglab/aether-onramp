@@ -15,7 +15,7 @@ core:
   standalone: true			# set to false to place under control of ROC
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: ""			# set to empty string to get subnet from 'data_iface'
+  ran_subnet: ""		# set to empty string to get subnet from 'data_iface'
   helm:
     local_charts: false			# set chart_ref to local path name if true
     chart_ref: aether/sd-core
@@ -24,25 +24,26 @@ core:
     access_subnet: "192.168.252.1/24"	# access subnet & gateway
     core_subnet: "192.168.250.1/24"	# core subnet & gateway
     mode: af_packet			# Options: af_packet or dpdk
-    multihop_gnb: false			# set to true to override default N3 subnet
     default_upf:
       ip:
         access: "192.168.252.3"
         core:   "192.168.250.3"
-      ue_ip_pool: "192.168.100.0/24"
+      ue_ip_pool: "172.250.0.0/16"
   amf:
     ip: "10.76.28.113"
 
-ueransim:
-  gnb:
-    ip: "10.76.28.111"
+n3iwf:
+  docker:
+    image: omecproject/5gc-n3iwf:rel-1.0.0
+    network:
+      name: host
   servers:
     0:
-      gnb: "deps/ueransim/config/custom-gnb.yaml"
-      ue: "deps/ueransim/config/custom-ue.yaml"
-    # 1:
-    #   gnb: "deps/ueransim/config/custom-gnb-1.yaml"
-    #   ue: "deps/ueransim/config/custom-ue-1.yaml"
+      conf_file: deps/n3iwf/roles/n3iwf/templates/n3iwf-default.yaml
+      n3iwf_ip: "172.20.0.2"
+      n2_ip: "172.20.0.2"
+      n3_ip: "172.20.0.2"
+      nwu_ip: "192.168.200.1/24"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
@@ -52,7 +53,7 @@ amp:
     helm:
       local_charts: false
       chart_ref: aether/aether-roc-umbrella
-      chart_version: 2.1.37
+      chart_version: 2.1.36
 
   atomix:
     helm:

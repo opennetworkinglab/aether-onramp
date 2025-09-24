@@ -38,3 +38,6 @@
 	path = deps/oai
 	url = https://github.com/opennetworkinglab/aether-oai.git
 	branch = main
+[submodule "deps/n3iwf"]
+	path = deps/n3iwf
+	url = https://github.com/opennetworkinglab/aether-n3iwf.git
