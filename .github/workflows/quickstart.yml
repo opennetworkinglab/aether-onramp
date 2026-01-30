@@ -76,9 +76,9 @@ jobs:
           EOF
 
           # Configure vars/main.yml
-          sudo cp vars/main-quickstart.yml vars/main.yml
-          sudo sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
-          sudo sed -i "s/ens18/$MYIFC/g" vars/main.yml
+          cp vars/main-quickstart.yml vars/main.yml
+          sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
+          sed -i "s/ens18/$MYIFC/g" vars/main.yml
 
           # Verify configuration
           make aether-pingall
@@ -90,7 +90,7 @@ jobs:
           source $HOME/ubuntu_venv/bin/activate
           sed -i '97a\
               sleep 30
-          ' /home/runner/work/aether-onramp/aether-onramp/deps/k8s/roles/rke2/tasks/install.yml
+          ' $GITHUB_WORKSPACE/deps/k8s/roles/rke2/tasks/install.yml
           make aether-k8s-install
           make aether-5gc-install
           make aether-gnbsim-install

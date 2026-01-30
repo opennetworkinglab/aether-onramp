@@ -23,7 +23,7 @@ The `quickstart.yml` workflow replicates the functionality of the Jenkins groovy
 
 ### Triggering the Workflow
 
-The workflow can be triggered in three ways:
+The workflow has the following triggers:
 
 1. **Manual Dispatch**: Go to Actions → Aether OnRamp Quickstart → Run workflow
 1. **Push to main**: Automatically runs on pushes to the main branch
