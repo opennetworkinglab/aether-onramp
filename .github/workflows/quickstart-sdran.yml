@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 The Linux Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-# GitHub Actions workflow replicating quickstart_amp.groovy functionality
+# GitHub Actions workflow replicating sdran.groovy functionality
 
-name: Aether OnRamp Quickstart AMP
+name: Aether OnRamp SD-RAN
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
         type: string
 
 jobs:
-  quickstart-amp:
+  quickstart-sdran:
     runs-on: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
     timeout-minutes: 60
 
@@ -73,10 +73,9 @@ jobs:
           EOF
 
           # Configure vars/main.yml
-          cp vars/main-quickstart.yml vars/main.yml
+          cp vars/main-sdran.yml vars/main.yml
           sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
           sed -i "s/ens18/$MYIFC/g" vars/main.yml
-          sed -i "s/standalone: true/standalone: false/" vars/main.yml
 
           # Verify configuration
           make aether-pingall
@@ -89,98 +88,80 @@ jobs:
           sed -i '97a\
               sleep 30
           ' $GITHUB_WORKSPACE/deps/k8s/roles/rke2/tasks/install.yml
-          make aether-k8s-install
-          make aether-5gc-install
-          make aether-amp-install
-          make aether-gnbsim-install
+          make k8s-install
+          make 5gc-install
+          make sdran-install
           kubectl get pods -n aether-5gc
-          docker ps
-
-      - name: Run gNBsim
-        run: |
-          source $HOME/ubuntu_venv/bin/activate
-          sleep 60
-          # Retry logic (2 attempts) to match Jenkins retry(2)
-          for attempt in 1 2; do
-            echo "Attempt $attempt of 2"
-            if make aether-gnbsim-run; then
-              docker exec gnbsim-1 cat summary.log
-              break
-            elif [ $attempt -eq 2 ]; then
-              echo "Failed after 2 attempts"
-              exit 1
-            fi
-            echo "Retrying..."
-            sleep 10
-          done
+          kubectl get pods -n sdran
 
       - name: Validate Results
         continue-on-error: false
         run: |
-          # Weaker validation test
-          docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
+          echo "Give the simulator a chance to run (ideally, playbook should loop until done)"
+          sleep 60
+          kubectl exec -i deployment/onos-cli -n sdran -- onos kpimon list metrics --no-headers > ransim.log
+          kubectl exec -i deployment/onos-cli -n sdran -- onos ransim get ueCount >> ransim.log
+          kubectl exec -i deployment/onos-cli -n sdran -- onos ransim get cells --no-headers >> ransim.log
+          kubectl exec -i deployment/onos-cli -n sdran -- onos topo get entity e2cell >> ransim.log
+          cat ransim.log
 
       - name: Retrieve Logs
         if: always()
         run: |
           source $HOME/ubuntu_venv/bin/activate
           mkdir -p logs
-          cd logs
 
-          # Get gNBsim logs
-          logfile=$(docker exec gnbsim-1 ls | grep "gnbsim1-.*.log" || echo "")
-          if [ -n "$logfile" ]; then
-            echo "Retrieving gNBsim log: ${logfile}"
-            docker cp gnbsim-1:/gnbsim/${logfile} ${logfile}
-          fi
+          # Copy ransim log
+          cp ransim.log logs/ 2>/dev/null || echo "No ransim.log found"
+          cd logs
 
           # Get AMF logs
           AMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep amf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$AMF_POD_NAME" ]; then
             echo "Retrieving AMF logs from: ${AMF_POD_NAME}"
-            kubectl logs $AMF_POD_NAME -n aether-5gc > quickstart_amp_amf.log
+            kubectl logs $AMF_POD_NAME -n aether-5gc > sdran_amf.log
           fi
 
           # Get WebUI logs
           WEBUI_POD_NAME=$(kubectl get pods -n aether-5gc | grep webui | awk 'NR==1{print $1}' || echo "")
           if [ -n "$WEBUI_POD_NAME" ]; then
             echo "Retrieving WebUI logs from: ${WEBUI_POD_NAME}"
-            kubectl logs $WEBUI_POD_NAME -n aether-5gc > quickstart_amp_webui.log
+            kubectl logs $WEBUI_POD_NAME -n aether-5gc > sdran_webui.log
           fi
 
           # Get UDR logs
           UDR_POD_NAME=$(kubectl get pods -n aether-5gc | grep udr | awk 'NR==1{print $1}' || echo "")
           if [ -n "$UDR_POD_NAME" ]; then
             echo "Retrieving UDR logs from: ${UDR_POD_NAME}"
-            kubectl logs $UDR_POD_NAME -n aether-5gc > quickstart_amp_udr.log
+            kubectl logs $UDR_POD_NAME -n aether-5gc > sdran_udr.log
           fi
 
           # Get UDM logs
           UDM_POD_NAME=$(kubectl get pods -n aether-5gc | grep udm | awk 'NR==1{print $1}' || echo "")
           if [ -n "$UDM_POD_NAME" ]; then
             echo "Retrieving UDM logs from: ${UDM_POD_NAME}"
-            kubectl logs $UDM_POD_NAME -n aether-5gc > quickstart_amp_udm.log
+            kubectl logs $UDM_POD_NAME -n aether-5gc > sdran_udm.log
           fi
 
           # Get AUSF logs
           AUSF_POD_NAME=$(kubectl get pods -n aether-5gc | grep ausf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$AUSF_POD_NAME" ]; then
             echo "Retrieving AUSF logs from: ${AUSF_POD_NAME}"
-            kubectl logs $AUSF_POD_NAME -n aether-5gc > quickstart_amp_ausf.log
+            kubectl logs $AUSF_POD_NAME -n aether-5gc > sdran_ausf.log
           fi
 
           # Get SMF logs
           SMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep smf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$SMF_POD_NAME" ]; then
             echo "Retrieving SMF logs from: ${SMF_POD_NAME}"
-            kubectl logs $SMF_POD_NAME -n aether-5gc > quickstart_amp_smf.log
+            kubectl logs $SMF_POD_NAME -n aether-5gc > sdran_smf.log
           fi
 
       - name: Archive Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quickstart-amp-logs
+          name: sdran-logs
           path: logs/*.log
           if-no-files-found: ignore
 
@@ -190,9 +171,8 @@ jobs:
           if [ -f $HOME/ubuntu_venv/bin/activate ]; then
             source $HOME/ubuntu_venv/bin/activate
           fi
-          make gnbsim-uninstall || echo "Failed to uninstall gnbsim"
+          make sdran-uninstall || echo "Failed to uninstall sdran"
           make 5gc-uninstall || echo "Failed to uninstall 5gc"
-          make roc-uninstall || echo "Failed to uninstall roc"
           make k8s-uninstall || echo "Failed to uninstall k8s"
 
       - name: Notify on Failure

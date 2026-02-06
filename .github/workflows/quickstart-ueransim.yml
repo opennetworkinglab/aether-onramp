@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 The Linux Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-# GitHub Actions workflow replicating quickstart_amp.groovy functionality
+# GitHub Actions workflow replicating ueransim.groovy functionality
 
-name: Aether OnRamp Quickstart AMP
+name: Aether OnRamp UERANSIM
 
 on:
   workflow_dispatch:
@@ -14,8 +14,13 @@ on:
         default: "ubuntu-latest"
         type: string
 
+env:
+  AWS_REGION: us-west-2
+  WORKER_INSTANCE_ID: i-000f1f7e33fe5a86e
+  PEM_PATH: /home/ubuntu/aether-qa.pem
+
 jobs:
-  quickstart-amp:
+  quickstart-ueransim:
     runs-on: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
     timeout-minutes: 60
 
@@ -47,36 +52,82 @@ jobs:
         with:
           version: "v3.17.1"
 
+      - name: Verify AWS Accessible
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws --region $AWS_REGION ec2 start-instances --instance-ids $WORKER_INSTANCE_ID
+          aws --region $AWS_REGION ec2 modify-instance-attribute --no-source-dest-check \
+              --instance-id $WORKER_INSTANCE_ID
+          aws --region $AWS_REGION ec2 describe-instances --instance-ids $WORKER_INSTANCE_ID
+          sleep 300
+          aws --region $AWS_REGION ec2 describe-instances --instance-ids $WORKER_INSTANCE_ID \
+              --query 'Reservations[0].Instances[0].PrivateIpAddress'
+
       - name: Configure OnRamp
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AETHER_QA_PEM: ${{ secrets.AETHER_QA_PEM }}
         run: |
           source $HOME/ubuntu_venv/bin/activate
+
+          # Get worker IP from AWS
+          NEWIP=$(aws --region $AWS_REGION ec2 describe-instances \
+                       --instance-ids $WORKER_INSTANCE_ID \
+                       --query 'Reservations[0].Instances[0].PrivateIpAddress')
+          echo $NEWIP
+          WORKERIP=$(echo $NEWIP | tr -d '"')
+          echo $WORKERIP
+
+          # Write PEM file
+          echo "$AETHER_QA_PEM" > "$PEM_PATH"
+          chmod 600 "$PEM_PATH"
 
           # Get network information
           MYIP=$(hostname -I | awk '{print $1}')
           echo "MY IP is: $MYIP"
+          MYID=$(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)
+          echo "MYID is $MYID"
+          aws --region $AWS_REGION ec2 modify-instance-attribute --no-source-dest-check \
+              --instance-id $MYID
+          echo "WORKER SourceDestCheck"
+          aws --region $AWS_REGION ec2 describe-instances --instance-ids $WORKER_INSTANCE_ID \
+              --query 'Reservations[0].Instances[0].NetworkInterfaces[0].SourceDestCheck'
+          echo "MAIN SourceDestCheck"
+          aws --region $AWS_REGION ec2 describe-instances --instance-ids $MYID \
+              --query 'Reservations[0].Instances[0].NetworkInterfaces[0].SourceDestCheck'
           MYIFC=$(ip route get 8.8.8.8 | awk '/dev/ {print $5; exit}' || echo "eth0")
           echo "MY IFC is: $MYIFC"
 
-          # Create hosts.ini for local execution (no SSH needed on GitHub runner)
+          # Create hosts.ini with master and worker nodes
           cat > hosts.ini << EOF
           [all]
-          localhost ansible_connection=local
+          node1 ansible_host=$MYIP ansible_user=ubuntu ansible_ssh_private_key_file=$PEM_PATH ansible_sudo_pass=ubuntu
+          node2 ansible_host=$WORKERIP ansible_user=ubuntu ansible_ssh_private_key_file=$PEM_PATH ansible_sudo_pass=ubuntu
 
           [master_nodes]
-          localhost
+          node1
 
           [worker_nodes]
           #node2
 
-          [gnbsim_nodes]
-          localhost
+          [ueransim_nodes]
+          node2
           EOF
+          cat hosts.ini
+
+          NODE2_IP=$(grep ansible_host hosts.ini | grep node2 | awk -F" |=" '{print $3}')
+          echo "NODE2_IP is $NODE2_IP"
+          sleep 120
 
           # Configure vars/main.yml
-          cp vars/main-quickstart.yml vars/main.yml
+          cp vars/main-ueransim.yml vars/main.yml
+          grep -rl "ens18" . | xargs sed -i "s/ens18/$MYIFC/g"
           sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
-          sed -i "s/ens18/$MYIFC/g" vars/main.yml
-          sed -i "s/standalone: true/standalone: false/" vars/main.yml
+          sed -i "s/10.76.28.111/$NODE2_IP/" vars/main.yml
+          git diff vars/main.yml
 
           # Verify configuration
           make aether-pingall
@@ -91,34 +142,23 @@ jobs:
           ' $GITHUB_WORKSPACE/deps/k8s/roles/rke2/tasks/install.yml
           make aether-k8s-install
           make aether-5gc-install
-          make aether-amp-install
-          make aether-gnbsim-install
+          make aether-ueransim-install
           kubectl get pods -n aether-5gc
-          docker ps
 
-      - name: Run gNBsim
+      - name: Run UERANSIM
         run: |
           source $HOME/ubuntu_venv/bin/activate
           sleep 60
-          # Retry logic (2 attempts) to match Jenkins retry(2)
-          for attempt in 1 2; do
-            echo "Attempt $attempt of 2"
-            if make aether-gnbsim-run; then
-              docker exec gnbsim-1 cat summary.log
-              break
-            elif [ $attempt -eq 2 ]; then
-              echo "Failed after 2 attempts"
-              exit 1
-            fi
-            echo "Retrying..."
-            sleep 10
-          done
+          make aether-ueransim-run
+          sleep 60
 
       - name: Validate Results
         continue-on-error: false
         run: |
-          # Weaker validation test
-          docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
+          NODE2_IP=$(grep ansible_host hosts.ini | grep node2 | awk -F" |=" '{print $3}')
+          # Check for uesimtun0 interface on worker node
+          ssh -i "$PEM_PATH" -o StrictHostKeyChecking=no ubuntu@$NODE2_IP \
+             "ip a | grep -A 1 'uesimtun0' | grep inet | awk '{print \$2}' | cut -d'/' -f1"
 
       - name: Retrieve Logs
         if: always()
@@ -127,73 +167,69 @@ jobs:
           mkdir -p logs
           cd logs
 
-          # Get gNBsim logs
-          logfile=$(docker exec gnbsim-1 ls | grep "gnbsim1-.*.log" || echo "")
-          if [ -n "$logfile" ]; then
-            echo "Retrieving gNBsim log: ${logfile}"
-            docker cp gnbsim-1:/gnbsim/${logfile} ${logfile}
-          fi
-
           # Get AMF logs
           AMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep amf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$AMF_POD_NAME" ]; then
             echo "Retrieving AMF logs from: ${AMF_POD_NAME}"
-            kubectl logs $AMF_POD_NAME -n aether-5gc > quickstart_amp_amf.log
+            kubectl logs $AMF_POD_NAME -n aether-5gc > ueransim_amf.log
           fi
 
           # Get WebUI logs
           WEBUI_POD_NAME=$(kubectl get pods -n aether-5gc | grep webui | awk 'NR==1{print $1}' || echo "")
           if [ -n "$WEBUI_POD_NAME" ]; then
             echo "Retrieving WebUI logs from: ${WEBUI_POD_NAME}"
-            kubectl logs $WEBUI_POD_NAME -n aether-5gc > quickstart_amp_webui.log
+            kubectl logs $WEBUI_POD_NAME -n aether-5gc > ueransim_webui.log
           fi
 
           # Get UDR logs
           UDR_POD_NAME=$(kubectl get pods -n aether-5gc | grep udr | awk 'NR==1{print $1}' || echo "")
           if [ -n "$UDR_POD_NAME" ]; then
             echo "Retrieving UDR logs from: ${UDR_POD_NAME}"
-            kubectl logs $UDR_POD_NAME -n aether-5gc > quickstart_amp_udr.log
+            kubectl logs $UDR_POD_NAME -n aether-5gc > ueransim_udr.log
           fi
 
           # Get UDM logs
           UDM_POD_NAME=$(kubectl get pods -n aether-5gc | grep udm | awk 'NR==1{print $1}' || echo "")
           if [ -n "$UDM_POD_NAME" ]; then
             echo "Retrieving UDM logs from: ${UDM_POD_NAME}"
-            kubectl logs $UDM_POD_NAME -n aether-5gc > quickstart_amp_udm.log
+            kubectl logs $UDM_POD_NAME -n aether-5gc > ueransim_udm.log
           fi
 
           # Get AUSF logs
           AUSF_POD_NAME=$(kubectl get pods -n aether-5gc | grep ausf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$AUSF_POD_NAME" ]; then
             echo "Retrieving AUSF logs from: ${AUSF_POD_NAME}"
-            kubectl logs $AUSF_POD_NAME -n aether-5gc > quickstart_amp_ausf.log
+            kubectl logs $AUSF_POD_NAME -n aether-5gc > ueransim_ausf.log
           fi
 
           # Get SMF logs
           SMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep smf | awk 'NR==1{print $1}' || echo "")
           if [ -n "$SMF_POD_NAME" ]; then
             echo "Retrieving SMF logs from: ${SMF_POD_NAME}"
-            kubectl logs $SMF_POD_NAME -n aether-5gc > quickstart_amp_smf.log
+            kubectl logs $SMF_POD_NAME -n aether-5gc > ueransim_smf.log
           fi
 
       - name: Archive Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quickstart-amp-logs
+          name: ueransim-logs
           path: logs/*.log
           if-no-files-found: ignore
 
       - name: Cleanup
         if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           if [ -f $HOME/ubuntu_venv/bin/activate ]; then
             source $HOME/ubuntu_venv/bin/activate
           fi
-          make gnbsim-uninstall || echo "Failed to uninstall gnbsim"
+          make ueransim-uninstall || echo "Failed to uninstall ueransim"
           make 5gc-uninstall || echo "Failed to uninstall 5gc"
-          make roc-uninstall || echo "Failed to uninstall roc"
           make k8s-uninstall || echo "Failed to uninstall k8s"
+          aws --region $AWS_REGION ec2 stop-instances --instance-ids $WORKER_INSTANCE_ID
 
       - name: Notify on Failure
         if: failure()
