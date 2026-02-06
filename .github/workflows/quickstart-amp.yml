@@ -1,0 +1,205 @@
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+# GitHub Actions workflow replicating quickstart_amp.groovy functionality
+
+name: Aether OnRamp Quickstart AMP
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_label:
+        description: "Label for selecting runner (if using self-hosted)"
+        required: false
+        default: "ubuntu-latest"
+        type: string
+  push:
+    branches:
+      - main
+
+jobs:
+  quickstart-amp:
+    runs-on: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Create Python virtual environment
+        run: |
+          python -m venv $HOME/ubuntu_venv
+          source $HOME/ubuntu_venv/bin/activate
+          pip install --upgrade pip
+          pip install ansible requests
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "latest"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.17.1"
+
+      - name: Configure OnRamp
+        run: |
+          source $HOME/ubuntu_venv/bin/activate
+
+          # Get network information
+          MYIP=$(hostname -I | awk '{print $1}')
+          echo "MY IP is: $MYIP"
+          MYIFC=$(ip route get 8.8.8.8 | awk '/dev/ {print $5; exit}' || echo "eth0")
+          echo "MY IFC is: $MYIFC"
+
+          # Create hosts.ini for local execution (no SSH needed on GitHub runner)
+          cat > hosts.ini << EOF
+          [all]
+          localhost ansible_connection=local
+
+          [master_nodes]
+          localhost
+
+          [worker_nodes]
+          #node2
+
+          [gnbsim_nodes]
+          localhost
+          EOF
+
+          # Configure vars/main.yml
+          cp vars/main-quickstart.yml vars/main.yml
+          sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
+          sed -i "s/ens18/$MYIFC/g" vars/main.yml
+          sed -i "s/standalone: true/standalone: false/" vars/main.yml
+
+          # Verify configuration
+          make aether-pingall
+
+      - name: Install Aether
+        # TODO: Remove the sed from below script once the change is merged to
+        # the dep repo
+        run: |
+          source $HOME/ubuntu_venv/bin/activate
+          sed -i '97a\
+              sleep 30
+          ' $GITHUB_WORKSPACE/deps/k8s/roles/rke2/tasks/install.yml
+          make aether-k8s-install
+          make aether-5gc-install
+          make aether-amp-install
+          make aether-gnbsim-install
+          kubectl get pods -n aether-5gc
+          docker ps
+
+      - name: Run gNBsim
+        run: |
+          source $HOME/ubuntu_venv/bin/activate
+          sleep 60
+          # Retry logic (2 attempts) to match Jenkins retry(2)
+          for attempt in 1 2; do
+            echo "Attempt $attempt of 2"
+            if make aether-gnbsim-run; then
+              docker exec gnbsim-1 cat summary.log
+              break
+            elif [ $attempt -eq 2 ]; then
+              echo "Failed after 2 attempts"
+              exit 1
+            fi
+            echo "Retrying..."
+            sleep 10
+          done
+
+      - name: Validate Results
+        continue-on-error: false
+        run: |
+          # Weaker validation test
+          docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
+
+      - name: Retrieve Logs
+        if: always()
+        run: |
+          source $HOME/ubuntu_venv/bin/activate
+          mkdir -p logs
+          cd logs
+
+          # Get gNBsim logs
+          logfile=$(docker exec gnbsim-1 ls | grep "gnbsim1-.*.log" || echo "")
+          if [ -n "$logfile" ]; then
+            echo "Retrieving gNBsim log: ${logfile}"
+            docker cp gnbsim-1:/gnbsim/${logfile} ${logfile}
+          fi
+
+          # Get AMF logs
+          AMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep amf | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$AMF_POD_NAME" ]; then
+            echo "Retrieving AMF logs from: ${AMF_POD_NAME}"
+            kubectl logs $AMF_POD_NAME -n aether-5gc > quickstart_amp_amf.log
+          fi
+
+          # Get WebUI logs
+          WEBUI_POD_NAME=$(kubectl get pods -n aether-5gc | grep webui | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$WEBUI_POD_NAME" ]; then
+            echo "Retrieving WebUI logs from: ${WEBUI_POD_NAME}"
+            kubectl logs $WEBUI_POD_NAME -n aether-5gc > quickstart_amp_webui.log
+          fi
+
+          # Get UDR logs
+          UDR_POD_NAME=$(kubectl get pods -n aether-5gc | grep udr | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$UDR_POD_NAME" ]; then
+            echo "Retrieving UDR logs from: ${UDR_POD_NAME}"
+            kubectl logs $UDR_POD_NAME -n aether-5gc > quickstart_amp_udr.log
+          fi
+
+          # Get UDM logs
+          UDM_POD_NAME=$(kubectl get pods -n aether-5gc | grep udm | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$UDM_POD_NAME" ]; then
+            echo "Retrieving UDM logs from: ${UDM_POD_NAME}"
+            kubectl logs $UDM_POD_NAME -n aether-5gc > quickstart_amp_udm.log
+          fi
+
+          # Get AUSF logs
+          AUSF_POD_NAME=$(kubectl get pods -n aether-5gc | grep ausf | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$AUSF_POD_NAME" ]; then
+            echo "Retrieving AUSF logs from: ${AUSF_POD_NAME}"
+            kubectl logs $AUSF_POD_NAME -n aether-5gc > quickstart_amp_ausf.log
+          fi
+
+          # Get SMF logs
+          SMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep smf | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$SMF_POD_NAME" ]; then
+            echo "Retrieving SMF logs from: ${SMF_POD_NAME}"
+            kubectl logs $SMF_POD_NAME -n aether-5gc > quickstart_amp_smf.log
+          fi
+
+      - name: Archive Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickstart-amp-logs
+          path: logs/*.log
+          if-no-files-found: ignore
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f $HOME/ubuntu_venv/bin/activate ]; then
+            source $HOME/ubuntu_venv/bin/activate
+          fi
+          make gnbsim-uninstall || echo "Failed to uninstall gnbsim"
+          make 5gc-uninstall || echo "Failed to uninstall 5gc"
+          make roc-uninstall || echo "Failed to uninstall roc"
+          make k8s-uninstall || echo "Failed to uninstall k8s"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Workflow failed: ${{ github.repository }} - ${{ github.run_number }} - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # Add Slack notification here if needed using secrets.SLACK_WEBHOOK_URL
