@@ -63,7 +63,7 @@ amp:
   aether_roc:
     helm:
       local_charts: false
-      chart_ref: oci://ghcr.io/onosproject/aether-roc-umbrella
+      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
       chart_version: 2.1.37
 
   atomix:
@@ -73,7 +73,7 @@ amp:
 
   onosproject:
     helm:
-      chart_ref: oci://ghcr.io/onosproject/onos-operator
+      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
       chart_version: 0.5.6
 
   store:
