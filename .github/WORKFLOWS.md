@@ -37,6 +37,13 @@ The GitHub Actions workflow includes the following changes from the original Jen
 1. **Self-Contained**: All dependencies are installed fresh for each run
 1. **Error Handling**: Enhanced with conditional steps and proper cleanup
 
+### Caveats
+
+Not all workflows will successfully run in the standard GitHub runners, presumably due to a lack of disk space (only 14GB).  The following workflows cannot run in a standard runner but succeeded in a self-hosted runner (e.g., a CloudLab node):
+
+- `quickstart-amp.yml`
+- `quickstart-sdran.yml`
+
 ### Troubleshooting
 
 If the workflow fails:
