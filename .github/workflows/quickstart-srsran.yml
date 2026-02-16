@@ -62,7 +62,7 @@ jobs:
           # Create hosts.ini for local execution (no SSH needed on GitHub runner)
           cat > hosts.ini << EOF
           [all]
-          localhost ansible_connection=local ansible_user=$USER
+          localhost ansible_connection=local ansible_user=$USER ansible_python_interpreter=/usr/bin/python3
 
           [master_nodes]
           localhost
