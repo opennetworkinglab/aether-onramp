@@ -19,7 +19,7 @@ core:
   helm:
     local_charts: false      # set chart_ref to local path name if true
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 3.1.11
+    chart_version: 3.2.0
   upf:
     access_subnet: "192.168.252.1/24"  # access subnet & gateway
     core_subnet: "192.168.250.1/24"  # core subnet & gateway
@@ -28,7 +28,7 @@ core:
     helm:
       local_charts: false
       chart_ref: oci://ghcr.io/omec-project/bess-upf
-      chart_version: 1.3.1
+      chart_version: 1.4.0
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
     default_upf:
       ip:
@@ -52,7 +52,7 @@ core:
 gnbsim:
   docker:
     container:
-      image: omecproject/5gc-gnbsim:rel-1.7.0
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-1.8.0
       prefix: gnbsim
       count: 2
     network:
