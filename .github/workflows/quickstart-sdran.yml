@@ -157,6 +157,13 @@ jobs:
             kubectl logs $SMF_POD_NAME -n aether-5gc > sdran_smf.log
           fi
 
+          # Get RAN Simulator logs
+          RANSIM_POD_NAME=$(kubectl get pods -n sdran | grep ran-simulator | awk 'NR==1{print $1}' || echo "")
+          if [ -n "$RANSIM_POD_NAME" ]; then
+            echo "Retrieving RAN Simulator logs from: ${RANSIM_POD_NAME}"
+            kubectl logs $RANSIM_POD_NAME -n sdran > sdran_ransim.log
+          fi
+
       - name: Archive Artifacts
         if: always()
         uses: actions/upload-artifact@v4
