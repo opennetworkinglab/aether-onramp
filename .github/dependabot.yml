@@ -1,0 +1,17 @@
+# Copyright 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+version: 2
+updates:
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "21:00"
+      timezone: "America/Los_Angeles"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"

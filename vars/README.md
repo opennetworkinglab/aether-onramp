@@ -8,50 +8,50 @@ blueprints include:
 
 * `main-quickstart.yml`: Configures the RAN emulator (gNBsim) to run in the same
    server as the Core. Equivalent to `main.yml` by default. Details documented
-   [here](https://docs.aetherproject.org/master/onramp/start.html).
+   [here](https://docs.aetherproject.org/onramp/start.html).
 
 * `main-gnbsim.yml`: Configures the RAN emulator (gNBsim) to run in one or more
    servers, independent of the Core. Details documented
-   [here](https://docs.aetherproject.org/master/onramp/gnbsim.html).
+   [here](https://docs.aetherproject.org/onramp/gnbsim.html).
 
 * `main-gNB.yml`: Configures the Core to work with an external 5G radio (gNB), with
    the Core running independent of AMP. (Change variable `standalone` to false to have
    the Core running under AMP's control.) Details documented
-   [here](https://docs.aetherproject.org/master/onramp/gnb.html).
+   [here](https://docs.aetherproject.org/onramp/gnb.html).
 
 * `main-eNB.yml`: Configures the Core to work with an external 4G radio (eNB), with
    the Core running independent of AMP. (Change variable `standalone` to false to have
    the Core running under AMP's control.) Details documented
-   [here](https://docs.aetherproject.org/master/onramp/gnb.html#support-for-enbs).
+   [here](https://docs.aetherproject.org/onramp/gnb.html#support-for-enbs).
 
 * `main-upf.yml`: Configures the Core with two UPFs and programs AMP
    with two slices, each associated with a distinct UPF. Depends on variable
    `standalone` being set to false so the Core runs under AMP's control.
    Details documented
-   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#multiple-upfs).
+   [here](https://docs.aetherproject.org/onramp/blueprints.html#multiple-upfs).
 
 * `main-sdran.yml`: Configures the Core and SD-RAN in tandem, with
   RANSIM (running in the same Kubernetes namespace as SD-RAN)
   emulating various RAN elements. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#sd-ran).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#sd-ran).
 
 * `main-ueransim.yml`: Configures UERANSIM in place of gNBsim,
   providing a second way to direct workload at the Core. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#ueransim).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#ueransim).
 
 * `main-sriov.yml`: Configures UPF in DPDK/SRIOV mode. It will help to improve
   UPF packet processing performance. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#enable-sr-iov-and-dpdk).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#enable-sr-iov-and-dpdk).
 
 * `main-oai.yml`: Configures the Core with an OAI-based 5G RAN,
   supporting another gNB option. Boolean variable `simulation` selects
   emulated or physical UE. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#oai-5g-ran).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#oai-5g-ran).
 
 * `main-srsran.yml`: Configures the SD-Core with a srsRAN-based 5G RAN,
   supporting another gNB option. Boolean variable `simulation` selects
   emulated or physical UE. Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#srsran-5g).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#srsran-5g).
 
 * `main-ocudu.yml`: Configures the SD-Core with an OCUDU-based 5G RAN,
   supporting another gNB option. Boolean variable `simulation` selects
@@ -60,4 +60,4 @@ blueprints include:
 
 * `main-n3iwf.yml`: Configures the SD-Core with a N3IWF entity for non-3GPP access.
   Details documented
-  [here](https://docs.aetherproject.org/master/onramp/blueprints.html#non-3gpp-interworking-function).
+  [here](https://docs.aetherproject.org/onramp/blueprints.html#non-3gpp-interworking-function).
