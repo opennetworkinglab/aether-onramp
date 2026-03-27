@@ -1,0 +1,82 @@
+k8s:
+  rke2:
+    version: v1.24.17+rke2r1
+    config:
+      token: purdue-k8s-rke2
+      port: 9345
+      params_file:
+        master: "deps/k8s/roles/rke2/templates/master-config.yaml"
+        worker: "deps/k8s/roles/rke2/templates/worker-config.yaml"
+
+  helm:
+    version: v3.17.0
+
+core:
+  standalone: true      # set to false to place under control of ROC
+  data_iface: ens18
+  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  ran_subnet: ""    # set to empty string to get subnet from 'data_iface'
+  helm:
+    local_charts: false      # set chart_ref to local path name if true
+    chart_ref: oci://ghcr.io/omec-project/sd-core
+    chart_version: 3.2.1
+  upf:
+    access_subnet: "192.168.252.1/24"  # access subnet & gateway
+    core_subnet: "192.168.250.1/24"  # core subnet & gateway
+    mode: af_packet      # Options: af_packet or dpdk
+    multihop_gnb: false      # set to true to override default N3 subnet
+    default_upf:
+      ip:
+        access: "192.168.252.3"
+        core:   "192.168.250.3"
+      ue_ip_pool: "192.168.100.0/24"
+  amf:
+    ip: "10.76.28.113"
+
+ocudu:
+  docker:
+    container:
+      gnb_image: aetherproject/ocudu:rel-0.5.0
+      ue_image: aetherproject/srsran-ue:rel-0.5.0
+    network:
+      name: host
+  simulation: true
+  servers:
+    0:
+      gnb_ip: "10.76.28.115"            # Host interface used for the gNB
+      gnb_conf: gnb_zmq.yaml            # deps/ocudu/roles/gNB/templates/
+      ue_conf: ue_zmq.conf              # deps/ocudu/roles/uEsimulator/templates/
+
+amp:
+  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
+  monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
+
+  aether_roc:
+    helm:
+      local_charts: false
+      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
+      chart_version: 2.1.40
+
+  atomix:
+    helm:
+      chart_ref: atomix/atomix
+      chart_version: 1.1.2
+
+  onosproject:
+    helm:
+      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
+      chart_version: 0.5.6
+
+  store:
+    lpp:
+      version: v0.0.24
+
+  monitor:
+    helm:
+      chart_ref: rancher/rancher-monitoring
+      chart_version: 101.0.0+up19.0.3
+
+  monitor_crd:
+    helm:
+      chart_ref: rancher/rancher-monitoring-crd
+      chart_version: 101.0.0+up19.0.3
