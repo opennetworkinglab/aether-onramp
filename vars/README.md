@@ -54,8 +54,8 @@ blueprints include:
   [here](https://docs.aetherproject.org/master/onramp/blueprints.html#srsran-5g).
 
 * `main-ocudu.yml`: Configures the SD-Core with an OCUDU-based 5G RAN,
-   supporting another gNB option. Boolean variable `simulation` selects
-   emulated or simulated UE workload via the bundled srsRAN UE container.
+  supporting another gNB option. Boolean variable `simulation` selects
+  emulated or simulated UE workload via the bundled srsRAN UE container.
   [here](https://docs.aetherproject.org/onramp/blueprints.html#ocudu).
 
 * `main-n3iwf.yml`: Configures the SD-Core with a N3IWF entity for non-3GPP access.

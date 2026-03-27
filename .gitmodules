@@ -41,6 +41,8 @@
 [submodule "deps/n3iwf"]
 	path = deps/n3iwf
 	url = https://github.com/opennetworkinglab/aether-n3iwf.git
+	branch = main
 [submodule "deps/ocudu"]
 	path = deps/ocudu
 	url = https://github.com/opennetworkinglab/aether-ocudu.git
+	branch = main
