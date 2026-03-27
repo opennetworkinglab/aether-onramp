@@ -11,6 +11,7 @@ export GNBSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/gnbsim
 export OAI_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oai
 export OSCRIC_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/oscric
 export SRSRAN_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/srsran
+export OCUDU_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ocudu
 export UERANSIM_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/ueransim
 export N3IWF_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/n3iwf
 export K8S_ROOT_DIR ?= $(AETHER_ROOT_DIR)/deps/k8s
@@ -49,6 +50,10 @@ aether-srsran-gnb-install: srsran-gnb-install
 aether-srsran-gnb-uninstall: srsran-gnb-uninstall
 aether-srsran-uesim-start: srsran-uesim-start
 aether-srsran-uesim-stop: srsran-uesim-stop
+aether-ocudu-gnb-install: ocudu-gnb-install
+aether-ocudu-gnb-uninstall: ocudu-gnb-uninstall
+aether-ocudu-uesim-start: ocudu-uesim-start
+aether-ocudu-uesim-stop: ocudu-uesim-stop
 aether-oscric-ric-install: oscric-ric-install
 aether-oscric-ric-uninstall: oscric-ric-uninstall
 aether-n3iwf-install: n3iwf-install
@@ -134,6 +139,7 @@ include $(K8S_ROOT_DIR)/Makefile
 include $(GNBSIM_ROOT_DIR)/Makefile
 include $(OAI_ROOT_DIR)/Makefile
 include $(SRSRAN_ROOT_DIR)/Makefile
+include $(OCUDU_ROOT_DIR)/Makefile
 include $(5GC_ROOT_DIR)/Makefile
 include $(4GC_ROOT_DIR)/Makefile
 include $(AMP_ROOT_DIR)/Makefile
