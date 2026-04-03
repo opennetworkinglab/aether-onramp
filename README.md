@@ -67,7 +67,7 @@ $ make aether-k8s-install
 ```
 
 Once Kubernetes is running (which you can verify with ``kubectl``),
-you are ready to intall the 5G version of SD-Core. Type:
+you are ready to install the 5G version of SD-Core. Type:
 
 ```
 $ make aether-5gc-install
@@ -106,7 +106,7 @@ http://<server_ip>:30950
 ```
 
 You will probably want to rerun ``make aether-gnbsim-run`` to generate
-trafffic for the monitoring system to display.
+traffic for the monitoring system to display.
 
 When you are ready to tear down your Quick Start deployment of Aether,
 execute the following commands:
