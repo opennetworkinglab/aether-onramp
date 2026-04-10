@@ -1,0 +1,76 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and oai nodes: {{ oai.servers|length }} vs {{ groups['oai_nodes']|length }}"
+  when: oai.servers|length != groups['oai_nodes']|length
+
+- name: check if simluation is enabled else abort
+  fail:
+    msg: "Simulation is not enabled"
+  when: oai.simulation == false
+
+- name: pull {{ oai.docker.container.ue_image }} image
+  community.docker.docker_image:
+    name: "{{ oai.docker.container.ue_image }}"
+    source: pull
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: remove /tmp/oai-ue.conf
+  file:
+    path: "/tmp/oai-ue.conf"
+    state: absent
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name : copy oai-ue config file to /tmp/oai-ue.conf
+  template:
+    src: "{{ ROOT_DIR }}/{{ oai.servers[server_index | int].ue_conf }}"
+    dest: /tmp/oai-ue.conf
+  vars:
+    server_index: "{{ groups['oai_nodes'].index(inventory_hostname) }}"
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: create {{ oai.docker.container.ue_image }} containers
+  community.docker.docker_container:
+    name: "rfsim5g-oai-nr-ue"
+    image: "{{ oai.docker.container.ue_image }}"
+    networks:
+      - name: "{{ oai.docker.network.name }}"
+    env:
+      USE_ADDITIONAL_OPTIONS: "-r 106 --numerology 1 --band 78 -C 3619200000  --rfsim --ssb 516 --rfsimulator.serveraddr {{ gnb_ip }}"
+    volumes:
+      - /tmp/oai-ue.conf:/opt/oai-nr-ue/etc/nr-ue.conf
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    privileged: true
+    capabilities:
+    - NET_ADMIN
+    - NET_RAW
+    restart_policy: unless-stopped
+    state: started
+    detach: true
+  vars:
+    server_index: "{{ groups['oai_nodes'].index(inventory_hostname) }}"
+    gnb_ip: "{{ oai.servers[server_index | int].gnb_ip }}"
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- pause:
+    seconds: 10
+
+- set_fact:
+    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
+  when: inventory_hostname in groups['oai_nodes']
+
+- name: run ping command to check if the UE is running and show output
+  shell: |
+    docker exec rfsim5g-oai-nr-ue ping -I oaitun_ue1 -c 5 {{ ping_target }}
+  register: uEsimPingOutput
+  when: inventory_hostname in groups['oai_nodes']
+
+- debug:
+    var: uEsimPingOutput.stdout_lines
+  when: inventory_hostname in groups['oai_nodes']

@@ -1,0 +1,76 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and srsran nodes: {{ srsran.servers|length }} vs {{ groups['srsran_nodes']|length }}"
+  when: srsran.servers|length != groups['srsran_nodes']|length
+
+- name: check if simulation is enabled else abort
+  fail:
+    msg: "Simulation is not enabled"
+  when: srsran.simulation == false
+
+- name: pull {{ srsran.docker.container.ue_image }} image
+  community.docker.docker_image:
+    name: "{{ srsran.docker.container.ue_image }}"
+    source: pull
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: remove /tmp/ue_zmq.conf
+  file:
+    path: "/tmp/ue_zmq.conf"
+    state: absent
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name : copy ue_zmq config file to /tmp/ue_zmq.conf
+  template:
+    src: "{{ ROOT_DIR }}/{{ srsran.servers[server_index | int].ue_conf }}"
+    dest: /tmp/ue_zmq.conf
+  vars:
+    server_index: "{{ groups['srsran_nodes'].index(inventory_hostname) }}"
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: create {{ srsran.docker.container.ue_image }} containers
+  community.docker.docker_container:
+    name: "rfsim5g-srsran-nr-ue"
+    image: "{{ srsran.docker.container.ue_image }}"
+    networks:
+      - name: "{{ srsran.docker.network.name }}"
+    volumes:
+      - /tmp/ue_zmq.conf:/opt/ue_zmq.conf
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    privileged: true
+    capabilities:
+    - NET_ADMIN
+    - NET_RAW
+    restart_policy: unless-stopped
+    state: started
+    detach: true
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- pause:
+    seconds: 10
+
+- name: add default route for UE
+  shell: |
+    docker exec rfsim5g-srsran-nr-ue ip netns exec ue1 ip route add default via {{ (core.upf.default_upf.ue_ip_pool.split('.'))[:3] | join('.') }}.{{ (core.upf.default_upf.ue_ip_pool.split('.')[3] | int) + 1 }} dev tun_srsue
+  when: inventory_hostname in groups['srsran_nodes']
+
+- set_fact:
+    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
+  when: inventory_hostname in groups['srsran_nodes']
+
+- name: run ping command to check if the UE is running and show output
+  shell: |
+    docker exec rfsim5g-srsran-nr-ue ip netns exec ue1 ping -c 5 {{ ping_target }}
+  register: uEsimPingOutput
+  when: inventory_hostname in groups['srsran_nodes']
+
+- debug:
+    var: uEsimPingOutput.stdout_lines
+  when: inventory_hostname in groups['srsran_nodes']

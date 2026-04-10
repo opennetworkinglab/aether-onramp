@@ -1,0 +1,20 @@
+ocudu:
+  docker:
+    container:
+      gnb_image: aetherproject/ocudu:rel-0.7.0
+      ue_image: aetherproject/srsran-ue:rel-0.7.0
+    network:
+      name: host
+  simulation: true
+  servers:
+    0:
+      gnb_ip: "10.76.28.115"            # Host interface used for the gNB
+      gnb_conf: gnb_zmq.yaml
+      ue_conf: ue_zmq.conf
+
+core:
+  upf:
+    access_subnet: "192.168.252.1/24"
+    multihop_gnb: false
+  amf:
+    ip: "172.16.248.6"

@@ -1,0 +1,17 @@
+---
+
+- name: install gnbsim/docker
+  import_tasks: roles/docker/tasks/install.yml
+  tags: install
+
+- name: uninstall gnbsim/docker
+  import_tasks: roles/docker/tasks/uninstall.yml
+  tags: uninstall
+
+- name: start gnbsim/dockers
+  import_tasks: roles/docker/tasks/start.yml
+  tags: start
+
+- name: stop gnbsim/dockers
+  import_tasks: roles/docker/tasks/stop.yml
+  tags: stop

@@ -1,0 +1,15 @@
+oai:
+  docker:
+    container:
+      gnb_image: oaisoftwarealliance/oai-gnb:2026.w10
+    network:
+      name: public_net
+  simulation: true
+  servers:
+    0:
+      gnb_conf: roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
+      gnb_ip: "172.20.0.2"
+
+core:
+  amf:
+    ip: "172.16.248.6"

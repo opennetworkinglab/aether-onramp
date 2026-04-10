@@ -1,0 +1,9 @@
+---
+
+- name: start ocudu/uEsimulator
+  import_tasks: start.yml
+  tags: start
+
+- name: stop ocudu/uEsimulator
+  import_tasks: stop.yml
+  tags: stop

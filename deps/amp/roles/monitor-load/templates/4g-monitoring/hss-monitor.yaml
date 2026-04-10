@@ -1,0 +1,19 @@
+# Copyright 2022-present Open Networking Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hss
+  namespace: omec
+spec:
+  endpoints:
+    - path: /metrics
+      port: prometheus-exporter
+  namespaceSelector:
+    matchNames:
+      - omec
+  selector:
+    matchLabels:
+      app: hss

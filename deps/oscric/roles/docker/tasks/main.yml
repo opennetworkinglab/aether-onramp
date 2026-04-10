@@ -1,0 +1,5 @@
+---
+
+- name: install oscric/docker
+  import_tasks: roles/docker/tasks/install.yml
+  tags: install

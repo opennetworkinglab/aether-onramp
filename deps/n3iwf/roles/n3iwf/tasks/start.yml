@@ -1,0 +1,67 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and n3iwf nodes: {{ n3iwf.servers|length }} vs {{ groups['n3iwf_nodes']|length }}"
+  when: n3iwf.servers|length != groups['n3iwf_nodes']|length
+
+- name: pull {{ n3iwf.docker.image }} image
+  community.docker.docker_image:
+    name: "{{ n3iwf.docker.image }}"
+    source: pull
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: remove /tmp/n3iwf-config.yaml
+  file:
+    path: /tmp/n3iwf-config.yaml
+    state: absent
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: copy n3iwf config file to /tmp/n3iwf-config.yaml
+  template:
+    src: "{{ ROOT_DIR }}/{{ n3iwf.servers[server_index | int].conf_file }}"
+    dest: /tmp/n3iwf-config.yaml
+  vars:
+    server_index: "{{ groups['n3iwf_nodes'].index(inventory_hostname) }}"
+    n3iwf_ip: "{{ n3iwf.servers[server_index | int].n3iwf_ip }}"
+    nwu_ip: "{{ n3iwf.servers[server_index | int].nwu_ip }}"
+    n2_ip: "{{ n3iwf.servers[server_index | int].n2_ip }}"
+    n3_ip: "{{ n3iwf.servers[server_index | int].n3_ip }}"
+    n3iwf_id: "{{ (groups['n3iwf_nodes'].index(inventory_hostname) | int) + 101 }}"
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: generate private key
+  command: >
+    openssl genrsa -out /tmp/n3iwf.key 2048
+  args:
+    creates: "/tmp/n3iwf.key"
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: generate self-signed certificate
+  command: >
+    openssl req -new -x509 -key /tmp/n3iwf.key -out /tmp/n3iwf.crt -days 365 -subj "/C=US/ST=State/L=City/O=Organization/OU=Unit/CN=aetherproject.org"
+  args:
+    creates: "/tmp/n3iwf.crt"
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: create {{ n3iwf.docker.image }} containers
+  community.docker.docker_container:
+    name: "n3iwf"
+    image: "{{ n3iwf.docker.image }}"
+    command: n3iwf -cfg /opt/n3iwf-config.yaml
+    networks:
+      - name: "{{ n3iwf.docker.network.name }}"
+    volumes:
+      - /tmp/n3iwf-config.yaml:/opt/n3iwf-config.yaml
+      - /tmp/n3iwf.key:/opt/n3iwf.key
+      - /tmp/n3iwf.crt:/opt/n3iwf.crt
+    privileged: true
+    state: started
+    detach: true
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true

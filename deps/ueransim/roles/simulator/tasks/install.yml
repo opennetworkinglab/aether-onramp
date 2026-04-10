@@ -1,0 +1,55 @@
+---
+- name: remove UERANSIM if already exist
+  file:
+    path: ueransim_onramp
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: Clone UERANSIM repository
+  git:
+    repo: https://github.com/aligungr/UERANSIM.git
+    dest: ueransim_onramp
+    version: "{{ ueransim.version | default('v3.2.7') }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Install dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - g++
+    - pkg-config
+    - libsctp-dev
+    - iproute2
+    - make
+    - cmake
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Build UERANSIM
+  shell: cmake . && make
+  args:
+    chdir: ueransim_onramp
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: Changing perm of "nr-binder", adding "+x"
+  file:
+    path: ueransim_onramp/build/nr-binder
+    mode: u+x
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- set_fact:
+    subnet: "{{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: configure static route for upf traffic on ueransim node
+  shell: |
+    ip route add {{ subnet }} via {{ core.amf.ip }}
+  become: true
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false

@@ -1,0 +1,19 @@
+n3iwf:
+  docker:
+    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.0
+    network:
+      name: host
+  servers:
+    0:
+      conf_file: roles/n3iwf/templates/n3iwf-default.yaml
+      n2_ip: "172.20.0.2"
+      n3_ip: "172.20.0.2"
+      n3iwf_ip: "172.20.0.2"
+      nwu_ip: "192.168.150.1/24"
+
+core:
+  upf:
+    access_subnet: "192.168.252.1/24"
+    multihop_gnb: false
+  amf:
+    ip: "172.16.248.6"

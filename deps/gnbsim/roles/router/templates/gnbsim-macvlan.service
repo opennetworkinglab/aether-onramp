@@ -1,0 +1,19 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=GNBSim macvlan fallback interface
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '/usr/sbin/ip link show gnbaccess >/dev/null 2>&1 || /usr/sbin/ip link add link {{ gnbsim.router.data_iface }} name gnbaccess type macvlan mode bridge'
+ExecStart=/usr/sbin/ip addr replace {{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname) }}.1/24 dev gnbaccess
+ExecStart=/usr/sbin/ip link set gnbaccess up
+ExecStart=-/usr/sbin/sysctl -w net.ipv4.conf.gnbaccess.forwarding=1
+ExecStop=-/usr/sbin/ip link del gnbaccess
+
+[Install]
+WantedBy=multi-user.target

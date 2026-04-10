@@ -1,0 +1,13 @@
+# Copyright 2022-present Open Networking Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[Match]
+Name=core
+
+[Network]
+IPForward=yes
+Address={{ core.upf.core_subnet }}
+
+[Route]
+Gateway={{ core.upf.default_upf.ip.core }}
+Destination={{ core.upf.default_upf.ue_ip_pool }}

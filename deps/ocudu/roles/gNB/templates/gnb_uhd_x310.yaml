@@ -1,0 +1,47 @@
+gnb_id: "{{ gnb_id }}"                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
+
+cu_cp:
+  amf:
+    addr: "{{ core.amf.ip }}"                 # The address or hostname of the AMF.
+    port: 38412
+    bind_addr: "{{ gnb_ip }}"            # A local IP that the gNB binds to for traffic from the AMF.
+    supported_tracking_areas:
+      - tac: 1
+        plmn_list:
+          - plmn: "20893"
+            tai_slice_support_list:
+              - sst: 1
+
+ru_sdr:
+  device_driver: uhd                # The RF driver name.
+  device_args: type=x300,addr=192.168.40.2,master_clock_rate=184.32e6,send_frame_size=8000,recv_frame_size=8000
+  srate: 92.16                      # RF sample rate might need to be adjusted according to selected bandwidth.
+  tx_gain: 20                       # Transmit gain of the RF might need to adjusted to the given situation.
+  rx_gain: 25                       # Receive gain of the RF might need to adjusted to the given situation.
+  clock: internal
+  sync: internal
+  time_alignment_calibration: -200
+
+cell_cfg:
+  dl_arfcn: 632628                  # ARFCN of the downlink carrier (center frequency).
+  band: 78                          # The NR band.
+  channel_bandwidth_MHz: 80         # Bandwith in MHz. Number of PRBs will be automatically derived.
+  common_scs: 30                    # Subcarrier spacing in kHz used for data.
+  plmn: "20893"                     # PLMN broadcasted by the gNB.
+  tac: 1                            # Tracking area code (needs to match the core configuration).
+  pci: 1
+
+log:
+  filename: stdout                  # Path of the log file.
+  all_level: warning                # Logging level applied to all layers.
+  mac_level: warning                # Logging level applied to MAC layer.
+  du_level: info                    # Logging level applied to DU entity.
+  rrc_level: info                   # Logging level applied to RRC layer.
+
+pcap:
+  mac_enable: false                 # Set to true to enable MAC-layer PCAPs.
+  mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
+  ngap_enable: false                # Set to true to enable NGAP PCAPs.
+  ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
+  f1ap_enable: false                # Set to true to enable F1AP PCAPs.
+  f1ap_filename: /tmp/gnb_f1ap.pcap # Path where the F1AP PCAP is stored.

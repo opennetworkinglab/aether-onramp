@@ -1,0 +1,49 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+  when: ocudu.servers|length != groups['ocudu_nodes']|length
+
+- name: set net.ipv4.conf.all.arp_filter to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: configure static route for upf traffic on ocudu node
+  shell: |
+    ip route add {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['ocudu_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  become: true
+  ignore_errors: yes

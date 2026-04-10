@@ -1,0 +1,5 @@
+---
+
+- name: install ocudu/docker
+  import_tasks: install.yml
+  tags: install

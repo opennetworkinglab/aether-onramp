@@ -1,0 +1,11 @@
+srsran:
+  docker:
+    container:
+      gnb_image: aetherproject/srsran-gnb:rel-0.7.0
+    network:
+      name: public_net
+  simulation: true
+
+core:
+  amf:
+    ip: "172.16.248.6"

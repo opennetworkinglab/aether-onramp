@@ -1,0 +1,9 @@
+---
+
+- name: deploy osc-ric
+  import_tasks: roles/ric/tasks/deploy.yml
+  tags: deploy
+
+- name: remove osc-ric
+  import_tasks: roles/ric/tasks/remove.yml
+  tags: remove

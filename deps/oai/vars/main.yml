@@ -1,0 +1,24 @@
+oai:
+  docker:
+    container:
+      gnb_image: oaisoftwarealliance/oai-gnb:2026.w10
+      ue_image: oaisoftwarealliance/oai-nr-ue:2026.w10
+    network:
+      data_iface: data
+      name: public_net
+      subnet: "172.20.0.0/16"
+      bridge:
+        name: rfsim5g-public
+  simulation: true
+  servers:
+    0:
+      gnb_conf: gnb.sa.band78.fr1.106PRB.usrpb210.conf
+      gnb_ip: "172.20.0.2"
+      ue_conf: ue.conf
+
+core:
+  upf:
+    access_subnet: "192.168.252.1/24"
+    multihop_gnb: false
+  amf:
+    ip: "172.16.248.6"

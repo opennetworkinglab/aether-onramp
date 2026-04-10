@@ -1,0 +1,12 @@
+oai:
+  docker:
+    container:
+      ue_image: oaisoftwarealliance/oai-nr-ue:2026.w10
+    network:
+      name: public_net
+
+  simulation: true
+  servers:
+    0:
+      gnb_ip: "172.20.0.2"
+      ue_conf: roles/uEsimulator/templates/ue.conf

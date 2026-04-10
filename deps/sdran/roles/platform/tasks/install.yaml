@@ -1,0 +1,54 @@
+---
+
+- name: add atomix chart repo
+  kubernetes.core.helm_repository:
+    name: atomix
+    repo_url: "https://atomix.github.io/charts.atomix.io"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/sdran-platform-values.yaml
+  file:
+    path: "/tmp/sdran-platform-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy sdran-platform-values.yaml to /tmp/sdran-platform-values.yaml
+  template:
+    src: roles/platform/templates/sdran-platform-values.yaml
+    dest: "/tmp/sdran-platform-values.yaml"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: Setup Local Store
+  shell:
+    cmd: |
+      kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
+      kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}';
+  when: inventory_hostname in groups['master_nodes']
+
+- name: deploy atomix from {{ sdran.platform.atomix.helm.chart_ref }}
+  kubernetes.core.helm:
+    update_repo_cache: true
+    name: atomix
+    release_namespace: kube-system
+    create_namespace: true
+    chart_ref: "{{ sdran.platform.atomix.helm.chart_ref }}"
+    chart_version: "{{ sdran.platform.atomix.helm.chart_version }}"
+    values_files:
+      - /tmp/sdran-platform-values.yaml
+    wait: true
+    force: true
+  when: inventory_hostname in groups['master_nodes']
+
+- name: deploy onos-operator from {{ sdran.platform.onosproject.helm.chart_ref }}
+  kubernetes.core.helm:
+    update_repo_cache: true
+    name: onos-operator
+    release_namespace: kube-system
+    create_namespace: true
+    chart_ref: "{{ sdran.platform.onosproject.helm.chart_ref }}"
+    chart_version: "{{ sdran.platform.onosproject.helm.chart_version }}"
+    values_files:
+      - /tmp/sdran-platform-values.yaml
+    wait: true
+    force: true
+  when: inventory_hostname in groups['master_nodes']

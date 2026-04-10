@@ -1,0 +1,12 @@
+n3iwf:
+  docker:
+    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.0
+    network:
+      name: public_net
+  servers:
+    0:
+      conf_file: roles/n3iwf/templates/n3iwf-default.yaml
+
+core:
+  amf:
+    ip: "172.16.248.6"

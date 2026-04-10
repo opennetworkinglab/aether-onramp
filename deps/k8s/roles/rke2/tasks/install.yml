@@ -1,0 +1,176 @@
+---
+
+# prep Ubuntu to support RKE2-for-Aether
+- name: set fs.file-max to 2097152
+  ansible.posix.sysctl:
+    name: fs.file-max
+    value: '2097152'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set fs.inotify.max_user_watches to 524288
+  ansible.posix.sysctl:
+    name: fs.inotify.max_user_watches
+    value: '524288'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set fs.inotify.max_user_instances to 512
+  ansible.posix.sysctl:
+    name: fs.inotify.max_user_instances
+    value: '512'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# install RKE2-for-Aether
+- set_fact:
+    script_dir: /tmp/rke2
+
+- name: remove {{ script_dir }}
+  file:
+    path: "{{ script_dir }}"
+    state: absent
+
+- name: create {{ script_dir }}
+  file:
+    path: "{{ script_dir }}"
+    state: directory
+
+- name: download rke2
+  get_url:
+    url: https://get.rke2.io
+    validate_certs: false
+    dest: "{{ script_dir }}/install.sh"
+    mode: "a+x"
+
+- name: create /etc/rancher/rke2
+  file:
+    path: "/etc/rancher/rke2"
+    state: directory
+  become: true
+
+- name: install rke2 on masters
+  shell: "{{ script_dir }}/install.sh"
+  environment:
+    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: enable rke2-server on masters
+  systemd:
+    name: rke2-server
+    enabled: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# TODO: fix multi-master issue (tls-san)
+- name: copy master-config.yaml to /etc/rancher/rke2/config.yaml
+  template:
+    src: "{{ ROOT_DIR }}/{{ k8s.rke2.config.params_file.master }}"
+    dest: /etc/rancher/rke2/config.yaml
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: start rke2-server on masters
+  systemd:
+    name: rke2-server
+    state: started
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: copy kubectl
+  copy:
+    src: /var/lib/rancher/rke2/bin/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: "a+x"
+    remote_src: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: waiting for the master node(s) to get ready
+  shell: |
+    kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait nodes --for=condition=Ready --all --timeout=300s
+    kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait deployment -n kube-system --for=condition=available --all --timeout=300s
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- pause:
+    seconds: 5
+
+- name: install rke2 agent on workers
+  shell: "{{ script_dir }}/install.sh"
+  environment:
+    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
+    INSTALL_RKE2_TYPE: "agent"
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: enable rke2-agent on workers
+  systemd:
+    name: rke2-agent
+    enabled: true
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: copy worker-config.yaml to /etc/rancher/rke2/config.yaml
+  template:
+    src: "{{ ROOT_DIR }}/{{ k8s.rke2.config.params_file.worker }}"
+    dest: /etc/rancher/rke2/config.yaml
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: start rke2-agent on workers (sequentially)
+  systemd:
+    name: rke2-agent
+    state: started
+  throttle: 1
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: create {{ ansible_env.HOME }}/.kube
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy /etc/rancher/rke2/rke2.yaml {{ ansible_env.HOME }}/.kube/config
+  copy:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: "{{ ansible_env.HOME }}/.kube/config"
+    remote_src: yes
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: Replace 127.0.0.1 if needed
+  replace:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] }}:6443"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - hostvars[groups['master_nodes'][0]]['ansible_host'] is defined
+    - hostvars[groups['master_nodes'][0]]['ansible_host'] != '127.0.0.1'
+
+- name: change {{ ansible_env.HOME }}/.kube ownership
+  shell: |
+    chown -R $(shell id -u):$(shell id -g) {{ ansible_env.HOME }}/.kube
+  when: inventory_hostname in groups['master_nodes']
+  become: true

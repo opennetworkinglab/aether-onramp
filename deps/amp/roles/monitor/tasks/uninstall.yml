@@ -1,0 +1,32 @@
+---
+
+- name: remove rancher-monitoring from cattle-monitoring-system
+  kubernetes.core.helm:
+    name: rancher-monitoring
+    release_namespace: cattle-monitoring-system
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove rancher-monitoring-crd from cattle-monitoring-system
+  kubernetes.core.helm:
+    name: rancher-monitoring-crd
+    release_namespace: cattle-monitoring-system
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: delete namespace cattle-dashboards cattle-monitoring-system
+  shell: |
+    kubectl delete namespace cattle-dashboards cattle-monitoring-system
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove /tmp/monitor-values.yaml
+  file:
+    path: "/tmp/monitor-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes

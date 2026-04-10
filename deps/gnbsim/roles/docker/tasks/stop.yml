@@ -1,0 +1,25 @@
+---
+
+- name: delete {{ gnbsim.docker.container.image }} containers
+  community.docker.docker_container:
+    name: "{{ gnbsim.docker.container.prefix }}-{{ item }}"
+    state: absent
+  with_sequence: count={{ gnbsim.docker.container.count }}
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: delete macvlan:{{ gnbsim.docker.network.macvlan.name }} network
+  community.docker.docker_network:
+    name: "{{ gnbsim.docker.network.macvlan.name }}"
+    state: absent
+    force: yes
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: remove {{ gnbsim.docker.container.image }} image
+  community.docker.docker_image:
+    name: "{{ gnbsim.docker.container.image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true

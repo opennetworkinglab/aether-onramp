@@ -1,0 +1,9 @@
+---
+
+- name: install oai/router
+  import_tasks: roles/router/tasks/install.yml
+  tags: install
+
+- name: uninstall oai/router
+  import_tasks: roles/router/tasks/uninstall.yml
+  tags: uninstall

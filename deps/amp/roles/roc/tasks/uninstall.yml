@@ -1,0 +1,47 @@
+---
+
+#TODO uninstall local sotre
+
+- name: remove atomix chart repo
+  kubernetes.core.helm_repository:
+    name: atomix
+    state: absent
+    repo_url: "https://atomix.github.io/charts.atomix.io"
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove aether-roc
+  kubernetes.core.helm:
+    name: aether-roc
+    release_namespace: aether-roc
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: delete namespace aether-roc
+  shell: |
+    kubectl delete namespace aether-roc
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove /tmp/roc-4g-values.yaml
+  file:
+    path: "/tmp/roc-4g-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove /tmp/roc-5g-values.yaml
+  file:
+    path: "/tmp/roc-5g-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+# - name: waiting for aether pods to terminate
+#   shell: |
+#     /var/lib/rancher/rke2/bin/kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait -n aether-roc --for=delete --all=true -l app!=ue pod --timeout=180s || true
+#   when: inventory_hostname in groups['master_nodes']
+#   become: true
+#   ignore_errors: yes

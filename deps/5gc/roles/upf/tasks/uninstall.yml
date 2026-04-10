@@ -1,0 +1,27 @@
+---
+
+- name: delete route for upf to UE
+  shell: |
+    ip route del {{ item.value.ue_ip_pool }} via {{ item.value.ip.core }}
+  when: inventory_hostname in groups['master_nodes']
+  with_dict: "{{ core.upf.additional_upfs}}"
+  become: true
+  ignore_errors: yes
+
+- name: remove aether upfs
+  kubernetes.core.helm:
+    name: bess-upf
+    release_namespace: aether-upf-{{ item.key }}
+    state: absent
+    wait: true
+  with_dict: "{{ core.upf.additional_upfs}}"
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: delete namespace aether-upf
+  shell: |
+    kubectl delete namespace aether-upf-{{ item.key }}
+  with_dict: "{{ core.upf.additional_upfs}}"
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+

@@ -1,0 +1,8 @@
+ocudu:
+  docker:
+    container:
+      ue_image: aetherproject/srsran-ue:rel-0.7.0
+    network:
+      name: host
+
+  simulation: true

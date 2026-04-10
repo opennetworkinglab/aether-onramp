@@ -1,0 +1,60 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and srsran nodes: {{ srsran.servers|length }} vs {{ groups['srsran_nodes']|length }}"
+  when: srsran.servers|length != groups['srsran_nodes']|length
+
+# prep Ubuntu to support srsRAN gNB in DPDK-mode
+- name: set net.core.wmem_max to 24912805
+  ansible.posix.sysctl:
+    name: net.core.wmem_max
+    value: '24912805'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: pull {{ srsran.docker.container.gnb_image }} image
+  community.docker.docker_image:
+    name: "{{ srsran.docker.container.gnb_image }}"
+    source: pull
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: remove /tmp/gnb_config.yaml
+  file:
+    path: "/tmp/gnb_config.yaml"
+    state: absent
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name : copy gnb config file to /tmp/gnb_config.yaml
+  template:
+    src: "{{ ROOT_DIR }}/{{ srsran.servers[server_index | int].gnb_conf }}"
+    dest: /tmp/gnb_config.yaml
+  vars:
+    server_index: "{{ groups['srsran_nodes'].index(inventory_hostname) }}"
+    gnb_ip: "{{ srsran.servers[server_index | int].gnb_ip }}"
+    gnb_id: "{{ (groups['srsran_nodes'].index(inventory_hostname) | int) + 1000 }}"
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: create {{ srsran.docker.container.gnb_image }} containers
+  community.docker.docker_container:
+    name: "srsran-gnb"
+    image: "{{ srsran.docker.container.gnb_image }}"
+    networks:
+      - name: "{{ srsran.docker.network.name }}"
+    volumes:
+      - /tmp/gnb_config.yaml:/opt/gnb_config.yaml
+      - /dev/hugepages:/dev/hugepages
+    devices:
+      - /dev/vfio:/dev/vfio
+    privileged: true
+    restart_policy: unless-stopped
+    state: started
+    detach: true
+    command: "gnb -c /opt/gnb_config.yaml"
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true

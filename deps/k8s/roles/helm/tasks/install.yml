@@ -1,0 +1,31 @@
+---
+
+- set_fact:
+    script_dir: /tmp/helm
+
+- name: remove {{ script_dir }}
+  file:
+    path: "{{ script_dir }}"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: create {{ script_dir }}
+  file:
+    path: "{{ script_dir }}"
+    state: directory
+  when: inventory_hostname in groups['master_nodes']
+
+- name: download get-helm.sh
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    validate_certs: true
+    dest: "{{ script_dir }}/get-helm.sh"
+    mode: "a+x"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: install helm on masters
+  shell: "{{ script_dir }}/get-helm.sh"
+  environment:
+    DESIRED_VERSION: "{{ k8s.helm.version }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true

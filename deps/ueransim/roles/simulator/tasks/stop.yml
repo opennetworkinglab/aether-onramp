@@ -1,0 +1,12 @@
+---
+- name: force stop UE
+  command: pkill -9 -f nr-ue
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: force stop gNB
+  command: pkill -9 -f nr-gnb
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+  ignore_errors: yes

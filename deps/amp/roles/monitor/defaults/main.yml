@@ -1,0 +1,13 @@
+amp:
+  data_iface: enp193s0f0
+
+  monitor:
+    helm:
+      chart_ref: rancher/rancher-monitoring
+      chart_version: 101.0.0+up19.0.3
+
+  monitor_crd:
+    helm:
+      chart_ref: rancher/rancher-monitoring-crd
+      chart_version: 101.0.0+up19.0.3
+

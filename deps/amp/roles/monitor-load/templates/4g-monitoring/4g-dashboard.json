@@ -1,0 +1,1170 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 756,
+      "panels": [],
+      "title": "Subscriber metrics",
+      "type": "row"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Menlo-Prod-00013"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Menlo-Prod-Lobby"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Menlo-Prod-00021"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Menlo-Prod-Kitchen"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Menlo-Prod-00036"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Menlo-Prod-Conf"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 1
+      },
+      "id": 595,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "name"
+      },
+      "pluginVersion": "7.5.11",
+      "targets": [
+        {
+          "expr": "sum(mme_number_of_enb_attached{enb_state=\"Active\", enbname=~\".+\"}) by (enbname,enbid)",
+          "interval": "",
+          "legendFormat": "{{ enbname }}",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "eNodeB Status",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "filterable": false
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "id": 1,
+              "text": "menlo-4g-pi4",
+              "type": 1,
+              "value": "315010206000009"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-oguz",
+              "type": 1,
+              "value": "315010206000021"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-office-pixel",
+              "type": 1,
+              "value": "315010206000023"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-girish",
+              "type": 1,
+              "value": "315010206000022"
+            },
+            {
+              "id": 1,
+              "text": "demo-4g-camera-pantilt",
+              "type": 1,
+              "value": "315010206000024"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phones6",
+              "type": 1,
+              "value": "315010206000001"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phones2",
+              "type": 1,
+              "value": "315010999912343"
+            },
+            {
+              "id": 1,
+              "text": "demo-4g-monitoring1",
+              "type": 1,
+              "value": "315010999912342"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-jeremy",
+              "type": 1,
+              "value": "315010999912341"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phones3",
+              "type": 1,
+              "value": "315010999912345"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-woojoong",
+              "type": 1,
+              "value": "315010999912349"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-pi6",
+              "type": 1,
+              "value": "315010206000028"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-camera-openvino-2",
+              "type": 1,
+              "value": "315010304000004"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-camera-pantilt-parkinglot",
+              "type": 1,
+              "value": "315010304000005"
+            },
+            {
+              "id": 1,
+              "text": "demo-4g-camera-openvino",
+              "type": 1,
+              "value": "315010304000006"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-camera-openvino-1",
+              "type": 1,
+              "value": "315010304000003"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-saurav",
+              "type": 1,
+              "value": "315010206000032"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-pi3",
+              "type": 1,
+              "value": "315010206000010"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-pi2",
+              "type": 1,
+              "value": "315010206000011"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-hyunsun",
+              "type": 1,
+              "value": "315010999912350"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-red-iphone",
+              "type": 1,
+              "value": "315010999912351"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-pi5",
+              "type": 1,
+              "value": "315010999912352"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phones5",
+              "type": 1,
+              "value": "315010999912353"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-suchitra",
+              "type": 1,
+              "value": "315010999912354"
+            },
+            {
+              "id": 1,
+              "text": "menlo-5g-dongle-1",
+              "type": 1,
+              "value": "315010206000025"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-phone-ajay",
+              "type": 1,
+              "value": "315010206000027"
+            },
+            {
+              "id": 1,
+              "text": "menlo-4g-black-iphone",
+              "type": 1,
+              "value": "315010999912355"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "from": "1",
+                    "id": 1,
+                    "text": "Active",
+                    "to": "1000",
+                    "type": 2
+                  },
+                  {
+                    "from": "",
+                    "id": 2,
+                    "text": "Inactive",
+                    "to": "",
+                    "type": 1,
+                    "value": "0"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 7,
+        "x": 5,
+        "y": 1
+      },
+      "id": 701,
+      "options": {
+        "frameIndex": 3,
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "7.5.11",
+      "targets": [
+        {
+          "expr": "sum(subscribers_info{imsi=~\".+\"}) by (imsi)",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Subscriber Info",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "cp_mode": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "level": true,
+              "namespace": true,
+              "pod": true,
+              "service": true,
+              "subscriber_info": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Metric": "IMSI",
+              "Value": "Status",
+              "imsi": "Name",
+              "job": "",
+              "mobile_ip": "Mobile IP",
+              "namespace": ""
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000009"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-pi4"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000021"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-oguz"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000023"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-office-pixel"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000022"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-girish"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000024"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "demo-4g-camera-pantilt"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000001"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phones6"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912343"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phones2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912342"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "demo-4g-monitoring1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912341"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-jeremy"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912345"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phones3"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912349"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-woojoong"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000028"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-pi6"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010304000004"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-camera-openvino-2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010304000005"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-camera-pantilt-parkinglot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010304000006"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "demo-4g-camera-openvino"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010304000003"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-camera-openvino-1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000032"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-saurav"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000010"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-pi3"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000011"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-pi2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912350"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-hyunsun"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912351"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-red-iphone"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912352"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-pi5"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912353"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phones5"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912354"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-suchitra"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000025"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-5g-dongle-1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010206000027"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-phone-ajay"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "315010999912355"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "menlo-4g-black-iphone"
+              }
+            ]
+          }
+        ]
+      },
+      "fill": 10,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "hiddenSeries": false,
+      "id": 754,
+      "legend": {
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 0,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.11",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "$$hashKey": "object:246"
+        }
+      ],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "clamp_max(sum(subscribers_info{imsi=~\".+\"}) by (imsi), 1)",
+          "interval": "",
+          "legendFormat": "{{ imsi }}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "UE Activation over Time",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:647",
+          "decimals": 0,
+          "format": "short",
+          "label": "Active",
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "$$hashKey": "object:648",
+          "format": "short",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 0,
+        "y": 5
+      },
+      "id": 593,
+      "links": [
+        {
+          "targetBlank": true,
+          "title": "Drill down: cluster compute",
+          "url": "d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?orgId=1&refresh=10s&var-datasource=acc-gcp1&${__url_time_range}"
+        },
+        {
+          "targetBlank": true,
+          "title": "Drill down: cluster networking",
+          "url": "d/ff635a025bcfea7bc3dd4f508990a3e9/kubernetes-networking-cluster?orgId=1&refresh=10s&var-resolution=5m&var-interval=4h&var-datasource=acc-gcp1&${__url_time_range}"
+        },
+        {
+          "targetBlank": true,
+          "title": "Drill down: nodes",
+          "url": "d/fa49a4706d07a042595b664c87fb33ea/nodes?orgId=1&var-datasource=acc-gcp1&${__url_time_range}"
+        },
+        {
+          "targetBlank": true,
+          "title": "Drill down: logs",
+          "url": "d/e2QUYvPMk/kubernetes-logs-pod?orgId=1&refresh=10s&var-es_datasource=acc-gcp1-es&var-es_namespace=omec&${__url_time_range}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "targets": [
+        {
+          "expr": "sum(spgw_number_of_ue_attached{cp_mode=\"spgw\",state=\"active\",level=\"subscribers\"})",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "SPGW",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(mme_number_of_ue_attached{endpoint=\"metrics3081\",level=\"subscribers\",sub_state=\"Active\"})",
+          "hide": true,
+          "interval": "",
+          "legendFormat": "MME",
+          "refId": "B"
+        },
+        {
+          "expr": "count(sum(subscribers_info{imsi=~\".+\"} > 0) by (imsi))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "",
+          "refId": "C"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Active subscribers",
+      "type": "stat"
+    },
+    {
+      "collapsed": true,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 758,
+      "panels": [],
+      "title": "UPF metrics",
+      "type": "row"
+    },
+    {
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": "bps"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Drops"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "pps"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 11,
+        "x": 0,
+        "y": 9
+      },
+      "id": 760,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(8 * irate(upf_bytes_count{dir=\"tx\",iface=\"Core\"}[2m]))",
+          "interval": "",
+          "legendFormat": "Tx Bitrate",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(8 * irate(upf_bytes_count{dir=\"rx\",iface=\"Core\"}[2m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Rx Bitrate",
+          "refId": "C"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Current Throughput",
+      "type": "stat"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Drops"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "pps"
+              }
+            ]
+          }
+        ]
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 4,
+        "w": 13,
+        "x": 11,
+        "y": 9
+      },
+      "hiddenSeries": false,
+      "id": 762,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.11",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "repeat": null,
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(8 * irate(upf_bytes_count{dir=\"tx\",iface=\"Core\"}[2m]))",
+          "interval": "",
+          "legendFormat": "Tx Bitrate",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(8 * irate(upf_bytes_count{dir=\"tx\",iface=\"Access\"}[2m]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Rx Bitrate",
+          "refId": "C"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Throughput",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:163",
+          "format": "bps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "$$hashKey": "object:164",
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "AiaB Dashboard",
+  "uid": "6S4-jQp7z",
+  "version": 1
+}

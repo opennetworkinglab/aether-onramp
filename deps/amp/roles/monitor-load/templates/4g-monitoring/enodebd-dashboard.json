@@ -1,0 +1,525 @@
+
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 35,
+  "iteration": 1654702885595,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 22,
+      "panels": [],
+      "repeat": "enodeb",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "title": "$enodeb",
+      "type": "row"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 8,
+      "options": {
+        "content": "<center><h1>${enodeb}</h1>",
+        "mode": "html"
+      },
+      "pluginVersion": "7.5.11",
+      "repeat": "enodeb",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "title": "eNodeB Serial Number",
+      "type": "text"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "yellow",
+                  "index": 0,
+                  "text": "Connected"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Disconnected"
+                },
+                "2": {
+                  "color": "blue",
+                  "index": 2,
+                  "text": "Firmware Upgrading"
+                },
+                "3": {
+                  "color": "green",
+                  "index": 3,
+                  "text": "Configured"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last Configured at"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsSystem"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "repeat": "enodeb",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_current_status{serial_number=\"$enodeb\"}",
+          "interval": "",
+          "legendFormat": "eNodeB Status",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_last_configured_time{serial_number=\"$enodeb\"}*1000",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Last Configured at",
+          "refId": "B"
+        }
+      ],
+      "title": "Last Configured",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Disabled"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "Enabled"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "repeat": "enodeb",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_op_status{serial_number=\"$enodeb\"}",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "RF Status",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "disabled"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "enabled"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 18,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "repeat": "enodeb",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_gps_status{serial_number=\"$enodeb\"}",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "GPS Status",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 20,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.5.11",
+      "repeat": "enodeb",
+      "repeatDirection": "h",
+      "scopedVars": {
+        "enodeb": {
+          "isNone": true,
+          "selected": true,
+          "text": "None",
+          "value": ""
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_gps_status_lat{serial_number=\"$enodeb\"}",
+          "interval": "",
+          "legendFormat": "Latitude",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mwgLZO_7z"
+          },
+          "exemplar": true,
+          "expr": "enodeb_gps_status_long{serial_number=\"$enodeb\"}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "Longtitude",
+          "refId": "B"
+        }
+      ],
+      "title": "Coordinate",
+      "type": "stat"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
+        },
+        "datasource": null,
+        "definition": "label_values(enodeb_current_status, serial_number)",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "enodeb",
+        "multi": false,
+        "name": "enodeb",
+        "options": [],
+        "query": {
+          "query": "label_values(enodeb_current_status, serial_number)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "enodebd dashboard",
+  "uid": "P_SA6HQnz",
+  "version": 1
+}

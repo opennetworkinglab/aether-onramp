@@ -1,0 +1,11 @@
+ocudu:
+  docker:
+    container:
+      gnb_image: aetherproject/ocudu:rel-0.7.0
+    network:
+      name: host
+  simulation: true
+
+core:
+  amf:
+    ip: "172.16.248.6"

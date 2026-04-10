@@ -1,0 +1,122 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and oai nodes: {{ oai.servers|length }} vs {{ groups['oai_nodes']|length }}"
+  when: oai.servers|length != groups['oai_nodes']|length
+
+- name: set net.ipv4.conf.all.arp_filter to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 1
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: create {{ oai.docker.network.name }} network
+  community.docker.docker_network:
+    name: "{{ oai.docker.network.name }}"
+    driver: bridge
+    ipam_config:
+      - subnet: "{{ oai.docker.network.subnet }}"
+    state: present
+    driver_options:
+      com.docker.network.bridge.name: "{{ oai.docker.network.bridge.name }}"
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: install iptables-persistent package
+  apt:
+    name: iptables-persistent
+    state: present
+    update_cache: yes
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: create /etc/iptables directory
+  file:
+    path: /etc/iptables
+    state: directory
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: deploy oai iptables rules configuration
+  template:
+    src: roles/router/templates/oai-iptables-rules.v4
+    dest: /etc/iptables/oai-rules.v4
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: copy oai-iptables.service to /etc/systemd/system/oai-iptables.service
+  template:
+    src: roles/router/templates/oai-iptables.service
+    dest: /etc/systemd/system/oai-iptables.service
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: force systemd to reread configs for iptables service
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: enable oai-iptables.service
+  systemd:
+    name: oai-iptables.service
+    enabled: true
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: start oai-iptables.service
+  systemd:
+    name: oai-iptables.service
+    state: started
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+# TODO: use ansible's net_static_route module
+- name: configure static route for upf traffic on oai node
+  shell: |
+    ip route add {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  become: true
+  ignore_errors: yes
+
+# TODO: use ansible's net_static_route module
+- name: configure static route for oai traffic on aether node
+  shell: |
+    ip route add {{ oai.docker.network.subnet }} via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  with_items: "{{ play_hosts | intersect(groups['oai_nodes']) | difference(groups['master_nodes']) }}"
+  when: (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes

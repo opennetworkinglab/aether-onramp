@@ -1,0 +1,6 @@
+oscric:
+  e2t:
+    ip: "127.0.0.1"
+  import:
+    kpimon: true
+    rc: false

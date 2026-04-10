@@ -1,0 +1,17 @@
+---
+
+- name: install ueransim/simulator
+  import_tasks: roles/simulator/tasks/install.yml
+  tags: install
+
+- name: start ueransim/simulator
+  import_tasks: roles/simulator/tasks/start.yml
+  tags: start
+
+- name: stop ueransim/simulator
+  import_tasks: roles/simulator/tasks/stop.yml
+  tags: stop
+
+- name: uninstall ueransim/simulator
+  import_tasks: roles/simulator/tasks/uninstall.yml
+  tags: uninstall

@@ -1,0 +1,17 @@
+---
+
+- name: Stop and remove all oran-sc-ric containers, images, and volumes
+  community.docker.docker_compose_v2:
+    project_src: /opt/oran-sc-ric
+    state: absent
+    remove_images: all
+    remove_volumes: true
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Remove oran-sc-ric repository directory
+  file:
+    path: /opt/oran-sc-ric
+    state: absent
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true

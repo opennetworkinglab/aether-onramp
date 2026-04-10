@@ -1,0 +1,21 @@
+core:
+  data_iface: ens18
+  ran_subnet: "172.20.0.0/16"  # set to empty string to get subnet from 'data_iface'
+
+  upf:
+    helm:
+      local_charts: false
+      chart_ref: oci://ghcr.io/omec-project/bess-upf
+      chart_version: 1.4.0
+    values_file: "roles/upf/templates/upf-5g-values.yaml"
+    additional_upfs:
+      "1":
+        ip:
+          access: "192.168.252.6"
+          core:   "192.168.250.6"
+        ue_ip_pool: "172.248.0.0/16"
+      # "2":
+      #   ip:
+      #     access: "192.168.252.7"
+      #     core:   "192.168.250.7"
+      #   ue_ip_pool: "172.247.0.0/16"

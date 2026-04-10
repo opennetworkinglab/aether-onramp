@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2022-present Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metricfunc
+  namespace: aether-5gc
+spec:
+  endpoints:
+    - path: /metrics
+      port: prometheus-exporter
+  namespaceSelector:
+    matchNames:
+      - aether-5gc
+  selector:
+    matchLabels:
+      app: metricfunc

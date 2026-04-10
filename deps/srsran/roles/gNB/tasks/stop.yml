@@ -1,0 +1,28 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and srsran nodes: {{ srsran.servers|length }} vs {{ groups['srsran_nodes']|length }}"
+  when: srsran.servers|length != groups['srsran_nodes']|length
+
+- name: delete {{ srsran.docker.container.gnb_image }} container
+  community.docker.docker_container:
+    name: "srsran-gnb"
+    state: absent
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: remove /tmp/gnb_config.yaml
+  file:
+    path: "/tmp/gnb_config.yaml"
+    state: absent
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true
+
+- name: remove {{ srsran.docker.container.gnb_image }} image
+  community.docker.docker_image:
+    name: "{{ srsran.docker.container.gnb_image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['srsran_nodes']
+  become: true

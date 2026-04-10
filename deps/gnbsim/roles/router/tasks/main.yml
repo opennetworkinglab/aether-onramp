@@ -1,0 +1,9 @@
+---
+
+- name: install gnbsim/router
+  import_tasks: roles/router/tasks/install.yml
+  tags: install
+
+- name: uninstall gnbsim/router
+  import_tasks: roles/router/tasks/uninstall.yml
+  tags: uninstall

@@ -1,0 +1,29 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Aether 5GC macvlan fallback interfaces
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+{% if not core.upf.multihop_gnb %}
+ExecStart=/bin/bash -c '/usr/sbin/ip link show access >/dev/null 2>&1 || /usr/sbin/ip link add link {{ core.data_iface }} name access type macvlan mode bridge'
+ExecStart=/usr/sbin/ip addr replace {{ core.upf.access_subnet }} dev access
+ExecStart=/usr/sbin/ip link set access up
+ExecStart=-/usr/sbin/sysctl -w net.ipv4.conf.access.forwarding=1
+{% endif %}
+ExecStart=/bin/bash -c '/usr/sbin/ip link show core >/dev/null 2>&1 || /usr/sbin/ip link add link {{ core.data_iface }} name core type macvlan mode bridge'
+ExecStart=/usr/sbin/ip addr replace {{ core.upf.core_subnet }} dev core
+ExecStart=/usr/sbin/ip link set core up
+ExecStart=-/usr/sbin/sysctl -w net.ipv4.conf.core.forwarding=1
+ExecStart=/usr/sbin/ip route replace {{ core.upf.default_upf.ue_ip_pool }} via {{ core.upf.default_upf.ip.core }} dev core
+{% if not core.upf.multihop_gnb %}
+ExecStop=-/usr/sbin/ip link del access
+{% endif %}
+ExecStop=-/usr/sbin/ip link del core
+
+[Install]
+WantedBy=multi-user.target

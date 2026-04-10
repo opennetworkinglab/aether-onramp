@@ -1,0 +1,141 @@
+---
+
+- name: add atomix chart repo
+  kubernetes.core.helm_repository:
+    name: atomix
+    repo_url: "https://atomix.github.io/charts.atomix.io"
+  when: inventory_hostname in groups['master_nodes']
+
+# TODO: add a local check to install local store
+# TODO: use kubectl module for ansible
+- name: Setup Local Store
+  shell:
+    cmd: |
+      kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ amp.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
+      kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}';
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/roc-values.yaml
+  file:
+    path: "/tmp/roc-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy roc-values.yaml to /tmp/roc-values.yaml
+  template:
+    src: roles/roc/templates/roc-values.yaml
+    dest: "/tmp/roc-values.yaml"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: update roc helm dependencies
+  shell: |
+    helm dep up "{{ amp.aether_roc.helm.chart_ref }}"
+  when: inventory_hostname in groups['master_nodes'] and amp.aether_roc.helm.local_charts
+
+- set_fact:
+    onos_helm_requires_repo_update: "{{ not (amp.onosproject.helm.chart_ref is match('^oci://')) }}"
+    roc_helm_requires_repo_update: "{{ (not amp.aether_roc.helm.local_charts) and not (amp.aether_roc.helm.chart_ref is match('^oci://')) }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: deploy atomix from {{ amp.atomix.helm.chart_ref }}
+  block:
+    - name: deploy atomix-runtime from {{ amp.atomix.helm.chart_ref }}
+      kubernetes.core.helm:
+        update_repo_cache: true
+        name: atomix #atomix-runtime
+        release_namespace: kube-system #aether-roc
+        create_namespace: true
+        chart_ref: "{{ amp.atomix.helm.chart_ref }}"
+        chart_version: "{{ amp.atomix.helm.chart_version }}"
+        values_files:
+          - /tmp/roc-values.yaml
+        wait: true
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: deploy onos-operator from {{ amp.onosproject.helm.chart_ref }}
+      kubernetes.core.helm:
+        update_repo_cache: "{{ onos_helm_requires_repo_update }}"
+        name: onos-operator
+        release_namespace: kube-system #aether-roc
+        create_namespace: true
+        chart_ref: "{{ amp.onosproject.helm.chart_ref }}"
+        chart_version: "{{ amp.onosproject.helm.chart_version }}"
+        values_files:
+          - /tmp/roc-values.yaml
+        wait: true
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+
+  rescue:
+    - name: Get Pods Status
+      shell: kubectl get po -n kube-system
+      register: pod_status
+      changed_when: false
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: restart Pods if not running
+      shell: |
+        while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+
+          name=$(echo "$line" | awk '{print $1}')
+          status=$(echo "$line" | awk '{print $3}')
+
+          [[ -z "$name" || "$name" == "NAME" ]] && continue
+
+          if [[ "$status" != "Running" && "$status" != "Completed" ]]; then
+            kubectl delete pod "$name" -n kube-system
+          fi
+        done <<< "{{ pod_status.stdout }}"
+      args:
+        executable: /bin/bash
+      register: pod_restart
+      changed_when: "'deleted' in pod_restart.stdout"
+      when: inventory_hostname in groups['master_nodes']
+
+- name: deploy ROC from {{ amp.aether_roc.helm.chart_ref }}
+  block:
+    - name: deploy aether-roc-umbrella from {{ amp.aether_roc.helm.chart_ref }}
+      kubernetes.core.helm:
+        update_repo_cache: "{{ roc_helm_requires_repo_update }}"
+        name: roc
+        release_namespace: aether-roc
+        create_namespace: true
+        chart_ref: "{{ amp.aether_roc.helm.chart_ref }}"
+        chart_version: "{{ amp.aether_roc.helm.chart_version }}"
+        values_files:
+          - /tmp/roc-values.yaml
+        wait: true
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+
+  rescue:
+    - name: Get Pods Status
+      shell: kubectl get po -n aether-roc
+      register: pod_status
+      changed_when: false
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: restart Pods if not running
+      shell: |
+        while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+
+          name=$(echo "$line" | awk '{print $1}')
+          status=$(echo "$line" | awk '{print $3}')
+
+          [[ -z "$name" || "$name" == "NAME" ]] && continue
+
+          if [[ "$status" != "Running" && "$status" != "Completed" ]]; then
+            kubectl delete pod "$name" -n aether-roc
+          fi
+        done <<< "{{ pod_status.stdout }}"
+      args:
+        executable: /bin/bash
+      register: pod_restart
+      changed_when: "'deleted' in pod_restart.stdout"
+      when: inventory_hostname in groups['master_nodes']
+
+- pause:
+    seconds: 5

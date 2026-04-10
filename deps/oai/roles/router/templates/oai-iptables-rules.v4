@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+# OAI iptables rules
+
+*filter
+:FORWARD ACCEPT [0:0]
+-A FORWARD -i {{ oai.docker.network.data_iface }} -o {{ oai.docker.network.bridge.name }} -j ACCEPT
+-A FORWARD -i {{ oai.docker.network.bridge.name }} -o {{ oai.docker.network.data_iface }} -j ACCEPT
+{% if inventory_hostname in groups['master_nodes'] %}
+-A FORWARD -i {{ oai.docker.network.bridge.name }} -o access -j ACCEPT
+-A FORWARD -i access -o {{ oai.docker.network.bridge.name }} -j ACCEPT
+{% endif %}
+COMMIT

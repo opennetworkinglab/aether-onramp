@@ -1,0 +1,119 @@
+---
+
+#TODO: add in core code
+- name: update cache
+  apt:
+    update_cache: yes
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install software-properties-common package
+  apt:
+    name: software-properties-common
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install python3 package
+  apt:
+    name: python3
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install python3-pip package
+  apt:
+    name: python3-pip
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install python3-venv package
+  apt:
+    name: python3-venv
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install python3-setuptools package
+  apt:
+    name: python3-setuptools
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- set_fact:
+    UBUNTU_VERSION: "{{ ansible_distribution_version }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: install openshift python package
+  pip:
+    name: openshift==0.12.1
+    executable: pip3
+  when: inventory_hostname in groups['master_nodes'] and UBUNTU_VERSION is version_compare('24.04', '<')
+  become: true
+
+- name: install python3-openshift package
+  apt:
+    name: python3-openshift
+  when: inventory_hostname in groups['master_nodes'] and UBUNTU_VERSION is version_compare('24.04', '>=')
+  become: true
+
+- name: add rancher chart repo
+  kubernetes.core.helm_repository:
+    name: rancher
+    repo_url: "https://charts.rancher.io"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/monitor-values.yaml
+  file:
+    path: "/tmp/monitor-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy monitor-values.yaml to /tmp/monitor-values.yaml
+  template:
+    src: roles/monitor/templates/monitor-values.yaml
+    dest: "/tmp/monitor-values.yaml"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: deploy aether monitor-crd
+  block:
+    - name: deploy aether monitor-crd
+      kubernetes.core.helm:
+        update_repo_cache: true
+        name: rancher-monitoring-crd
+        release_namespace: cattle-monitoring-system
+        create_namespace: true
+        chart_ref: "{{ amp.monitor_crd.helm.chart_ref }}"
+        chart_version: "{{ amp.monitor_crd.helm.chart_version }}"
+        values_files:
+          - /tmp/monitor-values.yaml
+        wait: true
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+      until: result is succeeded
+      retries: 5
+      delay: 10
+      register: result
+  rescue:
+    - debug:
+        msg: "Failed to deploy aether monitor-crd after multiple attempts."
+
+- name: deploy aether monitor
+  block:
+    - name: deploy aether monitor
+      kubernetes.core.helm:
+        update_repo_cache: true
+        name: rancher-monitoring
+        release_namespace: cattle-monitoring-system
+        create_namespace: true
+        chart_ref: "{{ amp.monitor.helm.chart_ref }}"
+        chart_version: "{{ amp.monitor.helm.chart_version }}"
+        values_files:
+          - /tmp/monitor-values.yaml
+        wait: true
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+      until: result is succeeded
+      retries: 5
+      delay: 10
+      register: result
+  rescue:
+    - debug:
+        msg: "Failed to deploy aether monitor after multiple attempts."

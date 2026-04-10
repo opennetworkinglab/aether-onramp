@@ -1,0 +1,28 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+  when: ocudu.servers|length != groups['ocudu_nodes']|length
+
+- name: delete {{ ocudu.docker.container.gnb_image }} container
+  community.docker.docker_container:
+    name: "ocudu-gnb"
+    state: absent
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: remove /tmp/gnb_config.yaml
+  file:
+    path: "/tmp/gnb_config.yaml"
+    state: absent
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
+- name: remove {{ ocudu.docker.container.gnb_image }} image
+  community.docker.docker_image:
+    name: "{{ ocudu.docker.container.gnb_image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true

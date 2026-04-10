@@ -1,0 +1,9 @@
+---
+
+- name: start oai/gNb
+  import_tasks: roles/gNb/tasks/start.yml
+  tags: start
+
+- name: stop oai/gNb
+  import_tasks: roles/gNb/tasks/stop.yml
+  tags: stop

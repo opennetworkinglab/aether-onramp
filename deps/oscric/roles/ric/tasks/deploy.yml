@@ -1,0 +1,60 @@
+---
+
+- name: Ensure git is installed
+  apt:
+    name: git
+    state: present
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- set_fact:
+    UBUNTU_VERSION: "{{ ansible_distribution_version }}"
+  when: inventory_hostname in groups['oscric_nodes']
+
+- name: Install docker module for Python
+  pip:
+    name:
+      - docker
+      - docker-compose
+  when: inventory_hostname in groups['oscric_nodes'] and UBUNTU_VERSION is version('24.04', '<')
+  become: true
+
+- name: Install python3-docker package
+  apt:
+    name:
+      - python3-docker
+      - python3-compose
+  when: inventory_hostname in groups['oscric_nodes'] and UBUNTU_VERSION is version('24.04', '>=')
+  become: true
+
+- name: Clone oran-sc-ric repository
+  git:
+    repo: https://github.com/srsran/oran-sc-ric
+    dest: /opt/oran-sc-ric
+    version: aab0aee1f8eb06dc43430a6b649d54f1284f484d
+    update: yes
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Uncomment 'ports' in oran-sc-ric/docker-compose.yml
+  replace:
+    path: /opt/oran-sc-ric/docker-compose.yml
+    regexp: '#ports:'
+    replace: 'ports:'
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Uncomment and set '36421' in oran-sc-ric/docker-compose.yml
+  replace:
+    path: /opt/oran-sc-ric/docker-compose.yml
+    regexp: '#  - "36421:36421/sctp"'
+    replace: '  - "36421:36421/sctp"'
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Launch docker compose up
+  community.docker.docker_compose_v2:
+    project_src: /opt/oran-sc-ric
+    state: present
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true

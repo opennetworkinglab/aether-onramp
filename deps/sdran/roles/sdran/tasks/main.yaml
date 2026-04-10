@@ -1,0 +1,9 @@
+---
+
+- name: install sdran/sdran
+  import_tasks: roles/sdran/tasks/install.yaml
+  tags: install
+
+- name: uninstall sdran/sdran
+  import_tasks: roles/sdran/tasks/uninstall.yaml
+  tags: uninstall

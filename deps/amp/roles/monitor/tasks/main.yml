@@ -1,0 +1,9 @@
+---
+
+- name: install amp/monitor
+  import_tasks: roles/monitor/tasks/install.yml
+  tags: install
+
+- name: uninstall amp/monitor
+  import_tasks: roles/monitor/tasks/uninstall.yml
+  tags: uninstall

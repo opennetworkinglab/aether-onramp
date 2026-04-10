@@ -1,0 +1,9 @@
+---
+
+- name: install ocudu/router
+  import_tasks: install.yml
+  tags: install
+
+- name: uninstall ocudu/router
+  import_tasks: uninstall.yml
+  tags: uninstall

@@ -1,0 +1,73 @@
+---
+
+- name: find {{ core.data_iface }}'s subnet for RAN
+  shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
+  register: result
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- set_fact:
+    ran_subnet: "{{ result.stdout if (core.ran_subnet == '') else core.ran_subnet }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/upf-[].yaml
+  file:
+    path: "/tmp/upf-{{ item.key }}.yaml"
+    state: absent
+  with_dict: "{{ core.upf.additional_upfs}}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy config files to gnbsim host
+  template:
+    src: "{{ ROOT_DIR }}/{{ core.upf.values_file }}"
+    dest: /tmp/upf-{{ item.key }}.yaml
+  vars:
+    ran_subnet: "{{ran_subnet}}"
+    access_gw: "{{ core.upf.access_subnet[:-3] }}"
+    core_gw: "{{ core.upf.core_subnet[:-3] }}"
+    upf_access_ip: "{{ item.value.ip.access + '/24' }}"
+    upf_core_ip: "{{ item.value.ip.core + '/24' }}"
+    upf_ue_ip_pool: "{{ item.value.ue_ip_pool }}"
+  with_dict: "{{ core.upf.additional_upfs}}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: update helm dependencies
+  shell: |
+    helm dep up "{{ core.upf.helm.chart_ref }}"
+  when: inventory_hostname in groups['master_nodes'] and core.upf.helm.local_charts
+
+- set_fact:
+    upf_helm_requires_repo_update: "{{ (not core.upf.helm.local_charts) and not (core.upf.helm.chart_ref is match('^oci://')) }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: deploy upf
+  kubernetes.core.helm:
+    update_repo_cache: "{{ upf_helm_requires_repo_update }}"
+    name: bess-upf
+    release_namespace: aether-upf-{{ item.key }}
+    create_namespace: true
+    chart_ref: "{{ core.upf.helm.chart_ref }}"
+    chart_version: "{{ core.upf.helm.chart_version if core.upf.helm.local_charts == false else omit }}"
+    values_files:
+      - /tmp/upf-{{item.key}}.yaml
+    wait: true
+    wait_timeout: "1m30s"
+    force: true
+  with_dict: "{{ core.upf.additional_upfs}}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: configure route for upf traffic on gnbsim node
+  shell: |
+    ip route add {{ item.value.ue_ip_pool }} via {{ item.value.ip.core }}
+  when: inventory_hostname in groups['master_nodes']
+  with_dict: "{{ core.upf.additional_upfs}}"
+  become: true
+  # ignore_errors: yes
+
+- name: configure NAT for upf traffic
+  shell: |
+    sudo iptables -t nat -C POSTROUTING -s {{ item.value.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE || sudo iptables -t nat -A POSTROUTING -s {{ item.value.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE
+  when: inventory_hostname in groups['master_nodes']
+  with_dict: "{{ core.upf.additional_upfs}}"
+  become: true
+  # ignore_errors: yes
