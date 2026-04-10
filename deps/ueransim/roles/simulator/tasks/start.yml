@@ -1,0 +1,71 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Number of ueransim nodes and servers in config file are not equal"
+  when: ueransim.servers|length != groups['ueransim_nodes']|length
+
+- name: copy gNb config files to ueransim host
+  template:
+    src: "{{ ROOT_DIR }}/{{ ueransim.servers[server_index | int].gnb }}"
+    dest: ueransim_onramp/config/custom-gnb.yaml
+  vars:
+    server_index: "{{ groups['ueransim_nodes'].index(inventory_hostname) }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: copy UE config files to ueransim host
+  template:
+    src: "{{ ROOT_DIR }}/{{ ueransim.servers[server_index | int].ue }}"
+    dest: ueransim_onramp/config/custom-ue.yaml
+  vars:
+    server_index: "{{ groups['ueransim_nodes'].index(inventory_hostname) }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: Run gNB
+  shell: nohup ./nr-gnb -c "../config/custom-gnb.yaml" > /dev/null 2>&1 &
+  args:
+    chdir: ueransim_onramp/build
+  async: 30
+  poll: 0
+  when: "inventory_hostname in groups['ueransim_nodes']"
+
+- pause:
+    seconds: 5
+
+- name: Run UE
+  shell: nohup ./nr-ue -c "../config/custom-ue.yaml" > /dev/null 2>&1 &
+  args:
+    chdir: ueransim_onramp/build
+  when: "inventory_hostname in groups['ueransim_nodes']"
+  become: true
+
+- pause:
+    seconds: 5
+
+- name: Get UE IP address
+  shell: "ip a | grep -A 1 'uesimtun0' | grep inet | awk '{print $2}' | cut -d'/' -f1"
+  register: ue_ip
+  when: "inventory_hostname in groups['ueransim_nodes']"
+
+- set_fact:
+    ue_ip: "{{ ue_ip.stdout }}"
+  when: "inventory_hostname in groups['ueransim_nodes']"
+
+- debug:
+    var: ue_ip
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- set_fact:
+    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
+  when: "inventory_hostname in groups['ueransim_nodes']"
+
+- name: Run ping command for connectivity
+  shell: "./nr-binder {{ ue_ip }} ping -c 5 {{ ping_target }}"
+  register: ue_output
+  args:
+    chdir: ueransim_onramp/build
+  when: "inventory_hostname in groups['ueransim_nodes']"
+
+- debug:
+    var: ue_output.stdout_lines
+  when: "inventory_hostname in groups['ueransim_nodes']"

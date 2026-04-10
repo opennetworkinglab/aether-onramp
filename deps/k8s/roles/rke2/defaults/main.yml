@@ -1,0 +1,9 @@
+k8s:
+  rke2:
+    version: v1.24.17+rke2r1
+    config:
+      token: aether-k8s-rke2
+      port: 9345
+      params_file:
+        master: ""
+        worker: ""

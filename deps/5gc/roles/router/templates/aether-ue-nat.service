@@ -1,0 +1,13 @@
+# Copyright 2022-present Open Networking Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+After=network-online.target aether-5gc-macvlan.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "/usr/sbin/iptables -t nat -C POSTROUTING -s {{ core.upf.default_upf.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE || /usr/sbin/iptables -t nat -A POSTROUTING -s {{ core.upf.default_upf.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE"
+
+[Install]
+WantedBy=sys-subsystem-net-devices-core.device

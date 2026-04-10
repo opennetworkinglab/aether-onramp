@@ -1,0 +1,300 @@
+---
+
+- set_fact:
+    systemd_network_dir: /etc/systemd/network
+    systemd_system_dir: /etc/systemd/system
+
+- set_fact:
+    subnet: "{{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: remove static route for upf traffic on gnbsim node
+  shell: |
+    ip route del {{ subnet }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: remove a static route on core host for {{ gnbsim.router.macvlan.subnet_prefix }}.0.0/24 via {{ hostvars[item]['ansible_default_ipv4']['address'] }}
+  shell: |
+    ip route del {{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', item) }}.0/24 via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  with_items: "{{ play_hosts | intersect(groups['gnbsim_nodes']) | difference(groups['master_nodes']) }}"
+  when: (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: stop gnbsim-iptables.service
+  systemd:
+    name: gnbsim-iptables.service
+    state: stopped
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: disable gnbsim-iptables.service
+  systemd:
+    name: gnbsim-iptables.service
+    enabled: false
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: delete /etc/systemd/system/gnbsim-iptables.service
+  file:
+    path: "{{ systemd_system_dir }}/gnbsim-iptables.service"
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: stop gnbsim-macvlan.service
+  systemd:
+    name: gnbsim-macvlan.service
+    state: stopped
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: disable gnbsim-macvlan.service
+  systemd:
+    name: gnbsim-macvlan.service
+    enabled: false
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: delete /etc/systemd/system/gnbsim-macvlan.service
+  file:
+    path: "{{ systemd_system_dir }}/gnbsim-macvlan.service"
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: check if systemd-networkd is active
+  shell: systemctl is-active systemd-networkd 2>/dev/null || true
+  register: systemd_networkd_state
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: set whether systemd-networkd is active
+  set_fact:
+    systemd_networkd_active: "{{ (systemd_networkd_state.stdout | default('') | trim) == 'active' }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+  ignore_errors: yes
+
+- name: delete persistent gnbsim iptables rules file
+  file:
+    path: /etc/iptables/gnbsim-rules.v4
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from access to gnbaccess"
+  iptables:
+    chain: FORWARD
+    in_interface: "access"
+    out_interface: "gnbaccess"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from gnbaccess to access"
+  iptables:
+    chain: FORWARD
+    in_interface: "gnbaccess"
+    out_interface: "access"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname in groups['master_nodes'])
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ gnbsim.router.data_iface }} to gnbaccess"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ gnbsim.router.data_iface }}"
+    out_interface: "gnbaccess"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: "delete iptable rule: forward from gnbaccess to {{ gnbsim.router.data_iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "gnbaccess"
+    out_interface: "{{ gnbsim.router.data_iface }}"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: find {{ gnbsim.router.data_iface }}'s active systemd-networkd file via networkctl
+  shell: |
+    networkctl status {{ gnbsim.router.data_iface }} 2>/dev/null \
+      | awk -F': ' '/Network File:/ && $2 ~ /\.network$/ {print $2; exit}' \
+      | xargs -r basename
+  register: data_iface_network_file_networkctl
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: find {{ gnbsim.router.data_iface }}'s systemd-networkd file by filename
+  shell: |
+    find /etc/systemd/network /run/systemd/network /lib/systemd/network /usr/lib/systemd/network \
+      -maxdepth 1 -type f -name '*{{ gnbsim.router.data_iface }}.network' -print 2>/dev/null \
+      | sort \
+      | head -n 1 \
+      | xargs -r basename
+  register: data_iface_network_file_cmd
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (data_iface_network_file_networkctl.stdout | default('') | trim) == ''
+  become: true
+  ignore_errors: yes
+
+- name: set {{ gnbsim.router.data_iface }}'s systemd-networkd filename
+  set_fact:
+    data_iface_network_filename: >-
+      {{
+        (data_iface_network_file_networkctl.stdout | default('') | trim)
+        if (data_iface_network_file_networkctl.stdout | default('') | trim) != ''
+        else (data_iface_network_file_cmd.stdout | default('') | trim)
+      }}
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - systemd_networkd_active
+  ignore_errors: yes
+
+- name: set empty systemd-networkd filename when systemd-networkd is inactive
+  set_fact:
+    data_iface_network_filename: ''
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (systemd_networkd_active | default(false))
+  ignore_errors: yes
+
+- name: delete {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan-gnbsim.conf
+  file:
+    path: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan-gnbsim.conf"
+    state: absent
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (data_iface_network_filename | default('') | trim) != ''
+  become: true
+
+- name: delete {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d if empty
+  shell: rmdir {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (data_iface_network_filename | default('') | trim) != ''
+  become: true
+  ignore_errors: yes
+
+- name: delete {{ systemd_network_dir }}/20-gnbsim-access.network
+  file:
+    path: "{{ systemd_network_dir }}/20-gnbsim-access.network"
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: delete  {{ systemd_network_dir }}/10-gnbsim-access.netdev
+  file:
+    path: "{{ systemd_network_dir }}/10-gnbsim-access.netdev"
+    state: absent
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+# TODO: fix this hack (make a proper cleanup service)
+- name: remove gnbaccess macvlan interface
+  shell: |
+    ip link del gnbaccess || true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: set net.ipv4.conf.all.arp_filter to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.{{ gnbsim.router.data_iface }}.forwarding to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.{{ gnbsim.router.data_iface }}.forwarding
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: set net.ipv4.ip_forward to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - systemd_networkd_active
+  become: true

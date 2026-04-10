@@ -1,0 +1,15 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=5GC iptables rules
+After=network-online.target aether-5gc-macvlan.service sys-subsystem-net-devices-core.device{% if not core.upf.multihop_gnb %} sys-subsystem-net-devices-access.device{% endif %}
+Wants=network-online.target sys-subsystem-net-devices-core.device{% if not core.upf.multihop_gnb %} sys-subsystem-net-devices-access.device{% endif %}
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -n < /etc/iptables/5gc-rules.v4'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

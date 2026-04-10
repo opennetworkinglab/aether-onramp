@@ -1,0 +1,5 @@
+---
+
+- name: install amp/monitor-load
+  import_tasks: roles/monitor-load/tasks/install.yml
+  tags: install

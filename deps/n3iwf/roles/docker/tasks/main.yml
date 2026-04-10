@@ -1,0 +1,5 @@
+---
+
+- name: install n3iwf/docker
+  import_tasks: roles/docker/tasks/install.yml
+  tags: install

@@ -1,0 +1,11 @@
+---
+
+- name: provision n3iwf
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - "vars/main.yml"
+
+  roles:
+    - n3iwf

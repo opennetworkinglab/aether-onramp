@@ -1,0 +1,77 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and n3iwf nodes: {{ n3iwf.servers|length }} vs {{ groups['n3iwf_nodes']|length }}"
+  when: n3iwf.servers|length != groups['n3iwf_nodes']|length
+
+- name: check if static route exists for {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  shell: |
+    ip route show {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  register: route_check
+  changed_when: false
+  failed_when: false
+  when:
+    - (inventory_hostname in groups['n3iwf_nodes'])
+    - (inventory_hostname not in groups['master_nodes'])
+    - core.upf.multihop_gnb == false
+  become: true
+
+- name: remove a static route on n3iwf host for {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  shell: |
+    ip route del {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  when:
+    - (inventory_hostname in groups['n3iwf_nodes'])
+    - (inventory_hostname not in groups['master_nodes'])
+    - core.upf.multihop_gnb == false
+    - route_check.stdout != ""
+  become: true
+
+- name: set net.ipv4.conf.all.arp_filter to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true

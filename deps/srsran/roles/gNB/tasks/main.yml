@@ -1,0 +1,9 @@
+---
+
+- name: start srsran/gNB
+  import_tasks: roles/gNB/tasks/start.yml
+  tags: start
+
+- name: stop srsran/gNB
+  import_tasks: roles/gNB/tasks/stop.yml
+  tags: stop

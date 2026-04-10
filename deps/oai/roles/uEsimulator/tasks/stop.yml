@@ -1,0 +1,28 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and oai nodes: {{ oai.servers|length }} vs {{ groups['oai_nodes']|length }}"
+  when: oai.servers|length != groups['oai_nodes']|length
+
+- name: delete {{ oai.docker.container.ue_image }} container
+  community.docker.docker_container:
+    name: "rfsim5g-oai-nr-ue"
+    state: absent
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: remove /tmp/oai-ue.conf
+  file:
+    path: "/tmp/oai-ue.conf"
+    state: absent
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: remove {{ oai.docker.container.ue_image }} image
+  community.docker.docker_image:
+    name: "{{ oai.docker.container.ue_image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true

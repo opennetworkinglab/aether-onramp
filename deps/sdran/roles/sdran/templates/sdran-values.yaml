@@ -1,0 +1,41 @@
+onos-e2t:
+  service:
+    external:
+      enabled: true
+    e2:
+     nodePort: 36401
+
+ran-simulator:
+  pci:
+    modelName: {{ sdran.sdran.ransim.model }}
+    metricName: {{ sdran.sdran.ransim.metric }}
+
+import:
+  onos-uenib:
+    enabled: {{ sdran.sdran.import.uenib }}
+  onos-kpimon:
+    enabled: {{ sdran.sdran.import.kpimon }}
+  onos-pci:
+    enabled: {{ sdran.sdran.import.pci }}
+  onos-mho:
+    enabled: {{ sdran.sdran.import.mho }}
+  onos-mlb:
+    enabled: {{ sdran.sdran.import.mlb }}
+  onos-rsm:
+    enabled: false # should be always false when we use ran-simulator
+  rimedo-ts:
+    enabled: {{ sdran.sdran.import.ts }}
+  onos-topo:
+    enabled: {{ sdran.sdran.import.topo }}
+  onos-e2t:
+    enabled: {{ sdran.sdran.import.e2t }}
+  onos-a1t:
+    enabled: {{ sdran.sdran.import.a1t }}
+  onos-o1t:
+    enabled: false # should be always false
+  onos-config:
+    enabled: {{ sdran.sdran.import.config }}
+  ran-simulator:
+    enabled: {{ sdran.sdran.import.ransim }}
+  onos-gui:
+    enabled: false # should be always false

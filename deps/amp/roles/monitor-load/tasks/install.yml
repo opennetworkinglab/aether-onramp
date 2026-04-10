@@ -1,0 +1,35 @@
+---
+
+- name: Create a k8s "aether-5gc" namespace
+  kubernetes.core.k8s:
+    name: aether-5gc
+    kind: Namespace
+    state: present
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: Create a k8s "cattle-dashboards" namespace
+  kubernetes.core.k8s:
+    name: cattle-dashboards
+    kind: Namespace
+    state: present
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: Copy monitoring content in /tmp/monitoring to remote host
+  copy:
+    src:  "{{ ROOT_DIR }}/{{ amp.monitor_dashboard }}/"
+    dest: /tmp/monitoring/
+  when: inventory_hostname in groups['master_nodes']
+
+- name: apply monitoring dashboard
+  shell: |
+    kubectl apply -k /tmp/monitoring
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove /tmp/monitoring
+  file:
+    path: "/tmp/monitoring"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']

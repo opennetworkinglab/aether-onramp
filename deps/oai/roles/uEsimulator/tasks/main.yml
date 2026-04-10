@@ -1,0 +1,9 @@
+---
+
+- name: start oai/uEsimulator
+  import_tasks: roles/uEsimulator/tasks/start.yml
+  tags: start
+
+- name: stop oai/uEsimulator
+  import_tasks: roles/uEsimulator/tasks/stop.yml
+  tags: stop

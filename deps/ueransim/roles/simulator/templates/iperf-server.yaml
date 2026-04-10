@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf-server
+  namespace: aether-5gc  
+  labels:
+      app: iperf-server
+spec:
+  containers:
+    - name: iperf
+      image: cagedata/iperf3
+      command: ["iperf3", "-s", "-p 5201" ]
+      # command: ["sleep", "infinity"]
+      ports:
+        - containerPort: 5201
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf-service
+  namespace: aether-5gc  # Change if iperf is to run in a different namespace
+spec:
+  selector:
+    app: iperf-server  # Ensure this matches the labels of the Pod
+  ports:
+    - port: 5201        # The port that the service will expose
+      targetPort: 5201  # The port on the Pod that the service will forward to
+  type: ClusterIP      # Change to NodePort or LoadBalancer if needed

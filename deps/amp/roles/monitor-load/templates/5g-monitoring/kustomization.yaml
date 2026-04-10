@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2022-present Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+resources:
+  - ./metricfunc-monitor.yaml
+  - ./upf-monitor.yaml
+
+configMapGenerator:
+  - name: grafana-ops-dashboards
+    namespace: cattle-dashboards
+    files:
+      - ./5g-dashboard.json
+generatorOptions:
+  labels:
+    grafana_dashboard: "1"

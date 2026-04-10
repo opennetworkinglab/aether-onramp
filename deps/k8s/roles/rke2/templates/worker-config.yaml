@@ -1,0 +1,10 @@
+server: https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] }}:{{ k8s.rke2.config.port }}
+token: {{ k8s.rke2.config.token }}
+node-name: {{ inventory_hostname }}
+cni: multus,canal
+cluster-cidr: 10.42.0.0/16
+service-cidr: 10.43.0.0/16
+kubelet-arg:
+- --allowed-unsafe-sysctls=net.*
+kube-proxy-arg:
+- --metrics-bind-address=0.0.0.0:10249

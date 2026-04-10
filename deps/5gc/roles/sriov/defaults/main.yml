@@ -1,0 +1,4 @@
+core:
+  data_iface: data
+  upf:
+    mode: dpdk

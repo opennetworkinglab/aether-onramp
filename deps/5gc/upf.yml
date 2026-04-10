@@ -1,0 +1,11 @@
+---
+
+- name: provision upf
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - "vars/main.yml"
+
+  roles:
+    - upf

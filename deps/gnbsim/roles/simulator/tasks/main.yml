@@ -1,0 +1,5 @@
+---
+
+- name: start gnbsim/simulator
+  import_tasks: roles/simulator/tasks/start.yml
+  tags: start

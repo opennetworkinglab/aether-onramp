@@ -1,0 +1,7 @@
+---
+
+- name: debug hosts
+  hosts: all
+  gather_facts: true
+
+  tasks:

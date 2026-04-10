@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=OAI iptables rules
+After=systemd-networkd.service docker.service
+Wants=sys-subsystem-net-devices-{{ oai.docker.network.bridge.name }}.device
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -n < /etc/iptables/oai-rules.v4'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+---
+
+- name: install srsran/router
+  import_tasks: roles/router/tasks/install.yml
+  tags: install
+
+- name: uninstall srsran/router
+  import_tasks: roles/router/tasks/uninstall.yml
+  tags: uninstall

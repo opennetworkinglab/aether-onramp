@@ -1,0 +1,144 @@
+---
+
+- name: check if docker is installed
+  command: docker --version
+  register: docker_valid
+  ignore_errors: yes
+
+- name: print docker version output
+  debug:
+    var: docker_valid.stdout
+
+- meta: end_play
+  when: docker_valid.failed == false
+
+- name: update apt cache before removing old sources
+  apt:
+    update_cache: true
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Delete previous apt sources (1)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Delete previous apt sources (2)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+    state: absent
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: install required system packages
+  apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: latest
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Create directory for Docker's GPG key
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Download Docker GPG key
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+    owner: root
+    group: root
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Add Docker repository to APT sources
+  vars:
+    arch_mapping:
+      x86_64: amd64
+      aarch64: arm64
+  apt_repository:
+    repo: "deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+    state: present
+    filename: docker
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: install docker-ce
+  apt:
+    name: docker-ce
+    state: latest
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- set_fact:
+    UBUNTU_VERSION: "{{ ansible_distribution_version }}"
+  when: inventory_hostname in groups['oscric_nodes']
+
+- name: install docker module for Python
+  pip:
+    name: docker
+  when: inventory_hostname in groups['oscric_nodes'] and UBUNTU_VERSION is version_compare('24.04', '<')
+  become: true
+
+- name: install python3-docker package
+  apt:
+    name: python3-docker
+  when: inventory_hostname in groups['oscric_nodes'] and UBUNTU_VERSION is version_compare('24.04', '>=')
+  become: true
+
+- name: pull hello-world docker image
+  community.docker.docker_image:
+    name: "hello-world"
+    source: pull
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: create hello-world container
+  community.docker.docker_container:
+    name: "hello-world"
+    image: "hello-world"
+    state: started
+    auto_remove: true
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Create docker group
+  group:
+    name: docker
+    state: present
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: Add current user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true
+
+- name: run docker without sudo
+  file:
+    path: /var/run/docker.sock
+    owner: "{{ ansible_user }}"
+  when: inventory_hostname in groups['oscric_nodes']
+  become: true

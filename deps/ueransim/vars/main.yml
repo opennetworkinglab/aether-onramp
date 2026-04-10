@@ -1,0 +1,15 @@
+core:
+  upf:
+    access_subnet: "192.168.252.1/24"
+    multihop_gnb: false
+  amf:
+    ip: "172.31.3.101"
+
+ueransim:
+  version: v3.2.7
+  gnb:
+    ip: "172.20.0.2"
+  servers:
+    0:
+      gnb: "config/custom-gnb.yaml"
+      ue: "config/custom-ue.yaml"

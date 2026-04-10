@@ -1,0 +1,19 @@
+ueransim:
+  version: v3.2.7
+  docker:
+    network:
+      macvlan:
+        name: ueransimnet
+
+  gnb:
+    ip: "172.20.0.2"
+
+  servers:
+    0:
+      gnb: "config/custom-gnb.yaml"
+      ue: "config/custom-ue.yaml"
+core:
+  upf:
+    multihop_gnb: false
+  amf:
+    ip: "172.16.248.6"

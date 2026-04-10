@@ -1,0 +1,159 @@
+---
+
+- name: find {{ core.data_iface }}'s subnet for RAN
+  shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
+  register: result
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# TODO: check if interface subnet is valid
+- set_fact:
+    ran_subnet: "{{ result.stdout if (core.ran_subnet == '') else core.ran_subnet }}"
+    access_gw: "{{ core.upf.access_subnet[:-3] }}"
+    access_ip: "{{ core.upf.default_upf.ip.access + '/24' }}"
+    core_gw: "{{ core.upf.core_subnet[:-3] }}"
+    core_ip: "{{ core.upf.default_upf.ip.core + '/24' }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- debug:
+    var: ran_subnet
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/sdcore-5g-values.yaml
+  file:
+    path: "/tmp/sdcore-5g-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy {{ core.values_file }} to /tmp/sdcore-5g-values.yaml
+  template:
+    src: "{{ ROOT_DIR }}/{{ core.values_file }}"
+    dest: "/tmp/sdcore-5g-values.yaml"
+  when: inventory_hostname in groups['master_nodes']
+
+- set_fact:
+    local_sd_core_chart_root: "{{ core.helm.chart_ref | regex_replace('^(.*)/.*$', '\\1')  }}"
+    local_sd_core_chart_path: "/tmp/sdcore-helm-charts/{{ core.helm.chart_ref | regex_replace('^.*/(.*)$', '\\1') }}"
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- debug:
+    var: local_sd_core_chart_root
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- set_fact:
+    core_helm_requires_repo_update: "{{ (not core.helm.local_charts) and not (core.helm.chart_ref is match('^oci://')) }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy local_charts to /tmp/sdcore-helm-charts
+  synchronize:
+    src: "{{ local_sd_core_chart_root }}/"
+    dest: /tmp/sdcore-helm-charts
+    recursive: yes
+    rsync_opts:
+      - "--exclude=.git"
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- debug:
+    var: local_sd_core_chart_path
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- name: read local 5gc-cp Chart.yaml
+  slurp:
+    src: /tmp/sdcore-helm-charts/5g-control-plane/Chart.yaml
+  register: core_cp_chart_yaml
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- name: derive local 5gc-cp chart dependency names
+  set_fact:
+    core_cp_dependency_names: >-
+      {{
+        ((core_cp_chart_yaml.content | b64decode | from_yaml).dependencies | default([]))
+        | map(attribute='name')
+        | list
+      }}
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- name: check local 5gc-cp charts directory
+  stat:
+    path: /tmp/sdcore-helm-charts/5g-control-plane/charts
+  register: core_cp_charts_dir
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+- name: check local 5gc-cp chart dependencies
+  find:
+    paths: /tmp/sdcore-helm-charts/5g-control-plane/charts
+    patterns: "{{ item }}-*"
+    recurse: false
+  loop: "{{ core_cp_dependency_names }}"
+  register: core_cp_chart_dependencies
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.helm.local_charts
+    - core_cp_charts_dir.stat.exists
+    - core_cp_dependency_names | length > 0
+
+- name: require manual 5gc-cp helm dependency update when charts are missing
+  fail:
+    msg: >-
+      Missing 5g-control-plane chart dependencies under
+      /tmp/sdcore-helm-charts/5g-control-plane/charts. Run
+      'helm dep up {{ local_sd_core_chart_root }}/5g-control-plane' before
+      deploying with local SD-Core charts.
+      Missing: {{ core_cp_chart_dependencies.results | default([]) | selectattr('matched', 'equalto', 0) | map(attribute='item') | join(', ') }}.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.helm.local_charts
+    - not core_cp_charts_dir.stat.exists or (core_cp_chart_dependencies.results | default([]) | selectattr('matched', 'equalto', 0) | list | length) > 0
+
+- name: update aether 5gc helm dependencies
+  shell: |
+    helm dep up {{local_sd_core_chart_path}}
+  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
+
+# TODO: add systems check to avoid issues (e.g., mongodb needing avx support)
+- name: deploy aether 5gc
+  block:
+    - name: deploy aether 5gc
+      kubernetes.core.helm:
+        update_repo_cache: "{{ core_helm_requires_repo_update }}"
+        name: sd-core
+        release_namespace: aether-5gc
+        create_namespace: true
+        chart_ref: "{{ core.helm.chart_ref if core.helm.local_charts == false else local_sd_core_chart_path }}"
+        chart_version: "{{ core.helm.chart_version if core.helm.local_charts == false else omit }}"
+        values_files:
+          - /tmp/sdcore-5g-values.yaml
+        wait: true
+        wait_timeout: "2m30s"
+        force: true
+      when: inventory_hostname in groups['master_nodes']
+
+  rescue:
+    - name: Get Pods Status
+      shell: kubectl get po -n aether-5gc
+      register: pod_status
+      changed_when: false
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: restart Pods if not running
+      shell: |
+        while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+
+          name=$(echo "$line" | awk '{print $1}')
+          status=$(echo "$line" | awk '{print $3}')
+
+          [[ -z "$name" || "$name" == "NAME" ]] && continue
+
+          if [[ "$status" != "Running" ]]; then
+            kubectl delete pod "$name" -n aether-5gc
+          fi
+        done <<< "{{ pod_status.stdout }}"
+      args:
+        executable: /bin/bash
+      register: pod_restart
+      changed_when: "'deleted' in pod_restart.stdout"
+      when: inventory_hostname in groups['master_nodes']
+  always:
+    - pause:
+        seconds: 60

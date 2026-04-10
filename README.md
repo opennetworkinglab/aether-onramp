@@ -6,17 +6,16 @@ cluster, and then connect that Core to either an emulated 5G RAN
 or a network of physical gNBs. (OnRamp also supports a 4G
 configuration that connects physical eNBs.)
 
-To download Aether OnRamp (and all the submodules it depends on),
-type:
+To download Aether OnRamp, type:
 
 ```
-$ git clone --recursive https://github.com/opennetworkinglab/aether-onramp.git
+$ git clone https://github.com/opennetworkinglab/aether-onramp.git
 ```
 
 Taking a quick look at your ``aether-onramp`` directory, you will
 find the following.
 
-1. The ``deps`` directory contains Ansible deployment
+1. The ``deps`` directory contains vendored Ansible deployment
    specifications for all the Aether subsystems. Each of these
    subdirectories (e.g., ``deps/5gc``) is self-contained, but
    the Makefile in the main OnRamp directory imports the

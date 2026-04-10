@@ -1,0 +1,95 @@
+---
+
+- set_fact:
+    network_macvlan_name: "{{ gnbsim.docker.network.macvlan.name }}"
+
+- name: get info on gnbsim containers
+  community.docker.docker_container_info:
+    name: "{{ gnbsim.docker.container.prefix }}-{{ (item.0|int)+1 }}"
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  register: container_info
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: Remove config file on host
+  ansible.builtin.file:
+    path: "/tmp/gnbsim-{{ (item.0|int)+1 }}.yaml"
+    state: absent
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: copy config files to gnbsim host
+  template:
+    src: "{{ ROOT_DIR }}/{{ item.1 }}"
+    dest: /tmp/gnbsim-{{ (item.0|int)+1 }}.yaml
+  vars:
+    ping_target: "{{ core.upf.core_subnet[:-3] }}"
+    amf_ip: "{{ core.amf.ip }}"
+    container_ip: "{{ container_info.results[item.0].container.NetworkSettings.Networks[network_macvlan_name].IPAddress }}"
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: copy config files into gnbsim containers
+  shell: |
+    docker cp /tmp/gnbsim-{{ (item.0|int)+1 }}.yaml \
+      gnbsim-{{ (item.0|int)+1 }}:/tmp/gnbsim.yaml
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: clear Docker logs for gnbsim containers
+  shell: |
+    log_path="{{ container_info.results[item.0].container.LogPath | default('') }}"
+    if [ -n "$log_path" ] && [ -f "$log_path" ]; then
+      truncate -s 0 "$log_path"
+    fi
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: start gnbsim
+  community.docker.docker_container_exec:
+    container: "{{ gnbsim.docker.container.prefix }}-{{ (item.0|int)+1 }}"
+    command: |
+      /bin/bash -o pipefail -c "
+      set -e
+      rm -rf *.log; rm -f *.config
+      gnbsim --cfg /tmp/gnbsim.yaml > /proc/1/fd/1 2> /proc/1/fd/2
+      run_suffix={{ (item.0|int)+1 }}-{{ ansible_date_time.iso8601_basic_short }}
+      cp -f gnbsim.log ./gnbsim${run_suffix}.log
+      cp -f summary.log ./summary${run_suffix}.log
+      cp -f /tmp/gnbsim.yaml ./gnbsim${run_suffix}.config
+      "
+  async: 100
+  poll: 0
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- pause:
+    seconds: 1
+
+- name: loop until gnbsim completes
+  shell: |
+    ps aux | grep "\-\-cfg\ /tmp/gnbsim" | wc -l
+  register: async_result
+  until: async_result.stdout == "0"
+  retries: 100
+  delay: 5
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: show outupt of summary.log from gnbsim Pod
+  shell: |
+    docker exec gnbsim-1 cat summary.log
+  register: gNbsimPod
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: Check if simulation failed
+  set_fact:
+    status_fail: "{{ 'Status: FAIL' in gNbsimPod.stdout }}"
+
+- debug:
+    msg: "{{ gNbsimPod.stdout_lines | map('regex_replace', '^([^\t]*\t){3}([^\t]*)\t.*$', '\\2') | list }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
+  failed_when: status_fail
+  ignore_errors: yes

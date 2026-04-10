@@ -1,0 +1,9 @@
+---
+
+- name: install oai/docker
+  import_tasks: roles/docker/tasks/install.yml
+  tags: install
+
+- name: uninstall oai/docker
+  import_tasks: roles/docker/tasks/uninstall.yml
+  tags: uninstall

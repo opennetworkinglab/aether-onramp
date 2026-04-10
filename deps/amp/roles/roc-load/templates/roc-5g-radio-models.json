@@ -1,0 +1,178 @@
+{
+    "default-target": "the-enterprise",
+    "Updates": {
+        "site-2.1.0": [
+            {
+                "description": "Aether Test Site",
+                "display-name": "Aether Site",
+                "site-id": "site-1",
+                "imsi-definition": {
+                    "mcc": "001",
+                    "mnc": "01",
+                    "enterprise": 1,
+                    "format": "CCCNNEESSSSSSSS"
+                },
+                "connectivity-service": {
+                    "core-5g": {
+                        "endpoint": "http://webui.aether-5gc.svc:5000/config"
+                    }
+                },
+                "device": [
+                    {
+                        "device-id": "ue-1",
+                        "display-name": "UE 1",
+                        "sim-card": "sim-1"
+                    },
+                    {
+                        "device-id": "ue-2",
+                        "display-name": "UE 2",
+                        "sim-card": "sim-2"
+                    },
+                    {
+                        "device-id": "ue-3",
+                        "display-name": "UE 3",
+                        "sim-card": "sim-3"
+                    },
+                    {
+                        "device-id": "ue-4",
+                        "display-name": "UE 4",
+                        "sim-card": "sim-4"
+                    },
+                    {
+                        "device-id": "ue-5",
+                        "display-name": "UE 5",
+                        "sim-card": "sim-5"
+                    }
+                ],
+                "sim-card": [
+                    {
+                        "sim-id": "sim-1",
+                        "display-name": "SIM 1",
+                        "imsi": "001010123456864"
+                    },
+                    {
+                        "sim-id": "sim-2",
+                        "display-name": "SIM 2",
+                        "imsi": "001010123456865"
+                    },
+                    {
+                        "sim-id": "sim-3",
+                        "display-name": "SIM 3",
+                        "imsi": "001010123456866"
+                    },
+                    {
+                        "sim-id": "sim-4",
+                        "display-name": "SIM 4",
+                        "imsi": "001010123456867"
+                    },
+                    {
+                        "sim-id": "sim-5",
+                        "display-name": "SIM 5",
+                        "imsi": "001010123456868"
+                    }
+                ],
+                "device-group": [
+                    {
+                        "display-name": "Aether Users",
+                        "device-group-id": "device-group-1",
+                        "device": [
+                            {
+                                "device-id": "ue-1",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-2",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-3",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-4",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-5",
+                                "enable": true
+                            }
+                        ],
+                        "ip-domain": "ip-pool-1",
+                        "mbr": {
+                            "uplink": 200000,
+                            "downlink": 20000000
+                        },
+                        "traffic-class": "class-1"
+                    }
+                ],
+                "ip-domain": [
+                    {
+                        "admin-status": "ENABLE",
+                        "display-name": "IP pool",
+                        "dnn": "internet",
+                        "dns-primary": "8.8.8.8",
+                        "ip-domain-id": "ip-pool-1",
+                        "mtu": 1460,
+                        "subnet": "{{ core.upf.default_upf.ue_ip_pool }}"
+                    }
+                ],
+                "small-cell": [
+                    {
+                        "small-cell-id": "gnb-1",
+                        "display-name": "gNodeB 1",
+                        "address": "gnb1",
+                        "enable": true,
+                        "tac": "0001"
+                    }
+                ],
+                "upf": [
+                    {
+                        "address": "upf",
+                        "display-name": "Aether UPF",
+                        "upf-id": "upf-1",
+                        "port": 8805,
+                        "config-endpoint": "http://upf-http.aether-5gc.svc:8080"
+                    }
+                ],
+                "slice": [
+                    {
+                        "default-behavior": "ALLOW-ALL",
+                        "display-name": "Aether Slice",
+                        "device-group": [
+                            {
+                                "device-group": "device-group-1",
+                                "enable": true
+                            }
+                        ],
+                        "filter": [],
+                        "slice-id": "slice-1",
+                        "connectivity-service": "5g",
+                        "sd": "010203",
+                        "sst": "1",
+                        "upf": "upf-1",
+                        "mbr": {
+                            "uplink": 2000000,
+                            "downlink": 20000000
+                        },
+                        "priority-traffic-rule": []
+                    }
+                ]
+            }
+        ],
+        "traffic-class-2.1.0": [
+            {
+                "description": "High Priority TC",
+                "display-name": "Class 1",
+                "traffic-class-id": "class-1",
+                "pdb": 300,
+                "arp": 6,
+                "pelr": 6,
+                "qci": 9
+            }
+        ]
+    },
+    "Deletes": {},
+    "Extensions": {
+        "transaction-strategy-111": 1
+    }
+}

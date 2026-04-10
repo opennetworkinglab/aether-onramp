@@ -1,0 +1,168 @@
+# Copyright 2019-present Open Networking Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+omec-control-plane:
+  enable4G: true
+  images:
+    repository: ""    # defaults to Docker Hub
+  # cassandra values
+  cassandra:
+    config:
+      cluster_size: 1
+      seed_size: 1
+  resources:
+    enabled: false
+
+  config:
+    managedByConfigPod:
+      enabled: true
+      syncUrl: http://roc-sdcore-adapter-v2-1.aether-roc.svc:8080/synchronize
+    config4g:
+      deploy: true
+    hss:
+      bootstrap:
+        users: []
+        staticusers: []
+    spgwc:
+      pfcp: true
+      cfgFiles:
+        cp.json:
+          ip_pool_config:
+            ueIpPool:
+              ip: "172.250.0.0"
+              mask: "255.255.0.0"
+            staticUeIpPool:
+              ip: "172.250.1.0"
+              mask: "255.255.255.0"
+
+omec-sub-provision:
+  enable: true
+  images:
+    repository: ""    # defaults to Docker Hub
+  config:
+    simapp:
+      cfgFiles:
+        simapp.yaml:
+          configuration:
+            provision-network-slice: {{ core.standalone | string }}
+            sub-provision-endpt:
+              addr: config4g.omec.svc.cluster.local
+            # sub-proxy-endpt:
+            #   addr: subscriber-proxy.aether-roc.svc.cluster.local
+            #   port: 5000
+            subscribers:
+            - ueId-start: 315010999912301
+              ueId-end: 315010999912303
+              plmnId: 315010
+              opc: 69d5c2eb2e2e624750541d3bbc692ba5
+              key: 000102030405060708090a0b0c0d0e0f
+              sequenceNumber: 96
+            - ueId-start: 315010205000001	# example of multiple ranges
+              ueId-end: 315010205000020
+              plmnId: 315010
+              opc: 69d5c2eb2e2e624750541d3bbc692ba5
+              key: 000102030405060708090a0b0c0d0e0f
+            device-groups:
+            - name:  "4g-oaisim-user"
+              imsis:
+                - "315010999912301"
+                - "315010999912302"
+                - "315010999912303"
+                - "315010205000001"
+                - "315010205000002"
+                - "315010205000003"
+                - "315010205000004"
+                - "315010205000005"
+                - "315010205000006"
+                - "315010205000007"
+                - "315010205000008"
+                - "315010205000009"
+                - "315010205000010"
+                - "315010205000011"
+                - "315010205000012"
+                - "315010205000013"
+                - "315010205000014"
+                - "315010205000015"
+                - "315010205000016"
+                - "315010205000017"
+                - "315010205000018"
+                - "315010205000019"
+                - "315010205000020"
+              ip-domain-name: "pool1"
+              ip-domain-expanded:
+                dnn: internet
+                dns-primary: "8.8.8.8"
+                mtu: 1460
+                ue-ip-pool: "{{ core.upf.default_upf.ue_ip_pool }}"
+                ue-dnn-qos:
+                  dnn-mbr-downlink: 20000000
+                  dnn-mbr-uplink: 4000000
+                  bitrate-unit: bps
+                  traffic-class:  #default bearer QCI/ARP
+                    name: "platinum"
+                    qci: 9
+                    arp: 6
+                    pdb: 300
+                    pelr: 6
+              site-info: "aiab"
+            network-slices:
+            - name: "default"
+              slice-id:
+                sd: "010203"
+                sst: 1
+              site-device-group:
+              - "4g-oaisim-user"
+              application-filtering-rules:
+              - rule-name: "ALLOW-ALL"
+                priority: 250
+                action: "permit"
+                endpoint: "0.0.0.0/0"
+              site-info:
+                gNodeBs:
+                - name: "aiab-gnb1"
+                  tac: 1
+                plmn:
+                  mcc: "315"
+                  mnc: "010"
+                site-name: "aiab"
+                upf:
+                  upf-name: "upf"
+                  upf-port: 8805
+
+omec-user-plane:
+  enable: true
+  images:
+    repository: ""    # defaults to Docker Hub
+    # following two lines pull busybox from Docker Hub instead of Aether Registry
+    tags:
+      tools: busybox:stable
+  resources:
+    enabled: false
+  config:
+    upf:
+      sriov:
+        enabled: false
+      hugepage:
+        enabled: false
+      cniPlugin: macvlan
+      ipam: static
+      routes:
+        - to: {{ ansible_default_ipv4.address }}
+          via: 169.254.1.1
+      enb:
+        subnet: {{ ran_subnet }} # Subnet for the gNB network
+      access:
+        iface:  {{ core.data_iface }}
+      core:
+        iface: {{ core.data_iface }}
+      cfgFiles:
+        upf.jsonc:
+          mode: af_packet
+          hwcksum: true
+
+5g-control-plane:
+  enable5G: false
+
+5g-ran-sim:
+  enable: false

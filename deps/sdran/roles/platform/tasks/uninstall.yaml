@@ -1,0 +1,34 @@
+---
+
+- name: remove atomix
+  kubernetes.core.helm:
+    name: atomix
+    release_namespace: kube-system
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove onos-operator
+  kubernetes.core.helm:
+    name: onos-operator
+    release_namespace: kube-system
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: remove atomix chart repo
+  kubernetes.core.helm_repository:
+    name: atomix
+    state: absent
+    repo_url: "https://atomix.github.io/charts.atomix.io"
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: Delete Local Store
+  shell:
+    cmd: |
+      kubectl delete -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes

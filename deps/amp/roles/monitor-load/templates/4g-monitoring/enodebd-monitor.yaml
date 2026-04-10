@@ -1,0 +1,19 @@
+# Copyright 2022-present Open Networking Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: enodebd
+  namespace: aether-apps
+spec:
+  endpoints:
+    - path: /
+      port: prometheus-exporter
+  namespaceSelector:
+    matchNames:
+      - aether-apps
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enodebd

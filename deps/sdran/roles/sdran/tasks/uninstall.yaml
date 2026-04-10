@@ -1,0 +1,8 @@
+---
+
+- name: remove sdran
+  shell:
+    cmd: |
+      kubectl delete ns sdran
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes

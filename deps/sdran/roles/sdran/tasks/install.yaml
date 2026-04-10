@@ -1,0 +1,32 @@
+---
+
+- name: remove /tmp/sdran-values.yaml
+  file:
+    path: "/tmp/sdran-values.yaml"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: copy sdran-values.yaml to /tmp/sdran-values.yaml
+  template:
+    src: roles/sdran/templates/sdran-values.yaml
+    dest: "/tmp/sdran-values.yaml"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: update sdran helm dependencies
+  shell: |
+    helm dep up "{{ sdran.sdran.helm.chart_ref }}"
+  when: inventory_hostname in groups['master_nodes'] and sdran.sdran.helm.local_charts
+
+- name: deploy sdran from {{ sdran.sdran.helm.chart_ref }}
+  kubernetes.core.helm:
+    update_repo_cache: true
+    name: sd-ran
+    release_namespace: sdran
+    create_namespace: true
+    chart_ref: "{{ sdran.sdran.helm.chart_ref }}"
+    chart_version: "{{ sdran.sdran.helm.chart_version }}"
+    values_files:
+      - /tmp/sdran-values.yaml
+    wait: true
+    force: true
+  when: inventory_hostname in groups['master_nodes']

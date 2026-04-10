@@ -1,0 +1,55 @@
+---
+
+- name: find ONOS_CLI_POD
+  shell: kubectl -n aether-roc get pods -l name=onos-cli -o name
+  register: result
+  when: inventory_hostname in groups['master_nodes']
+
+- set_fact:
+    ONOS_CLI_POD: "{{ result.stdout }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: find API_SERVICE
+  shell: kubectl -n aether-roc get --no-headers=true services -l app.kubernetes.io/name=aether-roc-api | awk '{print $1}'
+  register: result
+  when: inventory_hostname in groups['master_nodes']
+
+- set_fact:
+    API_SERVICE: "{{ result.stdout }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- debug:
+    var: "ONOS_CLI_POD"
+  when: inventory_hostname in groups['master_nodes']
+
+- debug:
+    var: "API_SERVICE"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: remove /tmp/roc-models.yaml
+  file:
+    path: /tmp/roc-models.json
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
+
+- name: Copy models file to /tmp/roc-models.json
+  template:
+    src: "{{ ROOT_DIR }}/{{ amp.roc_models }}"
+    dest: "/tmp/roc-models.json"
+  when: inventory_hostname in groups['master_nodes']
+
+#TODO use ansible kubectl module
+- name: load roc models file
+  shell: 'kubectl -n aether-roc exec {{ ONOS_CLI_POD }} -- curl -s -f -L -X \
+          PATCH "http://{{ API_SERVICE }}:8181/aether-roc-api" \
+          --header "Content-Type: application/json" --data-raw \
+          "$(cat /tmp/roc-models.json)"'
+  register: result
+  until: result.stdout.find("command terminated") == -1
+  retries: 5
+  delay: 10
+  when: inventory_hostname in groups['master_nodes']
+
+- debug:
+    var: result.stdout
+  when: inventory_hostname in groups['master_nodes']

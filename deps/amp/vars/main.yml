@@ -1,0 +1,33 @@
+amp:
+  roc_models: "roles/roc-load/templates/roc-5g-models.json"
+  monitor_dashboard: "roles/monitor-load/templates/5g-monitoring"
+
+  aether_roc:
+    helm:
+      local_charts: false
+      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
+      chart_version: 2.1.40
+
+  atomix:
+    helm:
+      chart_ref: atomix/atomix
+      chart_version: 1.1.2
+
+  onosproject:
+    helm:
+      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
+      chart_version: 0.5.6
+
+  store:
+    lpp:
+      version: v0.0.24
+
+  monitor:
+    helm:
+      chart_ref: rancher/rancher-monitoring
+      chart_version: 101.0.0+up19.0.3
+
+  monitor_crd:
+    helm:
+      chart_ref: rancher/rancher-monitoring-crd
+      chart_version: 101.0.0+up19.0.3

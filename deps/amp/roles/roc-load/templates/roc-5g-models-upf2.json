@@ -1,0 +1,158 @@
+{
+    "default-target": "the-enterprise",
+    "Updates": {
+        "site-2.1.0": [
+            {
+                "description": "Aether Test Site",
+                "display-name": "Aether Site",
+                "site-id": "site-1",
+                "sim-card": [
+                    {
+                        "sim-id": "sim-20",
+                        "display-name": "SIM 20",
+                        "imsi": "208930100007505"
+                    },
+                    {
+                        "sim-id": "sim-21",
+                        "display-name": "SIM 21",
+                        "imsi": "208930100007506"
+                    },
+                    {
+                        "sim-id": "sim-22",
+                        "display-name": "SIM 22",
+                        "imsi": "208930100007507"
+                    },
+                    {
+                        "sim-id": "sim-23",
+                        "display-name": "SIM 23",
+                        "imsi": "208930100007508"
+                    },
+                    {
+                        "sim-id": "sim-24",
+                        "display-name": "SIM 24",
+                        "imsi": "208930100007509"
+                    }
+                ],
+                "device": [
+                    {
+                        "device-id": "ue-20",
+                        "display-name": "UE 20",
+                        "sim-card": "sim-20"
+                    },
+                    {
+                        "device-id": "ue-21",
+                        "display-name": "UE 21",
+                        "sim-card": "sim-21"
+                    },
+                    {
+                        "device-id": "ue-22",
+                        "display-name": "UE 22",
+                        "sim-card": "sim-22"
+                    },
+                    {
+                        "device-id": "ue-23",
+                        "display-name": "UE 23",
+                        "sim-card": "sim-23"
+                    },
+                    {
+                        "device-id": "ue-24",
+                        "display-name": "UE 24",
+                        "sim-card": "sim-24"
+                    }
+                ],
+                "ip-domain": [
+                    {
+                        "admin-status": "ENABLE",
+                        "display-name": "IP Pool 2",
+                        "dnn": "internet",
+                        "dns-primary": "8.8.8.8",
+                        "ip-domain-id": "ip-pool-2",
+                        "mtu": 1460,
+                        "subnet": "{{ core.upf.additional_upfs['1'].ue_ip_pool }}"
+                    }
+                ],
+                "device-group": [
+                    {
+                        "display-name": "Aether Users 2",
+                        "device-group-id": "device-group-2",
+                        "device": [
+                            {
+                                "device-id": "ue-20",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-21",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-22",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-23",
+                                "enable": true
+                            },
+                            {
+                                "device-id": "ue-24",
+                                "enable": true
+                            }
+                        ],
+                        "ip-domain": "ip-pool-2",
+                        "mbr": {
+                            "uplink": 500000000,
+                            "downlink": 500000000
+                        },
+                        "traffic-class": "class-1"
+                    }
+                ],
+                "slice": [
+                    {
+                        "default-behavior": "ALLOW-ALL",
+                        "display-name": "Aether Slice 2",
+                        "device-group": [
+                            {
+                                "device-group": "device-group-2",
+                                "enable": true
+                            }
+                        ],
+                        "filter": [],
+                        "slice-id": "slice-2",
+                        "connectivity-service": "5g",
+                        "sd": "010205",
+                        "sst": "2",
+                        "upf": "upf-2",
+                        "mbr": {
+                            "uplink": 500000000,
+                            "downlink": 500000000
+                        },
+                        "priority-traffic-rule": []
+                    }
+                ],
+                "upf": [
+                    {
+                        "address": "upf.aether-upf-1",
+                        "display-name": "Aether UPF 2",
+                        "upf-id": "upf-2",
+                        "port": 8805,
+                        "config-endpoint": "http://upf-http.aether-upf-1.svc:8080"
+                    }
+                ]
+            }
+        ],
+        "traffic-class-2.1.0": [
+            {
+                "description": "High Priority TC",
+                "display-name": "Class 2",
+                "traffic-class-id": "class-2",
+                "pdb": 300,
+                "arp": 6,
+                "pelr": 6,
+                "qci": 9
+            }
+        ]
+    },
+    "Deletes": {},
+    "Extensions": {
+        "transaction-strategy-111": 1
+    }
+}

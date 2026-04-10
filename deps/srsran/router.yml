@@ -1,0 +1,11 @@
+---
+
+- name: provision router
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - "vars/main.yml"
+
+  roles:
+    - router

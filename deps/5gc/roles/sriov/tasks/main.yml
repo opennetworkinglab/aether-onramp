@@ -1,0 +1,5 @@
+---
+
+- name: install 5gc/sriov
+  import_tasks: roles/sriov/tasks/install.yml
+  tags: install

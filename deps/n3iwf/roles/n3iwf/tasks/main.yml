@@ -1,0 +1,9 @@
+---
+
+- name: start n3iwf
+  import_tasks: roles/n3iwf/tasks/start.yml
+  tags: start
+
+- name: stop n3iwf
+  import_tasks: roles/n3iwf/tasks/stop.yml
+  tags: stop

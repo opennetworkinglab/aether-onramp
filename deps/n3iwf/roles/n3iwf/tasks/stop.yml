@@ -1,0 +1,37 @@
+---
+
+- name: delete 'n3iwf' container
+  community.docker.docker_container:
+    name: "n3iwf"
+    state: absent
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: remove /tmp/n3iwf-config.yaml
+  file:
+    path: "/tmp/n3iwf-config.yaml"
+    state: absent
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: remove /tmp/n3iwf.crt
+  file:
+    path: "/tmp/n3iwf.crt"
+    state: absent
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: remove /tmp/n3iwf.key
+  file:
+    path: "/tmp/n3iwf.key"
+    state: absent
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
+- name: remove {{ n3iwf.docker.image }} image
+  community.docker.docker_image:
+    name: "{{ n3iwf.docker.image }}"
+    state: absent
+    force_absent: true
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true

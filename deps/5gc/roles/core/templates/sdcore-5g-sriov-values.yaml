@@ -1,0 +1,511 @@
+# SPDX-FileCopyrightText: 2022-present Intel Corporation
+# Copyright 2019-present Open Networking Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Disable 4G Control Plane
+omec-control-plane:
+  enable4G: false
+
+# Disable 5G RAN Simulator
+5g-ran-sim:
+  enable: false
+
+# Override values for 5g-control-plane Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/5g-control-plane/values.yaml
+5g-control-plane:
+  enable5G: true
+  nodeSelectors:
+    enabled: false
+  # refer to above Helm Chart to add other NF images
+  # images:
+  #   repository: ""
+  #   tags:
+  #     amf: <amf image tag>
+
+  kafka:
+    deploy: true
+    # Enable nodeSelector if needed to control where to deploy the kafka instance(s)
+    # controller:
+    #   nodeSelector:
+    #     node-role.aetherproject.org/5gc: "true"
+
+  mongodb:
+    usePassword: false
+    persistence:
+      enabled: false
+    architecture: replicaset
+    replicaCount: 2
+    # Enable nodeSelector if needed to control where to deploy the mongodb instances
+    # nodeSelector:
+    #   node-role.aetherproject.org/5gc: "true"
+    # arbiter:
+    #   nodeSelector:
+    #     node-role.aetherproject.org/5gc: "true"
+
+  resources:
+    enabled: false
+
+  config:
+    # logger:
+    #   Util:
+    #     debugLevel: warn
+    #   AMF:
+    #     debugLevel: debug
+    #   SMF:
+    #     debugLevel: debug
+
+    mongodb:
+      name: aether
+      url: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
+      authKeysDbName: authentication
+      authUrl: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
+
+    managedByConfigPod:
+      enabled: true
+
+    sctplb:
+      deploy: false # If enabled then deploy sctp pod
+      ngapp:
+        externalIp: {{ core.amf.ip }}
+        port: 38412
+
+    upfadapter:
+      deploy: false # If enabled then deploy upf adapter pod
+
+    metricfunc:
+      deploy: true
+      cfgFiles:
+        metricscfg.yaml:
+          configuration:
+            controllerFlag: {{ core.closed_loop | default('false') }}
+            userAppApiServer:
+              addr: "upf"
+
+    # Change AMF config here if rquired
+    # Most of the AMF config comes from Slice APIs but some of the config is
+    # directly provided through Helm Charts
+    amf:
+      ngapp:
+        externalIp: {{ core.amf.ip }}
+      cfgFiles:
+        amfcfg.yaml:
+          configuration:
+            enableDBStore: true # Store AMF subscribers in the datastore
+            networkFeatureSupport5GS: # 5gs Network Feature Support IE, refer to TS 24.501 sec. 9.11.3.5
+              imsVoPS: 1 # IMS voice over PS session indicator (uinteger, range: 0~1)
+            # security:
+            #   integrityOrder:
+            #     - NIA3
+            #     - NIA2
+            #     - NIA0
+            #   cipheringOrder:
+            #     - NEA3
+            #     - NEA2
+            #     - NEA0
+
+    # SMF config override. Refer to Helm Charts values for more options
+    smf:
+      cfgFiles:
+        smfcfg.yaml:
+          configuration:
+            enableDBStore: true  # Store SMF subscribers in the datastore
+            # staticIpInfo:
+            #   - dnn: internet
+            #     imsiIpInfo:
+            #       imsi-208930100007510: "172.250.0.100"
+            #       imsi-208930100007511: "172.250.0.101"
+            #       imsi-208930100007512: "172.250.0.102"
+            #       imsi-208930100007513: "172.250.0.103"
+            #       imsi-208930100007514: "172.250.0.104"
+
+    #pcf:
+    #  cfgFiles:
+    #    pcfcfg.yaml:
+    #      configuration:
+
+    nrf:
+      cfgFiles:
+        nrfcfg.yaml:
+          configuration:
+            mongoDBStreamEnable: false    # enable/disable MongoDB stream in NRF
+            nfProfileExpiryEnable: true   # If enabled, remove NF profile if no keepalive received
+            nfKeepAliveTime: 60           # default timeout for NF profiles
+
+    webui:
+      cfgFiles:
+        webuicfg.yaml:
+          configuration:
+            managedByConfigPod:
+              enabled: {{ not core.standalone }}
+              syncUrl: http://roc-sdcore-adapter-v2-1.aether-roc.svc:8080/synchronize
+
+# Override values for omec-sub-provision (subscriber) Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/omec-sub-provision/values.yaml
+# ***Note: Most of these values can (and should) be set via ROC API***
+omec-sub-provision:
+  enable: true
+  nodeSelectors:
+    enabled: false
+  # images:
+  #   repository: ""
+  #   tags:
+  #     simapp: #add simapp override image
+
+  config:
+    simapp:
+      cfgFiles:
+        simapp.yaml:
+          configuration:
+            provision-network-slice: {{ core.standalone | string }} # if enabled, Device Groups & Slices configure by simapp
+            sub-provision-endpt:
+              addr: webui  # subscriber configuation endpoint.
+            # sub-proxy-endpt: # used if subscriber proxy is enabled in the ROC.
+            #   addr: subscriber-proxy.aether-roc.svc.cluster.local
+            #   port: 5000
+
+            # Configure Subscriber IMSIs and their security details.
+            # You can have any number of subscriber ranges
+            # This block is always necessary to establish range(s) of valid IMSIs
+            subscribers:
+            - ueId-start: "208930100007487"
+              ueId-end: "208930100007500"
+              plmnId: "20893"
+              opc: "981d464c7c52eb6e5036234984ad0bcf"
+              op: ""
+              key: "5122250214c33e723a5dd523fc145fc0"
+              sequenceNumber: "16f3b3f70fc2"
+            - ueId-start: "208930100007501"
+              ueId-end: "208930100007586"
+              plmnId: "20893"
+              opc: "981d464c7c52eb6e5036234984ad0bcf"
+              op: ""
+              key: "5122250214c33e723a5dd523fc145fc0"
+              sequenceNumber: "16f3b3f70fc2"
+
+            # Configure Device Groups (ignored if provision-network-slice is disabled)
+            device-groups:
+            - name:  "gnbsim-user-group1"
+              imsis:
+                - "208930100007487"
+                - "208930100007488"
+                - "208930100007489"
+                - "208930100007490"
+                - "208930100007491"
+                - "208930100007492"
+                - "208930100007493"
+                - "208930100007494"
+                - "208930100007495"
+                - "208930100007496"
+                - "208930100007497"
+                - "208930100007498"
+                - "208930100007499"
+                - "208930100007500"
+                - "208930100007501"
+                - "208930100007502"
+                - "208930100007503"
+                - "208930100007504"
+                - "208930100007505"
+                - "208930100007506"
+                - "208930100007507"
+                - "208930100007508"
+                - "208930100007509"
+                - "208930100007510"
+                - "208930100007511"
+                - "208930100007512"
+                - "208930100007513"
+                - "208930100007514"
+                - "208930100007515"
+                - "208930100007516"
+                - "208930100007517"
+                - "208930100007518"
+                - "208930100007519"
+                - "208930100007520"
+                - "208930100007521"
+                - "208930100007522"
+                - "208930100007523"
+                - "208930100007524"
+                - "208930100007525"
+                - "208930100007526"
+                - "208930100007527"
+                - "208930100007528"
+                - "208930100007529"
+                - "208930100007530"
+                - "208930100007531"
+                - "208930100007532"
+                - "208930100007533"
+                - "208930100007534"
+                - "208930100007535"
+                - "208930100007536"
+                - "208930100007537"
+                - "208930100007538"
+                - "208930100007539"
+                - "208930100007540"
+                - "208930100007541"
+                - "208930100007542"
+                - "208930100007543"
+                - "208930100007544"
+                - "208930100007545"
+                - "208930100007546"
+                - "208930100007547"
+                - "208930100007548"
+                - "208930100007549"
+                - "208930100007550"
+                - "208930100007551"
+                - "208930100007552"
+                - "208930100007553"
+                - "208930100007554"
+                - "208930100007555"
+                - "208930100007556"
+                - "208930100007557"
+                - "208930100007558"
+                - "208930100007559"
+                - "208930100007560"
+                - "208930100007561"
+                - "208930100007562"
+                - "208930100007563"
+                - "208930100007564"
+                - "208930100007565"
+                - "208930100007566"
+                - "208930100007567"
+                - "208930100007568"
+                - "208930100007569"
+                - "208930100007570"
+                - "208930100007571"
+                - "208930100007572"
+                - "208930100007573"
+                - "208930100007574"
+                - "208930100007575"
+                - "208930100007576"
+                - "208930100007577"
+                - "208930100007578"
+                - "208930100007579"
+                - "208930100007580"
+                - "208930100007581"
+                - "208930100007582"
+                - "208930100007583"
+                - "208930100007584"
+                - "208930100007585"
+                - "208930100007586"
+              msisdns:
+                - "msisdn-9000000001"
+                - "msisdn-9000000002"
+                - "msisdn-9000000003"
+                - "msisdn-9000000004"
+                - "msisdn-9000000005"
+                - "msisdn-9000000006"
+                - "msisdn-9000000007"
+                - "msisdn-9000000008"
+                - "msisdn-9000000009"
+                - "msisdn-9000000010"
+                - "msisdn-9000000011"
+                - "msisdn-9000000012"
+                - "msisdn-9000000013"
+                - "msisdn-9000000014"
+                - "msisdn-9000000015"
+                - "msisdn-9000000016"
+                - "msisdn-9000000017"
+                - "msisdn-9000000018"
+                - "msisdn-9000000019"
+                - "msisdn-9000000020"
+                - "msisdn-9000000021"
+                - "msisdn-9000000022"
+                - "msisdn-9000000023"
+                - "msisdn-9000000024"
+                - "msisdn-9000000025"
+                - "msisdn-9000000026"
+                - "msisdn-9000000027"
+                - "msisdn-9000000028"
+                - "msisdn-9000000029"
+                - "msisdn-9000000030"
+                - "msisdn-9000000031"
+                - "msisdn-9000000032"
+                - "msisdn-9000000033"
+                - "msisdn-9000000034"
+                - "msisdn-9000000035"
+                - "msisdn-9000000036"
+                - "msisdn-9000000037"
+                - "msisdn-9000000038"
+                - "msisdn-9000000039"
+                - "msisdn-9000000040"
+                - "msisdn-9000000041"
+                - "msisdn-9000000042"
+                - "msisdn-9000000043"
+                - "msisdn-9000000044"
+                - "msisdn-9000000045"
+                - "msisdn-9000000046"
+                - "msisdn-9000000047"
+                - "msisdn-9000000048"
+                - "msisdn-9000000049"
+                - "msisdn-9000000050"
+                - "msisdn-9000000051"
+                - "msisdn-9000000052"
+                - "msisdn-9000000053"
+                - "msisdn-9000000054"
+                - "msisdn-9000000055"
+                - "msisdn-9000000056"
+                - "msisdn-9000000057"
+                - "msisdn-9000000058"
+                - "msisdn-9000000059"
+                - "msisdn-9000000060"
+                - "msisdn-9000000061"
+                - "msisdn-9000000062"
+                - "msisdn-9000000063"
+                - "msisdn-9000000064"
+                - "msisdn-9000000065"
+                - "msisdn-9000000066"
+                - "msisdn-9000000067"
+                - "msisdn-9000000068"
+                - "msisdn-9000000069"
+                - "msisdn-9000000070"
+                - "msisdn-9000000071"
+                - "msisdn-9000000072"
+                - "msisdn-9000000073"
+                - "msisdn-9000000074"
+                - "msisdn-9000000075"
+                - "msisdn-9000000076"
+                - "msisdn-9000000077"
+                - "msisdn-9000000078"
+                - "msisdn-9000000079"
+                - "msisdn-9000000080"
+                - "msisdn-9000000081"
+                - "msisdn-9000000082"
+                - "msisdn-9000000083"
+                - "msisdn-9000000084"
+                - "msisdn-9000000085"
+                - "msisdn-9000000086"
+                - "msisdn-9000000087"
+                - "msisdn-9000000088"
+                - "msisdn-9000000089"
+                - "msisdn-9000000090"
+                - "msisdn-9000000091"
+                - "msisdn-9000000092"
+                - "msisdn-9000000093"
+                - "msisdn-9000000094"
+                - "msisdn-9000000095"
+                - "msisdn-9000000096"
+                - "msisdn-9000000097"
+                - "msisdn-9000000098"
+                - "msisdn-9000000099"
+                - "msisdn-9000000100"
+              ip-domain-name: "pool1"
+              ip-domains:
+                - dnn: internet
+                  dns-primary: "8.8.8.8"        # Value is sent to UE
+                  mtu: 1460                     # Value is sent to UE when PDU Session Established
+                  ue-ip-pool: {{ core.upf.default_upf.ue_ip_pool }}  # IP address pool for subscribers
+                  ue-dnn-qos:
+                    dnn-mbr-downlink: 1000      # UE level downlink QoS (Maximum bit rate per UE)
+                    dnn-mbr-uplink:   1000      # UE level uplink QoS (Maximum bit rate per UE)
+                    bitrate-unit: Mbps          # Unit for above QoS rates
+                    traffic-class:              # Default bearer QCI/ARP (not used in 5G)
+                      name: "platinum"
+                      qci: 9
+                      arp: 6
+                      pdb: 300
+                      pelr: 6
+              site-info: "enterprise"
+            # UPF allocates IP address if there is only 1 device-group
+            # SMF allocates IP address if there is >1 device-group
+
+            # Configure Network Slices (ignored if provision-network-slice is disabled)
+            network-slices:
+            - name: "default"      # can be any unique slice name
+              slice-id:            # must match with slice configured in gNB, UE
+                sd: "010203"
+                sst: 1
+              site-device-group:
+              - "gnbsim-user-group1"   # All UEs in this device-group are assigned to this slice
+              # Applicaiton filters control what each user can access.
+              # Default, allow access to all applications
+              application-filtering-rules:
+              - rule-name: "ALLOW-ALL"
+                priority: 250
+                action: "permit"
+                endpoint: "0.0.0.0/0"
+                traffic-class:
+                  qci: 9
+                  arp: 6
+              site-info:
+                # Provide gNBs and UPF details and also PLMN for the site
+                gNodeBs:
+                - name: "gnb1"
+                  tac: 1
+                - name: "gnb2"
+                  tac: 2
+                plmn:
+                  mcc: "208"
+                  mnc: "93"
+                site-name: "enterprise"
+                upf:
+                  upf-name: "upf"  # associated UPF for this slice. One UPF per Slice.
+                  upf-port: 8805
+
+# Override values for omec-user-plane Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/bess-upf/values.yaml
+omec-user-plane:
+  enable: true
+  nodeSelectors:
+    enabled: true
+  resources:
+    enabled: true
+  # images:
+  #   repository: ""
+  #   tags:
+  #     bess: <bess image tag>
+  #     pfcpiface: <pfcp image tag>
+  #     tools: <aether-pod-init image tag>
+  config:
+    upf:
+      name: "aether-upf"
+      privileged: true
+      sriov:
+        enabled: true    # SRIOV is enabled
+      hugepage:
+        enabled: true    # Should be enabled if DPDK is enabled
+      routes:
+        - to: {{ ansible_default_ipv4.address }}
+          via: 169.254.1.1
+      enb:
+        subnet: {{ ran_subnet }} # Subnet for the gNB network
+      access:
+        ipam: static
+        cniPlugin: vfioveth    # Can be any other plugin. Dictates how IP address are assigned
+        iface: {{ core.data_iface }}
+        resourceName: "intel.com/intel_sriov_vfio_access"
+        gateway: {{ access_gw }}
+        ip: {{ access_ip }}
+      core:
+        ipam: static
+        cniPlugin: vfioveth    # Can be any other plugin. Dictates how IP address are assigned
+        iface: {{ core.data_iface }}
+        resourceName: "intel.com/intel_sriov_vfio_core"
+        gateway: {{ core_gw }}
+        ip: {{ core_ip }}
+      closedLoop: {{ core.closed_loop | default('false') | lower }}
+      cfgFiles:
+        upf.jsonc:
+          mode: {{ core.upf.mode }}
+          hwcksum: true
+          log_level: "info"
+          measure_upf: true
+          measure_flow: true
+          gtppsc: true                   # Extension header enabled in 5G.
+          # DDP is INTEL NIC's specific feature (supported in E810 series)
+          # which helps to improve UPF packet processing performance.
+          # For more details on DDP feature and its usage please refer
+          # "https://www.intel.com/content/www/us/en/download/19660/intel-ethernet-800-series-dynamic-device-personalization-ddp-for-telecommunication-comms-package.html"
+          ddp: false                     # this parameter is only used/relevant when deploying the UPF in 'dpdk' mode
+          cpiface:
+            dnn: "internet"              # Must match Slice dnn
+            hostname: "upf"
+            #http_port: "8080"
+            enable_ue_ip_alloc: true    # If true, UPF allocates address from following pool
+            ue_ip_pool: {{ core.upf.default_upf.ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
+          slice_rate_limit_config:       # Slice-level rate limiting (also controlled by ROC)
+            # Uplink
+            n6_bps: 10000000000          # 10Gbps
+            n6_burst_bytes: 12500000     # 10ms * 10Gbps
+            # Downlink
+            n3_bps: 10000000000          # 10Gbps
+            n3_burst_bytes: 12500000     # 10ms * 10Gbps

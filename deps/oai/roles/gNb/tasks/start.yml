@@ -1,0 +1,58 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and oai nodes: {{ oai.servers|length }} vs {{ groups['oai_nodes']|length }}"
+  when: oai.servers|length != groups['oai_nodes']|length
+
+- name: pull {{ oai.docker.container.gnb_image }} image
+  community.docker.docker_image:
+    name: "{{ oai.docker.container.gnb_image }}"
+    source: pull
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: remove /tmp/oai-gnb.conf
+  file:
+    path: "/tmp/oai-gnb.conf"
+    state: absent
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name : copy gnb config file to /tmp/oai-gnb.conf
+  template:
+    src: "{{ ROOT_DIR }}/{{ oai.servers[server_index | int].gnb_conf }}"
+    dest: /tmp/oai-gnb.conf
+  vars:
+    server_index: "{{ groups['oai_nodes'].index(inventory_hostname) }}"
+    gnb_ip: "{{ oai.servers[server_index | int].gnb_ip }}"
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: Set USE_ADDITIONAL_OPTIONS for gnb
+  set_fact:
+    USE_ADDITIONAL_OPTIONS: >
+      {% if oai.simulation %}
+        --gNBs.[0].min_rxtxtime 6 --rfsim --sa
+      {% else %}
+        --sa --usrp-tx-thread-config 1 -E --continuous-tx
+      {% endif %}
+  when: inventory_hostname in groups['oai_nodes']
+
+- name: create {{ oai.docker.container.gnb_image }} containers
+  community.docker.docker_container:
+    name: "oai-gnb"
+    image: "{{ oai.docker.container.gnb_image }}"
+    networks:
+      - name: "{{ oai.docker.network.name }}"
+    env:
+      USE_ADDITIONAL_OPTIONS: "{{ USE_ADDITIONAL_OPTIONS }}"
+      USE_X3XX: "yes"
+    volumes:
+      - /tmp/oai-gnb.conf:/opt/oai-gnb/etc/gnb.conf
+    privileged: true
+    restart_policy: unless-stopped
+    state: started
+    detach: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true

@@ -1,0 +1,44 @@
+info:
+  version: 1.0.0
+  description: N3IWF initial local configuration
+
+configuration:
+  n3iwfInformation:
+    globalN3iwfId:
+      plmnId:
+        mcc: 208
+        mnc: 93
+      n3iwfId: {{ n3iwf_id | int }}
+    name: aether_n3iwf
+    supportedTaList:
+      - tac: 1
+        broadcastPlmnList:
+          - plmnId:
+              mcc: 208
+              mnc: 93
+            taiSliceSupportList:
+              - snssai:
+                  sst: 1
+                  sd: 010203
+  amfSctpAddresses:
+    - ipList:
+      - "{{ core.amf.ip }}"
+  ikeBindAddress: "{{ n3iwf_ip }}"
+  ipSecAddress: "{{ nwu_ip }}"
+  # xfrmInterfaceName: xfrmi
+  # xfrmInterfaceId: 1
+  localSctpAddress: "{{ n2_ip }}"
+  gtpBindAddress: "{{ n3_ip }}"
+  nasTcpPort: 20000
+  fqdn: n3iwf.aether.org
+  privateKey: /opt/n3iwf.key
+  certificateAuthority: /opt/n3iwf.crt
+  certificate: /opt/n3iwf.crt
+  livenessCheck:
+    enable: true
+    transFreq: 60s
+    maxRetryTimes: 4
+
+logger:
+  N3IWF:
+    debugLevel: info

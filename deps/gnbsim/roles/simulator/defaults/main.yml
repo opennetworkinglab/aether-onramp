@@ -1,0 +1,16 @@
+gnbsim:
+  docker:
+    network:
+      macvlan:
+        name: gnbnet
+
+  servers:
+    0:
+      - "config/gnbsim-s1-p1.yaml"
+      - "config/gnbsim-s1-p2.yaml"
+    1:
+      - "config/gnbsim-s2-p1.yaml"
+      - "config/gnbsim-s2-p2.yaml"
+core:
+  amf:
+    ip: "172.16.248.6"

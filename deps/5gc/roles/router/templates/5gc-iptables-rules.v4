@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+# 5GC iptables rules
+
+*filter
+:FORWARD ACCEPT [0:0]
+{% if core.upf.multihop_gnb == false %}
+-A FORWARD -i {{ core.data_iface }} -o access -j ACCEPT
+-A FORWARD -i access -o {{ core.data_iface }} -j ACCEPT
+{% endif %}
+-A FORWARD -i {{ core.data_iface }} -o core -j ACCEPT
+-A FORWARD -i core -o {{ core.data_iface }} -j ACCEPT
+COMMIT

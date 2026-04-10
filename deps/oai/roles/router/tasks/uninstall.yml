@@ -1,0 +1,152 @@
+---
+
+- name: check if servers and config server length are equal
+  fail:
+    msg: "Mismatch in number of servers and oai nodes: {{ oai.servers|length }} vs {{ groups['oai_nodes']|length }}"
+  when: oai.servers|length != groups['oai_nodes']|length
+
+- name: "remove a static route on oai host for {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}"
+  shell: |
+    ip route del {{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }} via {{ core.amf.ip }}
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  become: true
+  ignore_errors: yes
+
+- name: "remove a static route on core host for {{ oai.docker.network.subnet }} via {{ hostvars[item]['ansible_default_ipv4']['address'] }}"
+  shell: |
+    ip route del {{ oai.docker.network.subnet }} via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  with_items: "{{ play_hosts | intersect(groups['oai_nodes']) | difference(groups['master_nodes']) }}"
+  when: (inventory_hostname in groups['master_nodes']) and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: stop oai-iptables.service
+  systemd:
+    name: oai-iptables.service
+    state: stopped
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: disable oai-iptables.service
+  systemd:
+    name: oai-iptables.service
+    enabled: false
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: delete /etc/systemd/system/oai-iptables.service
+  file:
+    path: /etc/systemd/system/oai-iptables.service
+    state: absent
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: delete persistent oai iptables rules file
+  file:
+    path: /etc/iptables/oai-rules.v4
+    state: absent
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from access to {{ oai.docker.network.bridge.name }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "access"
+    out_interface: "{{ oai.docker.network.bridge.name }}"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname in groups['master_nodes']) and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ oai.docker.network.bridge.name }} to access"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ oai.docker.network.bridge.name }}"
+    out_interface: "access"
+    jump: ACCEPT
+    state: absent
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname in groups['master_nodes']) and oai.docker.network.name != "host"
+  become: true
+  ignore_errors: yes
+
+- name: "remove iptable rule: forward from {{ oai.docker.network.data_iface }} to {{ oai.docker.network.bridge.name }} "
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ oai.docker.network.data_iface }}"
+    out_interface: "{{ oai.docker.network.bridge.name }}"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: "delete iptable rule: forward from {{ oai.docker.network.bridge.name }} to {{ oai.docker.network.data_iface }}"
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ oai.docker.network.bridge.name }}"
+    out_interface: "{{ oai.docker.network.data_iface }}"
+    jump: ACCEPT
+    state: absent
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: delete {{ oai.docker.network.name }} network
+  community.docker.docker_network:
+    name: "{{ oai.docker.network.name }}"
+    state: absent
+    force: yes
+  when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
+  become: true
+
+- name: set net.ipv4.conf.all.arp_filter to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_filter
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_ignore to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.arp_announce to 0
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: '0'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: set net.ipv4.conf.all.rp_filter to 2
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.all.rp_filter
+    value: '2'
+    sysctl_set: true
+    reload: true
+  when: (inventory_hostname in groups['oai_nodes']) and (inventory_hostname not in groups['master_nodes'])
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['oai_nodes']
+  become: true
+
+- name: restart systemd-networkd
+  systemd:
+    name: systemd-networkd
+    state: restarted
+  when: inventory_hostname in groups['oai_nodes']
+  become: true

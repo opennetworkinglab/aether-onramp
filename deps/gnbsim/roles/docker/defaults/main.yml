@@ -1,0 +1,14 @@
+
+gnbsim:
+  docker:
+    container:
+      image: omecproject/5gc-gnbsim:rel-1.4.3
+      prefix: gnbsim
+      count: 2
+    network:
+      macvlan:
+        name: gnbnet
+
+  router:
+    mcavlan:
+      subnet_prefix: "172.20"

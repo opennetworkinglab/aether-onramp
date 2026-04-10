@@ -1,0 +1,19 @@
+---
+
+- name: debug hosts
+  hosts: all
+  gather_facts: true
+
+  tasks:
+  - name: ping all
+    ping:
+
+  - name: check master node IP
+    debug: var=hostvars['node1']['ansible_default_ipv4']['address']
+    when: inventory_hostname == 'node2'
+
+  - name: check ansible home directory
+    debug: var=ansible_env.HOME
+
+  - debug:
+      msg: "the value of foo.txt is {{lookup('file', './hosts.ini') }}"
