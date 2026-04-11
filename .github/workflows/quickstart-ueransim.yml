@@ -131,13 +131,8 @@ jobs:
           make aether-pingall
 
       - name: Install Aether
-        # TODO: Remove the sed from below script once the change is merged to
-        # the dep repo
         run: |
           source $HOME/ubuntu_venv/bin/activate
-          sed -i '97a\
-              sleep 30
-          ' $GITHUB_WORKSPACE/deps/k8s/roles/rke2/tasks/install.yml
           make aether-k8s-install
           make aether-5gc-install
           make aether-ueransim-install
