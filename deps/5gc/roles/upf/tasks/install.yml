@@ -6,6 +6,7 @@
       shell: ip link show "{{ core.data_iface }}" | grep -c vf
       register: vf_status
       changed_when: false
+      failed_when: false
 
     - debug:
          var=vf_status.stdout
