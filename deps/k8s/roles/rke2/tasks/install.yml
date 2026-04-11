@@ -93,11 +93,56 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: waiting for the master node(s) to get ready
-  shell: |
-    kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait nodes --for=condition=Ready --all --timeout=300s
-    kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait deployment -n kube-system --for=condition=available --all --timeout=300s
+- name: wait for the Kubernetes API to respond
+  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get --raw=/readyz
+  register: rke2_api_ready
+  retries: 60
+  delay: 5
+  until: rke2_api_ready.rc == 0
+  changed_when: false
   when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: wait for this master node object to be registered
+  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get node "{{ inventory_hostname }}" -o name
+  register: rke2_current_node
+  retries: 60
+  delay: 5
+  until: rke2_current_node.rc == 0 and (rke2_current_node.stdout | trim) != ''
+  changed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: wait for the master node(s) to get ready
+  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait nodes --for=condition=Ready --all --timeout=300s
+  changed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: detect kube-system deployments
+  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get deployment -n kube-system -o name
+  register: kube_system_deployments
+  retries: 12
+  delay: 10
+  until: kube_system_deployments.stdout | trim != ''
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: fail if kube-system deployments never appeared
+  fail:
+    msg: kube-system deployments did not appear before the retry window expired
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - kube_system_deployments.stdout | trim == ''
+
+- name: wait for kube-system deployments to become available
+  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait deployment -n kube-system --for=condition=available --all --timeout=300s
+  changed_when: false
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - kube_system_deployments.stdout | trim != ''
   become: true
 
 - name: force systemd to reread configs
