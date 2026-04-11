@@ -1,5 +1,22 @@
 ---
 
+- name: check configured VF resources for built-in UPF
+  block:
+    - name: Get number of configured VFs for interface {{ core.data_iface }}
+      shell: ip link show "{{ core.data_iface }}" | grep -c vf
+      register: vf_status
+      changed_when: false
+
+    - debug:
+         var=vf_status.stdout
+
+    - name: verify the required VF resources are configured on {{ core.data_iface }}
+      ansible.builtin.assert:
+        that:
+          - vf_status.stdout | int >= 2
+
+  when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"
+
 - name: find {{ core.data_iface }}'s subnet for RAN
   shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
   register: result
