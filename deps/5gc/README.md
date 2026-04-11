@@ -24,7 +24,8 @@ To install the 5g-core, follow these steps:
    - Specify the "data_iface" parameter as the network interface name of the machine.
    - Set the "values_file" parameter:
       - Use "roles/core/templates/sdcore-5g-values.yaml" for a stateful 5g core.
-      - Use "roles/core/templates/radio-5g-values.yaml" or "roles/core/templates/sdcore-5g-sriov-values.yaml" for alternative deployment profiles.
+      - Use "roles/core/templates/radio-5g-values.yaml" for the radio-oriented deployment profile.
+      - Set `core.upf.mode` to `dpdk` when you want the built-in UPF rendered with SR-IOV, hugepages, and `vfioveth` networking.
    - If the `core.ran_subnet` parameter is left empty, the core will use the subnet of "data_iface" for UPF.
 2. Add the hosts to `hosts.ini`.
 3. Run `make ansible`.
@@ -33,6 +34,7 @@ To install the 5g-core, follow these steps:
    - Run `make 5gc-install`.
    - It creates networking interfaces for UPF, such as access/core, using `5gc-router-install`.
    - Finally, it installs the 5g core using the values specified in `5gc-core-install`.
+   - When `core.upf.mode` is set to `dpdk`, the core and additional UPF install roles validate that `core.data_iface` has at least two VFs before deploying the UPF workload.
      - The installation process may take up to 3 minutes.
 
 #### One-Step Installation

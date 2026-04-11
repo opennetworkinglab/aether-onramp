@@ -185,7 +185,7 @@ omec-sub-provision:
 
             # Configure Device Groups (ignored if provision-network-slice is disabled)
             device-groups:
-            - name:  "gnbsim-user-group1"
+            - name:  "user-group1"
               imsis:
                 - "208930100007487"
                 - "208930100007488"
@@ -415,7 +415,7 @@ omec-sub-provision:
                 sd: "010203"
                 sst: 1
               site-device-group:
-              - "gnbsim-user-group1"   # All UEs in this device-group are assigned to this slice
+              - "user-group1"   # All UEs in this device-group are assigned to this slice
               # Applicaiton filters control what each user can access.
               # Default, allow access to all applications
               application-filtering-rules:
@@ -448,7 +448,7 @@ omec-user-plane:
   nodeSelectors:
     enabled: true
   resources:
-    enabled: false
+    enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
   # images:
   #   repository: ""
   #   tags:
@@ -458,10 +458,11 @@ omec-user-plane:
   config:
     upf:
       name: "aether-upf"
+      privileged: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
       sriov:
-        enabled: false    # SRIOV is disabled by default
+        enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
       hugepage:
-        enabled: false    # Should be enabled if DPDK is enabled
+        enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
       routes:
         - to: {{ ansible_default_ipv4.address }}
           via: 169.254.1.1
@@ -469,14 +470,20 @@ omec-user-plane:
         subnet: {{ ran_subnet }} # Subnet for the gNB network
       access:
         ipam: static
-        cniPlugin: macvlan  # Can be any other plugin. Dictates how IP address are assigned
+        cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
         iface: {{ core.data_iface }}
+{% if core.upf.mode == 'dpdk' %}
+        resourceName: "intel.com/intel_sriov_vfio_access"
+{% endif %}
         gateway: {{ access_gw }}
         ip: {{ access_ip }}
       core:
         ipam: static
-        cniPlugin: macvlan  # Can be any other plugin. Dictates how IP address are assigned
+        cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
         iface: {{ core.data_iface }}
+{% if core.upf.mode == 'dpdk' %}
+        resourceName: "intel.com/intel_sriov_vfio_core"
+{% endif %}
         gateway: {{ core_gw }}
         ip: {{ core_ip }}
       closedLoop: {{ core.closed_loop | default('false') | lower }}
@@ -488,6 +495,11 @@ omec-user-plane:
           measure_upf: true
           measure_flow: true
           gtppsc: true                   # Extension header enabled in 5G.
+          # DDP is INTEL NIC's specific feature (supported in E810 series)
+          # which helps to improve UPF packet processing performance.
+          # For more details on DDP feature and its usage please refer
+          # "https://www.intel.com/content/www/us/en/download/19660/intel-ethernet-800-series-dynamic-device-personalization-ddp-for-telecommunication-comms-package.html"
+          ddp: false                     # this parameter is only used/relevant when deploying the UPF in 'dpdk' mode
           cpiface:
             dnn: "internet"              # Must match Slice dnn
             hostname: "upf"
