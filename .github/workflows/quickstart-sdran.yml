@@ -31,24 +31,12 @@ jobs:
       - name: Create Python virtual environment
         run: |
           python -m venv $HOME/ubuntu_venv
-          source $HOME/ubuntu_venv/bin/activate
-          pip install --upgrade pip
-          pip install ansible requests
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v5
-        with:
-          version: "latest"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: "v3.17.1"
+          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
+          $HOME/ubuntu_venv/bin/pip install --upgrade pip
+          $HOME/ubuntu_venv/bin/pip install ansible requests
 
       - name: Configure OnRamp
         run: |
-          source $HOME/ubuntu_venv/bin/activate
-
           # Get network information
           MYIP=$(hostname -I | awk '{print $1}')
           echo "MY IP is: $MYIP"
@@ -56,19 +44,7 @@ jobs:
           echo "MY IFC is: $MYIFC"
 
           # Create hosts.ini for local execution (no SSH needed on GitHub runner)
-          cat > hosts.ini << EOF
-          [all]
-          localhost ansible_connection=local ansible_user=$USER ansible_python_interpreter=/usr/bin/python3
-
-          [master_nodes]
-          localhost
-
-          [worker_nodes]
-          #node2
-
-          [gnbsim_nodes]
-          localhost
-          EOF
+          bash .github/scripts/generate-local-hosts.sh gnbsim_nodes
 
           # Configure vars/main.yml
           cp vars/main-sdran.yml vars/main.yml
@@ -80,10 +56,12 @@ jobs:
 
       - name: Install Aether
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           make k8s-install
           make 5gc-install
           make sdran-install
+
+      - name: Inspect Installed Components
+        run: |
           kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
           kubectl get pods -n sdran -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
 
@@ -101,60 +79,18 @@ jobs:
       - name: Retrieve Logs
         if: always()
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           mkdir -p logs
 
           # Copy ransim log
           cp ransim.log logs/ 2>/dev/null || echo "No ransim.log found"
-          cd logs
 
-          # Get AMF logs
-          AMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep amf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$AMF_POD_NAME" ]; then
-            echo "Retrieving AMF logs from: ${AMF_POD_NAME}"
-            kubectl logs $AMF_POD_NAME -n aether-5gc > sdran_amf.log
-          fi
-
-          # Get WebUI logs
-          WEBUI_POD_NAME=$(kubectl get pods -n aether-5gc | grep webui | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$WEBUI_POD_NAME" ]; then
-            echo "Retrieving WebUI logs from: ${WEBUI_POD_NAME}"
-            kubectl logs $WEBUI_POD_NAME -n aether-5gc > sdran_webui.log
-          fi
-
-          # Get UDR logs
-          UDR_POD_NAME=$(kubectl get pods -n aether-5gc | grep udr | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$UDR_POD_NAME" ]; then
-            echo "Retrieving UDR logs from: ${UDR_POD_NAME}"
-            kubectl logs $UDR_POD_NAME -n aether-5gc > sdran_udr.log
-          fi
-
-          # Get UDM logs
-          UDM_POD_NAME=$(kubectl get pods -n aether-5gc | grep udm | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$UDM_POD_NAME" ]; then
-            echo "Retrieving UDM logs from: ${UDM_POD_NAME}"
-            kubectl logs $UDM_POD_NAME -n aether-5gc > sdran_udm.log
-          fi
-
-          # Get AUSF logs
-          AUSF_POD_NAME=$(kubectl get pods -n aether-5gc | grep ausf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$AUSF_POD_NAME" ]; then
-            echo "Retrieving AUSF logs from: ${AUSF_POD_NAME}"
-            kubectl logs $AUSF_POD_NAME -n aether-5gc > sdran_ausf.log
-          fi
-
-          # Get SMF logs
-          SMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep smf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$SMF_POD_NAME" ]; then
-            echo "Retrieving SMF logs from: ${SMF_POD_NAME}"
-            kubectl logs $SMF_POD_NAME -n aether-5gc > sdran_smf.log
-          fi
+          bash .github/scripts/collect-core-logs.sh logs sdran
 
           # Get RAN Simulator logs
           RANSIM_POD_NAME=$(kubectl get pods -n sdran | grep ran-simulator | awk 'NR==1{print $1}' || echo "")
           if [ -n "$RANSIM_POD_NAME" ]; then
             echo "Retrieving RAN Simulator logs from: ${RANSIM_POD_NAME}"
-            kubectl logs $RANSIM_POD_NAME -n sdran > sdran_ransim.log
+            kubectl logs $RANSIM_POD_NAME -n sdran > logs/sdran_ransim.log
           fi
 
       - name: Archive Artifacts
@@ -168,12 +104,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          if [ -f $HOME/ubuntu_venv/bin/activate ]; then
-            source $HOME/ubuntu_venv/bin/activate
-          fi
-          make sdran-uninstall || echo "Failed to uninstall sdran"
-          make 5gc-uninstall || echo "Failed to uninstall 5gc"
-          make k8s-uninstall || echo "Failed to uninstall k8s"
+          bash .github/scripts/run-cleanup-targets.sh sdran-uninstall 5gc-uninstall k8s-uninstall
 
       - name: Notify on Failure
         if: failure()

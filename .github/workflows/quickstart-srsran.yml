@@ -31,24 +31,12 @@ jobs:
       - name: Create Python virtual environment
         run: |
           python -m venv $HOME/ubuntu_venv
-          source $HOME/ubuntu_venv/bin/activate
-          pip install --upgrade pip
-          pip install ansible requests
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v5
-        with:
-          version: "latest"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: "v3.17.1"
+          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
+          $HOME/ubuntu_venv/bin/pip install --upgrade pip
+          $HOME/ubuntu_venv/bin/pip install ansible requests
 
       - name: Configure OnRamp
         run: |
-          source $HOME/ubuntu_venv/bin/activate
-
           # Get network information
           MYIP=$(hostname -I | awk '{print $1}')
           echo "MY IP is: $MYIP"
@@ -58,19 +46,7 @@ jobs:
           echo "MY IPNET is: $MYIPNET"
 
           # Create hosts.ini for local execution (no SSH needed on GitHub runner)
-          cat > hosts.ini << EOF
-          [all]
-          localhost ansible_connection=local ansible_user=$USER ansible_python_interpreter=/usr/bin/python3
-
-          [master_nodes]
-          localhost
-
-          [worker_nodes]
-          #node2
-
-          [srsran_nodes]
-          localhost
-          EOF
+          bash .github/scripts/generate-local-hosts.sh srsran_nodes
 
           # Configure vars/main.yml
           VARS_MAIN="vars/main.yml"
@@ -87,82 +63,40 @@ jobs:
 
       - name: Install Aether
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           make aether-k8s-install
           make aether-5gc-install
           sleep 10
           make aether-srsran-gnb-install
+          sleep 10
+
+      - name: Inspect Installed Components
+        run: |
           kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
           docker ps
-          sleep 10
 
       - name: Run srs-uesim
         continue-on-error: true
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           make aether-srsran-uesim-start
 
       - name: Validate Results
         continue-on-error: false
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           docker exec rfsim5g-srsran-nr-ue ip netns exec ue1 ping -c 5 192.168.250.1 > srs-uesim.log
           grep "0% packet loss" srs-uesim.log
 
       - name: Retrieve Logs
         if: always()
         run: |
-          source $HOME/ubuntu_venv/bin/activate
           mkdir -p logs
-          cd logs
 
           # Get srsRAN gNB logs
-          docker logs srsran-gnb > srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
+          docker logs srsran-gnb > logs/srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
 
           # Get srsRAN UE logs
-          docker logs rfsim5g-srsran-nr-ue > srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
+          docker logs rfsim5g-srsran-nr-ue > logs/srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
 
-          # Get AMF logs
-          AMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep amf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$AMF_POD_NAME" ]; then
-            echo "Retrieving AMF logs from: ${AMF_POD_NAME}"
-            kubectl logs $AMF_POD_NAME -n aether-5gc > srsran_amf.log
-          fi
-
-          # Get WebUI logs
-          WEBUI_POD_NAME=$(kubectl get pods -n aether-5gc | grep webui | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$WEBUI_POD_NAME" ]; then
-            echo "Retrieving WebUI logs from: ${WEBUI_POD_NAME}"
-            kubectl logs $WEBUI_POD_NAME -n aether-5gc > srsran_webui.log
-          fi
-
-          # Get UDR logs
-          UDR_POD_NAME=$(kubectl get pods -n aether-5gc | grep udr | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$UDR_POD_NAME" ]; then
-            echo "Retrieving UDR logs from: ${UDR_POD_NAME}"
-            kubectl logs $UDR_POD_NAME -n aether-5gc > srsran_udr.log
-          fi
-
-          # Get UDM logs
-          UDM_POD_NAME=$(kubectl get pods -n aether-5gc | grep udm | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$UDM_POD_NAME" ]; then
-            echo "Retrieving UDM logs from: ${UDM_POD_NAME}"
-            kubectl logs $UDM_POD_NAME -n aether-5gc > srsran_udm.log
-          fi
-
-          # Get AUSF logs
-          AUSF_POD_NAME=$(kubectl get pods -n aether-5gc | grep ausf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$AUSF_POD_NAME" ]; then
-            echo "Retrieving AUSF logs from: ${AUSF_POD_NAME}"
-            kubectl logs $AUSF_POD_NAME -n aether-5gc > srsran_ausf.log
-          fi
-
-          # Get SMF logs
-          SMF_POD_NAME=$(kubectl get pods -n aether-5gc | grep smf | awk 'NR==1{print $1}' || echo "")
-          if [ -n "$SMF_POD_NAME" ]; then
-            echo "Retrieving SMF logs from: ${SMF_POD_NAME}"
-            kubectl logs $SMF_POD_NAME -n aether-5gc > srsran_smf.log
-          fi
+          bash .github/scripts/collect-core-logs.sh logs srsran
 
       - name: Archive Artifacts
         if: always()
@@ -175,13 +109,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          if [ -f $HOME/ubuntu_venv/bin/activate ]; then
-            source $HOME/ubuntu_venv/bin/activate
-          fi
-          make aether-srsran-uesim-stop || echo "Failed to stop srsran uesim"
-          make aether-srsran-gnb-uninstall || echo "Failed to uninstall srsran gnb"
-          make aether-5gc-uninstall || echo "Failed to uninstall 5gc"
-          make aether-k8s-uninstall || echo "Failed to uninstall k8s"
+          bash .github/scripts/run-cleanup-targets.sh aether-srsran-uesim-stop aether-srsran-gnb-uninstall aether-5gc-uninstall aether-k8s-uninstall
 
       - name: Notify on Failure
         if: failure()
