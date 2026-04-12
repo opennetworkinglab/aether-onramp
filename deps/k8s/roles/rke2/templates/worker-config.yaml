@@ -1,4 +1,4 @@
-server: https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] }}:{{ k8s.rke2.config.port }}
+server: https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] | default(groups['master_nodes'][0]) }}:{{ k8s.rke2.config.port }}
 token: {{ k8s.rke2.config.token }}
 node-name: {{ inventory_hostname }}
 cni: multus,canal
