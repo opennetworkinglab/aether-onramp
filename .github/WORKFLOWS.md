@@ -6,23 +6,23 @@ This directory contains GitHub Actions workflows for the Aether OnRamp project.
 
 The `quickstart.yml` workflow replicates the functionality of the Jenkins groovy workflow found at [opennetworkinglab/aether-jenkins](https://github.com/opennetworkinglab/aether-jenkins/blob/master/quickstart.groovy).
 
-The quickstart-family workflows are implemented as thin callers around
-the reusable workflow ``.github/workflows/reusable-quickstart.yml``.
-Each caller passes blueprint-specific configuration, validation, and
-log-collection commands while sharing the common CI job structure.
+The quickstart-family workflows currently keep their own workflow files
+and share repeated shell logic through helper scripts under
+``.github/scripts``.
 
 ### Workflow Stages
 
-1. **Checkout repository**: Clones the repo with all submodules
+1. **Checkout repository**: Clones the repository onto the runner
 1. **Set up Python**: Installs Python and creates a virtual environment with Ansible, then exports the virtualenv bin directory to later workflow steps
-1. **Configure OnRamp**: Sets up SSH keys, generates hosts.ini via a shared helper script, configures vars/main.yml
+1. **Configure OnRamp**: Generates a local ``hosts.ini`` via a shared helper script, configures ``vars/main.yml``, and validates connectivity
 1. **Install Aether**: Installs Kubernetes, 5GC core, and gNBsim
+1. **Inspect Installed Components**: Captures pod and container status before starting traffic generation
 1. **Run gNBsim**: Executes the gNBsim test with retry logic (2 attempts)
 1. **Validate Results**: Checks that tests passed using the same validation pattern as Jenkins
-1. **Retrieve Logs**: Collects logs from all components, using shared helper scripts for common 5GC logs
-10. **Archive Artifacts**: Uploads logs as workflow artifacts
-11. **Cleanup**: Uninstalls all components (always runs, even on failure), using a shared helper for repeated make cleanup targets
-12. **Notify on Failure**: Logs failure information (can be extended with Slack notifications)
+1. **Retrieve Logs**: Collects workload output and shared 5GC logs using the helper scripts in ``.github/scripts``
+1. **Archive Artifacts**: Uploads logs as workflow artifacts
+1. **Cleanup**: Uninstalls all components (always runs, even on failure), using a shared helper for repeated make cleanup targets
+1. **Notify on Failure**: Logs failure information (can be extended with Slack notifications)
 
 ### Triggering the Workflow
 
@@ -30,6 +30,7 @@ The workflow has the following triggers:
 
 1. **Manual Dispatch**: Go to Actions → Aether OnRamp Quickstart → Run workflow
 1. **Push to main**: Automatically runs on pushes to the main branch
+1. **Pull Request**: Automatically runs for pull requests targeting the main branch
 
 ### Differences from Jenkins Workflow
 
