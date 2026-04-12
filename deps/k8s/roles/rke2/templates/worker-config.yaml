@@ -1,4 +1,8 @@
-server: https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] }}:{{ k8s.rke2.config.port }}
+{% set master_name = groups['master_nodes'][0] %}
+{% set master = hostvars[master_name] %}
+{% set master_host = master.get('ansible_host') %}
+{% set join_host = master.get('ansible_default_ipv4', {}).get('address', master_name) if master_host in [None, '', 'localhost', '127.0.0.1', '::1'] else master_host %}
+server: https://{{ join_host }}:{{ k8s.rke2.config.port }}
 token: {{ k8s.rke2.config.token }}
 node-name: {{ inventory_hostname }}
 cni: multus,canal
