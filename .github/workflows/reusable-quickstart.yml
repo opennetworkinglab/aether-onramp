@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Reusable OnRamp Quickstart
+
+on:
+  workflow_call:
+    inputs:
+      agent_label:
+        description: Runner label to use
+        required: false
+        default: ubuntu-latest
+        type: string
+      target_group:
+        description: Inventory group to map to localhost
+        required: true
+        type: string
+      vars_template:
+        description: Path to the vars template to copy into vars/main.yml
+        required: true
+        type: string
+      configure_commands:
+        description: Shell commands to customize vars/main.yml after network detection
+        required: true
+        type: string
+      install_commands:
+        description: Shell commands that install the scenario components
+        required: true
+        type: string
+      inspect_commands:
+        description: Shell commands that print post-install diagnostics
+        required: true
+        type: string
+      run_commands:
+        description: Optional shell commands to execute the workload
+        required: false
+        default: ""
+        type: string
+      run_continue_on_error:
+        description: Whether the workload execution step should continue on error
+        required: false
+        default: false
+        type: boolean
+      validate_commands:
+        description: Shell commands to validate the scenario outcome
+        required: true
+        type: string
+      validate_continue_on_error:
+        description: Whether the validation step should continue on error
+        required: false
+        default: false
+        type: boolean
+      log_prefix:
+        description: Prefix for common 5GC log files
+        required: true
+        type: string
+      artifact_name:
+        description: Uploaded artifact name for collected logs
+        required: true
+        type: string
+      extra_log_commands:
+        description: Optional shell commands for scenario-specific log collection
+        required: false
+        default: ""
+        type: string
+      cleanup_targets:
+        description: Space-delimited make cleanup targets
+        required: true
+        type: string
+
+jobs:
+  quickstart:
+    runs-on: ${{ inputs.agent_label }}
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Create Python virtual environment
+        run: |
+          python -m venv "$HOME/ubuntu_venv"
+          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
+          "$HOME/ubuntu_venv/bin/pip" install --upgrade pip
+          "$HOME/ubuntu_venv/bin/pip" install ansible requests
+
+      - name: Configure OnRamp
+        run: |
+          MYIP=$(hostname -I | awk '{print $1}')
+          echo "MY IP is: $MYIP"
+          MYIFC=$(ip route get 8.8.8.8 | awk '/dev/ {print $5; exit}' || echo "eth0")
+          echo "MY IFC is: $MYIFC"
+
+          bash .github/scripts/generate-local-hosts.sh "${{ inputs.target_group }}"
+
+          cp "${{ inputs.vars_template }}" vars/main.yml
+          ${{ inputs.configure_commands }}
+
+          make aether-pingall
+
+      - name: Install Aether
+        run: |
+          ${{ inputs.install_commands }}
+
+      - name: Inspect Installed Components
+        run: |
+          ${{ inputs.inspect_commands }}
+
+      - name: Run Scenario Workload
+        if: ${{ inputs.run_commands != '' }}
+        continue-on-error: ${{ inputs.run_continue_on_error }}
+        run: |
+          ${{ inputs.run_commands }}
+
+      - name: Validate Results
+        continue-on-error: ${{ inputs.validate_continue_on_error }}
+        run: |
+          ${{ inputs.validate_commands }}
+
+      - name: Retrieve Logs
+        if: always()
+        run: |
+          mkdir -p logs
+          ${{ inputs.extra_log_commands }}
+          bash .github/scripts/collect-core-logs.sh logs "${{ inputs.log_prefix }}"
+
+      - name: Archive Artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: logs/*.log
+          if-no-files-found: ignore
+
+      - name: Cleanup
+        if: always()
+        run: |
+          bash .github/scripts/run-cleanup-targets.sh ${{ inputs.cleanup_targets }}
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "Workflow failed: ${{ github.repository }} - ${{ github.run_number }} - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # Add Slack notification here if needed using secrets.SLACK_WEBHOOK_URL

@@ -16,103 +16,40 @@ on:
 
 jobs:
   quickstart-srsran:
-    runs-on: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
-    timeout-minutes: 60
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.x"
-
-      - name: Create Python virtual environment
-        run: |
-          python -m venv $HOME/ubuntu_venv
-          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
-          $HOME/ubuntu_venv/bin/pip install --upgrade pip
-          $HOME/ubuntu_venv/bin/pip install ansible requests
-
-      - name: Configure OnRamp
-        run: |
-          # Get network information
-          MYIP=$(hostname -I | awk '{print $1}')
-          echo "MY IP is: $MYIP"
-          MYIFC=$(ip route get 8.8.8.8 | awk '/dev/ {print $5; exit}' || echo "eth0")
-          echo "MY IFC is: $MYIFC"
-          MYIPNET=$(ip addr show $MYIFC | grep 'inet ' | awk '{print $2}')
-          echo "MY IPNET is: $MYIPNET"
-
-          # Create hosts.ini for local execution (no SSH needed on GitHub runner)
-          bash .github/scripts/generate-local-hosts.sh srsran_nodes
-
-          # Configure vars/main.yml
-          VARS_MAIN="vars/main.yml"
-          cp vars/main-srsran.yml "$VARS_MAIN"
-          sed -i "s|ens18|$MYIFC|g" "$VARS_MAIN"
-          sed -i "s|10.76.28.113|$MYIP|" "$VARS_MAIN"
-          sed -i 's|172.20.0.0/16|""|' "$VARS_MAIN"
-          sed -i "s|10.76.28.115|$MYIP|" "$VARS_MAIN"
-          sed -i "s|10.76.28.0/24|$MYIPNET|" "$VARS_MAIN"
-          git diff "$VARS_MAIN"
-
-          # Verify configuration
-          make aether-pingall
-
-      - name: Install Aether
-        run: |
-          make aether-k8s-install
-          make aether-5gc-install
-          sleep 10
-          make aether-srsran-gnb-install
-          sleep 10
-
-      - name: Inspect Installed Components
-        run: |
-          kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
-          docker ps
-
-      - name: Run srs-uesim
-        continue-on-error: true
-        run: |
-          make aether-srsran-uesim-start
-
-      - name: Validate Results
-        continue-on-error: false
-        run: |
-          docker exec rfsim5g-srsran-nr-ue ip netns exec ue1 ping -c 5 192.168.250.1 > srs-uesim.log
-          grep "0% packet loss" srs-uesim.log
-
-      - name: Retrieve Logs
-        if: always()
-        run: |
-          mkdir -p logs
-
-          # Get srsRAN gNB logs
-          docker logs srsran-gnb > logs/srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
-
-          # Get srsRAN UE logs
-          docker logs rfsim5g-srsran-nr-ue > logs/srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
-
-          bash .github/scripts/collect-core-logs.sh logs srsran
-
-      - name: Archive Artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: srsran-logs
-          path: logs/*.log
-          if-no-files-found: ignore
-
-      - name: Cleanup
-        if: always()
-        run: |
-          bash .github/scripts/run-cleanup-targets.sh aether-srsran-uesim-stop aether-srsran-gnb-uninstall aether-5gc-uninstall aether-k8s-uninstall
-
-      - name: Notify on Failure
-        if: failure()
-        run: |
-          echo "Workflow failed: ${{ github.repository }} - ${{ github.run_number }} - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          # Add Slack notification here if needed using secrets.SLACK_WEBHOOK_URL
+    uses: ./.github/workflows/reusable-quickstart.yml
+    with:
+      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+      target_group: srsran_nodes
+      vars_template: vars/main-srsran.yml
+      configure_commands: |
+        MYIPNET=$(ip addr show $MYIFC | grep 'inet ' | awk '{print $2}')
+        echo "MY IPNET is: $MYIPNET"
+        VARS_MAIN="vars/main.yml"
+        sed -i "s|ens18|$MYIFC|g" "$VARS_MAIN"
+        sed -i "s|10.76.28.113|$MYIP|" "$VARS_MAIN"
+        sed -i 's|172.20.0.0/16|""|' "$VARS_MAIN"
+        sed -i "s|10.76.28.115|$MYIP|" "$VARS_MAIN"
+        sed -i "s|10.76.28.0/24|$MYIPNET|" "$VARS_MAIN"
+        git diff "$VARS_MAIN"
+      install_commands: |
+        make aether-k8s-install
+        make aether-5gc-install
+        sleep 10
+        make aether-srsran-gnb-install
+        sleep 10
+      inspect_commands: |
+        kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
+        docker ps
+      run_commands: |
+        make aether-srsran-uesim-start
+      run_continue_on_error: true
+      validate_commands: |
+        docker exec rfsim5g-srsran-nr-ue ip netns exec ue1 ping -c 5 192.168.250.1 > srs-uesim.log
+        grep "0% packet loss" srs-uesim.log
+      log_prefix: srsran
+      artifact_name: srsran-logs
+      extra_log_commands: |
+        docker logs srsran-gnb > logs/srsran_gnb.log 2>&1 || echo "Failed to get srsran-gnb logs"
+        docker logs rfsim5g-srsran-nr-ue > logs/srsran_ue.log 2>&1 || echo "Failed to get srsran-nr-ue logs"
+      cleanup_targets: aether-srsran-uesim-stop aether-srsran-gnb-uninstall aether-5gc-uninstall aether-k8s-uninstall
+    secrets: inherit
