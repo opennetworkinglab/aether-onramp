@@ -6,6 +6,11 @@ This directory contains GitHub Actions workflows for the Aether OnRamp project.
 
 The `quickstart.yml` workflow replicates the functionality of the Jenkins groovy workflow found at [opennetworkinglab/aether-jenkins](https://github.com/opennetworkinglab/aether-jenkins/blob/master/quickstart.groovy).
 
+The quickstart-family workflows are implemented as thin callers around
+the reusable workflow ``.github/workflows/reusable-quickstart.yml``.
+Each caller passes blueprint-specific configuration, validation, and
+log-collection commands while sharing the common CI job structure.
+
 ### Workflow Stages
 
 1. **Checkout repository**: Clones the repo with all submodules
