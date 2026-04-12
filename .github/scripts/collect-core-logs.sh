@@ -17,6 +17,8 @@ for component in amf webui udr udm ausf smf; do
   pod_name="$(kubectl get pods -n "$namespace" | awk -v pattern="$component" '$0 ~ pattern { print $1; exit }' || true)"
   if [[ -n "$pod_name" ]]; then
     echo "Retrieving ${component} logs from: ${pod_name}"
-    kubectl logs "$pod_name" -n "$namespace" > "$output_dir/${file_prefix}_${component}.log"
+    if ! kubectl logs "$pod_name" -n "$namespace" > "$output_dir/${file_prefix}_${component}.log"; then
+      echo "Warning: failed to retrieve logs for ${component} from ${pod_name}" >&2
+    fi
   fi
 done

@@ -8,7 +8,10 @@ if [[ $# -lt 1 ]]; then
 fi
 
 for target in "$@"; do
-  if ! make "$target"; then
-    echo "Failed to run cleanup target: ${target}"
+  if make "$target"; then
+    :
+  else
+    exit_code=$?
+    echo "Failed to run cleanup target: ${target} (exit code: ${exit_code})" >&2
   fi
 done
