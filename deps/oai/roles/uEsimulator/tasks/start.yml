@@ -71,6 +71,7 @@
     command: "ping -I oaitun_ue1 -c 5 {{ ping_target }}"
   register: uEsimPingOutput
   when: inventory_hostname in groups['oai_nodes']
+  become: true
 
 - debug:
     var: uEsimPingOutput.stdout_lines

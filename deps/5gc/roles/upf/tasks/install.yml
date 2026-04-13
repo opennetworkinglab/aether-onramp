@@ -39,6 +39,18 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
+  ansible.builtin.assert:
+    that:
+      - result.rc == 0
+      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
+    fail_msg: >-
+      Unable to derive ran_subnet from interface {{ core.data_iface }}.
+      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.ran_subnet == ''
+
 - set_fact:
     ran_subnet: >-
       {{

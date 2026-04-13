@@ -89,7 +89,7 @@
   args:
     stdin: "{{ roc_models_payload.content | b64decode }}"
   register: result
-  until: result.stdout.find("command terminated") == -1
+  until: (((result.stdout | default('')) ~ (result.stderr | default(''))).find("command terminated")) == -1
   retries: 5
   delay: 10
   when: inventory_hostname in groups['master_nodes']
