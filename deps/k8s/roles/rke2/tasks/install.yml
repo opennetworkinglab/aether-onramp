@@ -264,11 +264,10 @@
     - hostvars[groups['master_nodes'][0]]['ansible_host'] != '127.0.0.1'
 
 - name: change {{ ansible_env.HOME }}/.kube ownership
-  command:
-    argv:
-      - chown
-      - -R
-      - "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
-      - "{{ ansible_env.HOME }}/.kube"
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    recurse: true
   when: inventory_hostname in groups['master_nodes']
   become: true

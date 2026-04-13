@@ -108,7 +108,7 @@
       register: pod_restart
       when:
         - inventory_hostname in groups['master_nodes']
-        - (item.status.phase | default('')) not in ['Running', 'Completed']
+        - (item.status.phase | default('')) not in ['Running', 'Succeeded']
       failed_when: false
       ignore_errors: yes
 
@@ -151,7 +151,7 @@
       register: pod_restart
       when:
         - inventory_hostname in groups['master_nodes']
-        - (item.status.phase | default('')) not in ['Running', 'Completed']
+        - (item.status.phase | default('')) not in ['Running', 'Succeeded']
       failed_when: false
       ignore_errors: yes
 
