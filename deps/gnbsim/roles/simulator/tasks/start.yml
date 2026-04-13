@@ -35,7 +35,7 @@
       - docker
       - cp
       - "/tmp/gnbsim-{{ (item.0|int)+1 }}.yaml"
-      - "gnbsim-{{ (item.0|int)+1 }}:/tmp/gnbsim.yaml"
+      - "{{ gnbsim.docker.container.prefix }}-{{ (item.0|int)+1 }}:/tmp/gnbsim.yaml"
   with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
