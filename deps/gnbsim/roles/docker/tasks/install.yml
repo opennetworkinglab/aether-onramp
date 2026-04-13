@@ -39,6 +39,7 @@
   when:
     - inventory_hostname in groups['gnbsim_nodes']
     - docker_already_installed_and_valid | default(false)
+    - docker_official_packages_installed | default(false)
 
 - name: update apt cache
   apt:
@@ -83,7 +84,7 @@
     purge: true
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - not (docker_already_installed_and_valid | default(false))
+    - not (docker_official_packages_installed | default(false))
   become: true
 
 - name: install required system packages
@@ -154,7 +155,7 @@
     state: present
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - not (docker_already_installed_and_valid | default(false))
+    - not (docker_official_packages_installed | default(false))
   become: true
 
 - name: ensure docker service is enabled and started
@@ -175,7 +176,6 @@
   when:
     - inventory_hostname in groups['gnbsim_nodes']
     - UBUNTU_VERSION is version('24.04', '<')
-    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: install python3-docker package
@@ -184,7 +184,6 @@
   when:
     - inventory_hostname in groups['gnbsim_nodes']
     - UBUNTU_VERSION is version('24.04', '>=')
-    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: pull hello-world docker image
@@ -193,7 +192,6 @@
     source: pull
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: create hello-world container
@@ -204,7 +202,6 @@
     auto_remove: true
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: Create docker group
