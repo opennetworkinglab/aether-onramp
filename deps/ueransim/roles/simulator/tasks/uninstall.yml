@@ -12,8 +12,14 @@
   when: inventory_hostname in groups['ueransim_nodes']
 
 - name: remove static route for upf traffic on ueransim node
-  shell: |
-    ip route del {{ subnet }} via {{ core.amf.ip }}
+  command:
+    argv:
+      - ip
+      - route
+      - del
+      - "{{ subnet }}"
+      - via
+      - "{{ core.amf.ip }}"
   when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
   become: true
   ignore_errors: yes

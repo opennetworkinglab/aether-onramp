@@ -18,14 +18,28 @@
   ignore_errors: yes
 
 - name: waiting for aether pods to terminate
-  shell: |
-    kubectl wait -n omec --for=delete --all=true -l app!=ue pod --timeout=180s
+  command:
+    argv:
+      - kubectl
+      - wait
+      - -n
+      - omec
+      - --for=delete
+      - --all=true
+      - -l
+      - app!=ue
+      - pod
+      - --timeout=180s
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
 - name: delete namespace omec
-  shell: |
-    kubectl delete namespace omec
+  command:
+    argv:
+      - kubectl
+      - delete
+      - namespace
+      - omec
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 

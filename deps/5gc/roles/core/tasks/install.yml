@@ -3,7 +3,13 @@
 - name: check configured VF resources for built-in UPF
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
-      shell: ip link show "{{ core.data_iface }}" | grep -c vf
+      command:
+        argv:
+          - ip
+          - -d
+          - link
+          - show
+          - "{{ core.data_iface }}"
       register: vf_status
       changed_when: false
       failed_when: false
@@ -14,19 +20,39 @@
     - name: verify the required VF resources are configured on {{ core.data_iface }}
       ansible.builtin.assert:
         that:
-          - vf_status.stdout | int >= 2
+          - (vf_status.stdout | regex_findall('(?m)^\s+vf\s+\d+') | length) >= 2
 
   when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"
 
 - name: find {{ core.data_iface }}'s subnet for RAN
-  shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
+  command:
+    argv:
+      - ip
+      - -o
+      - route
+      - show
+      - dev
+      - "{{ core.data_iface }}"
   register: result
+  changed_when: false
+  failed_when: false
   when: inventory_hostname in groups['master_nodes']
   become: true
 
 # TODO: check if interface subnet is valid
 - set_fact:
-    ran_subnet: "{{ result.stdout if (core.ran_subnet == '') else core.ran_subnet }}"
+    ran_subnet: >-
+      {{
+        (
+          result.stdout_lines
+          | default([])
+          | select('search', ' proto kernel ')
+          | map('regex_replace', '^([^ ]+).*$','\\1')
+          | list
+          | first
+          | default('')
+        ) if (core.ran_subnet == '') else core.ran_subnet
+      }}
     access_gw: "{{ core.upf.access_subnet[:-3] }}"
     access_ip: "{{ core.upf.default_upf.ip.access + '/24' }}"
     core_gw: "{{ core.upf.core_subnet[:-3] }}"
@@ -124,8 +150,12 @@
     - not core_cp_charts_dir.stat.exists or (core_cp_chart_dependencies.results | default([]) | selectattr('matched', 'equalto', 0) | list | length) > 0
 
 - name: update aether 5gc helm dependencies
-  shell: |
-    helm dep up {{local_sd_core_chart_path}}
+  command:
+    argv:
+      - helm
+      - dep
+      - up
+      - "{{ local_sd_core_chart_path }}"
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
 # TODO: add systems check to avoid issues (e.g., mongodb needing avx support)
@@ -148,30 +178,29 @@
 
   rescue:
     - name: Get Pods Status
-      shell: kubectl get po -n aether-5gc
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: aether-5gc
       register: pod_status
       changed_when: false
       when: inventory_hostname in groups['master_nodes']
 
     - name: restart Pods if not running
-      shell: |
-        while IFS= read -r line; do
-          [[ -z "$line" ]] && continue
-
-          name=$(echo "$line" | awk '{print $1}')
-          status=$(echo "$line" | awk '{print $3}')
-
-          [[ -z "$name" || "$name" == "NAME" ]] && continue
-
-          if [[ "$status" != "Running" ]]; then
-            kubectl delete pod "$name" -n aether-5gc
-          fi
-        done <<< "{{ pod_status.stdout }}"
-      args:
-        executable: /bin/bash
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Pod
+        namespace: aether-5gc
+        name: "{{ item.metadata.name }}"
+        state: absent
+      loop: "{{ pod_status.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
       register: pod_restart
-      changed_when: "'deleted' in pod_restart.stdout"
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) != 'Running'
+      ignore_errors: yes
   always:
     - pause:
         seconds: 60

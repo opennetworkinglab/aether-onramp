@@ -18,11 +18,25 @@
     dest: "/tmp/sdran-platform-values.yaml"
   when: inventory_hostname in groups['master_nodes']
 
-- name: Setup Local Store
-  shell:
-    cmd: |
-      kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
-      kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}';
+- name: apply local-path provisioner manifest
+  command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml"
+      - --wait=true
+  when: inventory_hostname in groups['master_nodes']
+
+- name: patch local-path storage class as default
+  command:
+    argv:
+      - kubectl
+      - patch
+      - storageclass
+      - local-path
+      - -p
+      - '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
   when: inventory_hostname in groups['master_nodes']
 
 - name: deploy atomix from {{ sdran.platform.atomix.helm.chart_ref }}

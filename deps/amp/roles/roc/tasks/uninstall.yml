@@ -20,8 +20,12 @@
   ignore_errors: yes
 
 - name: delete namespace aether-roc
-  shell: |
-    kubectl delete namespace aether-roc
+  command:
+    argv:
+      - kubectl
+      - delete
+      - namespace
+      - aether-roc
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 

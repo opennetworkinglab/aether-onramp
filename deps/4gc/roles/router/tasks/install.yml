@@ -71,23 +71,49 @@
   become: true
 
 - name: find {{ core.data_iface }}'s netplan network directory
-  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ core.data_iface }}.network' -print)
-  register: result
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "*{{ core.data_iface }}.network"
+    recurse: false
+    file_type: file
+  register: data_iface_network_files
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: create {{ systemd_network_dir }}/{{ result.stdout }}.d
+- name: set {{ core.data_iface }}'s netplan network filename
+  set_fact:
+    data_iface_network_filename: >-
+      {{
+        data_iface_network_files.files
+        | default([])
+        | map(attribute='path')
+        | map('basename')
+        | sort
+        | first
+        | default('')
+      }}
+  when: inventory_hostname in groups['master_nodes']
+
+- name: create {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d
   file:
-    path: "{{ systemd_network_dir }}/{{ result.stdout }}.d"
+    path: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d"
     state: directory
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (data_iface_network_filename | default('') | trim) != ''
   become: true
 
-- name: copy macvlan.conf to {{ systemd_network_dir }}/{{ result.stdout }}.d/macvlan.conf
+- name: copy macvlan.conf to {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf
   template:
     src: roles/router/templates/systemd/macvlan.conf
-    dest: "{{ systemd_network_dir }}/{{ result.stdout }}.d/macvlan.conf"
-  when: inventory_hostname in groups['master_nodes']
+    dest: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (data_iface_network_filename | default('') | trim) != ''
   become: true
 
 - name: copy aether-ue-nat.service to {{ systemd_system_dir }}/aether-ue-nat.service

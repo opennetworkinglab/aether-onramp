@@ -153,12 +153,22 @@
   become: true
 
 - name: Disable GRO flag on the {{ core.data_iface }} interface
-  shell: ethtool -K {{ core.data_iface }} gro off
+  command:
+    argv:
+      - ethtool
+      - -K
+      - "{{ core.data_iface }}"
+      - gro
+      - "off"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
 - name: check if systemd-networkd is active
-  shell: systemctl is-active systemd-networkd 2>/dev/null || true
+  command:
+    argv:
+      - systemctl
+      - is-active
+      - systemd-networkd
   register: systemd_networkd_state
   changed_when: false
   failed_when: false
@@ -170,12 +180,13 @@
     systemd_networkd_active: "{{ (systemd_networkd_state.stdout | default('') | trim) == 'active' }}"
   when: inventory_hostname in groups['master_nodes']
 
-- name: find {{ core.data_iface }}'s active systemd-networkd file via networkctl
-  shell: |
-    networkctl status {{ core.data_iface }} 2>/dev/null \
-      | awk -F': ' '/Network File:/ && $2 ~ /\.network$/ {print $2; exit}' \
-      | xargs -r basename
-  register: data_iface_network_file_networkctl
+- name: read {{ core.data_iface }} networkctl status
+  command:
+    argv:
+      - networkctl
+      - status
+      - "{{ core.data_iface }}"
+  register: data_iface_networkctl_status
   changed_when: false
   failed_when: false
   when:
@@ -183,29 +194,66 @@
     - systemd_networkd_active
   become: true
 
+- name: derive {{ core.data_iface }}'s active systemd-networkd file via networkctl
+  set_fact:
+    data_iface_network_file_networkctl: >-
+      {{
+        data_iface_networkctl_status.stdout_lines
+        | default([])
+        | select('match', '^\s*Network File:\s+.*\.network\s*$')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\\1')
+        | list
+        | first
+        | default('')
+        | basename
+      }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - systemd_networkd_active
+
 - name: find {{ core.data_iface }}'s systemd-networkd file by filename
-  shell: |
-    find /etc/systemd/network /run/systemd/network /lib/systemd/network /usr/lib/systemd/network \
-      -maxdepth 1 -type f -name '*{{ core.data_iface }}.network' -print 2>/dev/null \
-      | sort \
-      | head -n 1 \
-      | xargs -r basename
-  register: data_iface_network_file_cmd
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "*{{ core.data_iface }}.network"
+    recurse: false
+    file_type: file
+  register: data_iface_network_file_matches
   changed_when: false
   failed_when: false
   when:
     - inventory_hostname in groups['master_nodes']
     - systemd_networkd_active
-    - (data_iface_network_file_networkctl.stdout | default('') | trim) == ''
+    - (data_iface_network_file_networkctl | default('') | trim) == ''
   become: true
+
+- name: derive {{ core.data_iface }}'s systemd-networkd file by filename
+  set_fact:
+    data_iface_network_file_cmd: >-
+      {{
+        data_iface_network_file_matches.files
+        | default([])
+        | map(attribute='path')
+        | map('basename')
+        | sort
+        | first
+        | default('')
+      }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - systemd_networkd_active
+    - (data_iface_network_file_networkctl | default('') | trim) == ''
 
 - name: set {{ core.data_iface }}'s systemd-networkd filename
   set_fact:
     data_iface_network_filename: >-
       {{
-        (data_iface_network_file_networkctl.stdout | default('') | trim)
-        if (data_iface_network_file_networkctl.stdout | default('') | trim) != ''
-        else (data_iface_network_file_cmd.stdout | default('') | trim)
+        (data_iface_network_file_networkctl | default('') | trim)
+        if (data_iface_network_file_networkctl | default('') | trim) != ''
+        else (data_iface_network_file_cmd | default('') | trim)
       }}
   when:
     - inventory_hostname in groups['master_nodes']
@@ -219,12 +267,16 @@
     - not (systemd_networkd_active | default(false))
 
 - name: resolve {{ core.data_iface }}'s systemd-networkd file path
-  shell: |
-    find /etc/systemd/network /run/systemd/network /lib/systemd/network /usr/lib/systemd/network \
-      -maxdepth 1 -type f -name '{{ data_iface_network_filename }}' -print 2>/dev/null \
-      | sort \
-      | head -n 1
-  register: data_iface_network_path
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "{{ data_iface_network_filename }}"
+    recurse: false
+    file_type: file
+  register: data_iface_network_path_matches
   changed_when: false
   failed_when: false
   when:
@@ -232,13 +284,28 @@
     - (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
   become: true
 
+- name: set {{ core.data_iface }}'s systemd-networkd file path
+  set_fact:
+    data_iface_network_path: >-
+      {{
+        data_iface_network_path_matches.files
+        | default([])
+        | map(attribute='path')
+        | sort
+        | first
+        | default('')
+      }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
+
 - name: read {{ core.data_iface }}'s systemd-networkd file
   slurp:
-    src: "{{ data_iface_network_path.stdout | trim }}"
+    src: "{{ data_iface_network_path | trim }}"
   register: data_iface_network_file_content
   when:
     - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_path.stdout | default('') | trim) != ''
+    - (data_iface_network_path | default('') | trim) != ''
   become: true
 
 - name: set whether {{ core.data_iface }} is managed by systemd-networkd

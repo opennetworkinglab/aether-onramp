@@ -59,17 +59,42 @@
   ignore_errors: yes
 
 - name: find {{ core.data_iface }}'s netplan network directory
-  shell: basename $(find /*/systemd/network -maxdepth 1 -not -type d -name '*{{ core.data_iface }}.network' -print)
-  register: result
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "*{{ core.data_iface }}.network"
+    recurse: false
+    file_type: file
+  register: data_iface_network_files
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: delete {{ systemd_network_dir }}/{{ result.stdout }}.d
-  file:
-    path: "{{ systemd_network_dir }}/{{ result.stdout }}.d"
-    state: absent
+- name: set {{ core.data_iface }}'s netplan network filename
+  set_fact:
+    data_iface_network_filename: >-
+      {{
+        data_iface_network_files.files
+        | default([])
+        | map(attribute='path')
+        | map('basename')
+        | sort
+        | first
+        | default('')
+      }}
   when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+- name: delete {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d
+  file:
+    path: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d"
+    state: absent
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (data_iface_network_filename | default('') | trim) != ''
   become: true
   ignore_errors: yes
 
@@ -106,11 +131,42 @@
   ignore_errors: yes
 
 # TODO: fix this hack (make a proper cleanup service)
-- name: post-delete steps
-  shell: |
-    ip link del access || true
-    ip link del core || true
-    iptables -t nat -D POSTROUTING -s {{ core.upf.default_upf.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE || true
+- name: delete access macvlan interface
+  command:
+    argv:
+      - ip
+      - link
+      - del
+      - access
+  register: delete_access_macvlan
+  changed_when: delete_access_macvlan.rc == 0
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: delete core macvlan interface
+  command:
+    argv:
+      - ip
+      - link
+      - del
+      - core
+  register: delete_core_macvlan
+  changed_when: delete_core_macvlan.rc == 0
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  ignore_errors: yes
+
+- name: delete NAT masquerade rule for UE traffic
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ core.upf.default_upf.ue_ip_pool }}"
+    out_interface: "{{ core.data_iface }}"
+    jump: MASQUERADE
+    state: absent
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes

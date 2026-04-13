@@ -1,7 +1,17 @@
 ---
 
 - name: find ONOS_CLI_POD
-  shell: kubectl -n aether-roc get pods -l name=onos-cli -o name
+  command:
+    argv:
+      - kubectl
+      - -n
+      - aether-roc
+      - get
+      - pods
+      - -l
+      - name=onos-cli
+      - -o
+      - name
   register: result
   when: inventory_hostname in groups['master_nodes']
 
@@ -10,7 +20,17 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: find API_SERVICE
-  shell: kubectl -n aether-roc get --no-headers=true services -l app.kubernetes.io/name=aether-roc-api | awk '{print $1}'
+  command:
+    argv:
+      - kubectl
+      - -n
+      - aether-roc
+      - get
+      - services
+      - -l
+      - app.kubernetes.io/name=aether-roc-api
+      - -o
+      - jsonpath={.items[0].metadata.name}
   register: result
   when: inventory_hostname in groups['master_nodes']
 
@@ -38,12 +58,36 @@
     dest: "/tmp/roc-models.json"
   when: inventory_hostname in groups['master_nodes']
 
+- name: read rendered ROC models payload
+  slurp:
+    src: /tmp/roc-models.json
+  register: roc_models_payload
+  when: inventory_hostname in groups['master_nodes']
+
 #TODO use ansible kubectl module
 - name: load roc models file
-  shell: 'kubectl -n aether-roc exec {{ ONOS_CLI_POD }} -- curl -s -f -L -X \
-          PATCH "http://{{ API_SERVICE }}:8181/aether-roc-api" \
-          --header "Content-Type: application/json" --data-raw \
-          "$(cat /tmp/roc-models.json)"'
+  command:
+    argv:
+      - kubectl
+      - -n
+      - aether-roc
+      - exec
+      - -i
+      - "{{ ONOS_CLI_POD }}"
+      - --
+      - curl
+      - -s
+      - -f
+      - -L
+      - -X
+      - PATCH
+      - "http://{{ API_SERVICE }}:8181/aether-roc-api"
+      - --header
+      - Content-Type: application/json
+      - --data-binary
+      - '@-'
+  args:
+    stdin: "{{ roc_models_payload.content | b64decode }}"
   register: result
   until: result.stdout.find("command terminated") == -1
   retries: 5
