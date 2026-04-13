@@ -62,6 +62,12 @@
       - show
       - uesimtun0
   register: ue_ip_result
+  retries: 5
+  delay: 2
+  until:
+    - ue_ip_result.rc == 0
+    - (ue_ip_result.stdout | trim) != ''
+  changed_when: false
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - set_fact:

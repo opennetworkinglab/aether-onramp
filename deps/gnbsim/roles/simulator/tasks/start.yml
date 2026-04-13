@@ -41,6 +41,16 @@
   become: true
 
 - name: clear Docker logs for gnbsim containers
+  stat:
+    path: "{{ container_info.results[item.0].container.LogPath }}"
+  register: gnbsim_log_path_stat
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (container_info.results[item.0].container.LogPath | default('')) != ''
+  become: true
+
+- name: clear Docker logs for gnbsim containers
   command:
     argv:
       - truncate
@@ -51,6 +61,8 @@
   when:
     - inventory_hostname in groups['gnbsim_nodes']
     - (container_info.results[item.0].container.LogPath | default('')) != ''
+    - gnbsim_log_path_stat.results[item.0].stat.exists | default(false)
+    - gnbsim_log_path_stat.results[item.0].stat.isreg | default(false)
   become: true
   failed_when: false
 

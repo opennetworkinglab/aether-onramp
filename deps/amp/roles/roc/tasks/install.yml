@@ -106,7 +106,9 @@
       loop_control:
         label: "{{ item.metadata.name }}"
       register: pod_restart
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) not in ['Running', 'Completed']
       failed_when: false
       ignore_errors: yes
 
@@ -147,7 +149,9 @@
       loop_control:
         label: "{{ item.metadata.name }}"
       register: pod_restart
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) not in ['Running', 'Completed']
       failed_when: false
       ignore_errors: yes
 
