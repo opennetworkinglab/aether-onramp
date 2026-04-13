@@ -12,11 +12,20 @@
       - name=onos-cli
       - -o
       - name
-  register: result
+  register: onos_cli_pod_result
+  when: inventory_hostname in groups['master_nodes']
+
+- name: validate ONOS_CLI_POD lookup
+  assert:
+    that:
+      - onos_cli_pod_names | length == 1
+    fail_msg: "Expected exactly one ONOS CLI pod, found {{ onos_cli_pod_names | length }}"
+  vars:
+    onos_cli_pod_names: "{{ onos_cli_pod_result.stdout_lines | default([]) | map('trim') | reject('equalto', '') | list }}"
   when: inventory_hostname in groups['master_nodes']
 
 - set_fact:
-    ONOS_CLI_POD: "{{ result.stdout }}"
+    ONOS_CLI_POD: "{{ onos_cli_pod_result.stdout_lines | default([]) | map('trim') | reject('equalto', '') | first }}"
   when: inventory_hostname in groups['master_nodes']
 
 - name: find API_SERVICE
@@ -31,11 +40,11 @@
       - app.kubernetes.io/name=aether-roc-api
       - -o
       - jsonpath={.items[0].metadata.name}
-  register: result
+  register: api_service_result
   when: inventory_hostname in groups['master_nodes']
 
 - set_fact:
-    API_SERVICE: "{{ result.stdout }}"
+    API_SERVICE: "{{ api_service_result.stdout | trim }}"
   when: inventory_hostname in groups['master_nodes']
 
 - debug:
