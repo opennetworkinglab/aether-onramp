@@ -1,36 +1,44 @@
 ---
 
-- name: check if docker is installed
-  shell: command -v docker
-  register: docker_check
-  changed_when: false
-  failed_when: false
+- name: collect installed package facts
+  package_facts:
+    manager: auto
+  when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
 
-- name: get docker version output
+- name: check if docker is installed
   command: docker --version
   register: docker_version
   changed_when: false
   failed_when: false
-  when: docker_check.rc == 0
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: set docker installation status
+  set_fact:
+    docker_official_packages_installed: >-
+      {{
+        ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-buildx-plugin', 'docker-compose-plugin']
+        | difference(ansible_facts.packages.keys() | list)
+        | length == 0
+      }}
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: set docker runtime status
+  set_fact:
+    docker_already_installed_and_valid: "{{ docker_version.rc == 0 }}"
+  when: inventory_hostname in groups['gnbsim_nodes']
 
 - name: print docker version output
   debug:
     var: docker_version.stdout
   when:
-    - docker_check.rc == 0
-    - docker_version is defined
+    - inventory_hostname in groups['gnbsim_nodes']
     - docker_version.rc == 0
 
-- name: print docker installation status
-  debug:
-    msg: Docker is not installed on {{ inventory_hostname }}. Proceeding with Docker installation.
-  when: docker_check.rc != 0 or (docker_version is defined and docker_version.rc != 0)
-
-- meta: end_play
+- meta: end_host
   when:
-    - docker_check.rc == 0
-    - docker_version is defined
-    - docker_version.rc == 0
+    - inventory_hostname in groups['gnbsim_nodes']
+    - docker_already_installed_and_valid | default(false)
 
 - name: update apt cache
   apt:
@@ -52,17 +60,41 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
+- name: Remove previous Docker deb822 source
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.sources
+    state: absent
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (docker_official_packages_installed | default(false))
+  become: true
+
+- name: uninstall conflicting Docker packages
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+      - docker-compose-v2
+      - docker-doc
+      - podman-docker
+      - containerd
+      - runc
+    state: absent
+    purge: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (docker_already_installed_and_valid | default(false))
+  become: true
+
 - name: install required system packages
   apt:
     pkg:
-      - apt-transport-https
       - ca-certificates
       - curl
-      - software-properties-common
       - python3-pip
       - virtualenv
       - python3-setuptools
-    state: latest
+    state: present
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
@@ -89,10 +121,19 @@
     arch_mapping:
       x86_64: amd64
       aarch64: arm64
-  apt_repository:
-    repo: "deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
-    state: present
-    filename: docker
+      armv7l: armhf
+      ppc64le: ppc64el
+      s390x: s390x
+  copy:
+    dest: /etc/apt/sources.list.d/docker.sources
+    mode: '0644'
+    content: |
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: {{ ansible_distribution_release }}
+      Components: stable
+      Architectures: {{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}
+      Signed-By: /etc/apt/keyrings/docker.asc
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
@@ -102,10 +143,25 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
-- name: install docker-ce
+- name: install Docker packages
   apt:
-    name: docker-ce
-    state: latest
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (docker_already_installed_and_valid | default(false))
+  become: true
+
+- name: ensure docker service is enabled and started
+  service:
+    name: docker
+    state: started
+    enabled: true
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
@@ -116,20 +172,28 @@
 - name: install docker module for Python
   pip:
     name: docker
-  when: inventory_hostname in groups['gnbsim_nodes'] and UBUNTU_VERSION is version_compare('24.04', '<')
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - UBUNTU_VERSION is version('24.04', '<')
+    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: install python3-docker package
   apt:
     name: python3-docker
-  when: inventory_hostname in groups['gnbsim_nodes'] and UBUNTU_VERSION is version_compare('24.04', '>=')
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - UBUNTU_VERSION is version('24.04', '>=')
+    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: pull hello-world docker image
   community.docker.docker_image:
     name: "hello-world"
     source: pull
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: create hello-world container
@@ -138,7 +202,9 @@
     image: "hello-world"
     state: started
     auto_remove: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (docker_already_installed_and_valid | default(false))
   become: true
 
 - name: Create docker group
@@ -153,13 +219,5 @@
     name: "{{ ansible_user }}"
     groups: docker
     append: yes
-  when: inventory_hostname in groups['gnbsim_nodes']
-  become: true
-
-# hack for docker to run as user
-- name: run docker without sudo (HACK)
-  shell:
-    cmd: |
-      chown {{ ansible_user }} /var/run/docker.sock
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
