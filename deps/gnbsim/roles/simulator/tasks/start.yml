@@ -40,7 +40,7 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
-- name: clear Docker logs for gnbsim containers
+- name: stat Docker log paths for gnbsim containers
   stat:
     path: "{{ container_info.results[item.0].container.LogPath }}"
   register: gnbsim_log_path_stat
@@ -50,7 +50,7 @@
     - (container_info.results[item.0].container.LogPath | default('')) != ''
   become: true
 
-- name: clear Docker logs for gnbsim containers
+- name: truncate Docker logs for gnbsim containers
   command:
     argv:
       - truncate
@@ -96,11 +96,11 @@
       - --
       - --cfg /tmp/gnbsim
   register: async_result
-  until: (async_result.stdout | default('0') | trim) == "0"
+  until: async_result.rc == 1
   retries: 100
   delay: 5
   when: inventory_hostname in groups['gnbsim_nodes']
-  failed_when: false
+  failed_when: async_result.rc not in [0, 1]
   changed_when: false
 
 - name: show output of summary.log from gnbsim container
