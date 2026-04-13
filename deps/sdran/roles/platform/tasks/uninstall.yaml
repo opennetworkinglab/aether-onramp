@@ -27,8 +27,12 @@
   ignore_errors: yes
 
 - name: Delete Local Store
-  shell:
-    cmd: |
-      kubectl delete -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
+  command:
+    argv:
+      - kubectl
+      - delete
+      - -f
+      - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ sdran.platform.store.lpp.version }}/deploy/local-path-storage.yaml"
+      - --wait=true
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes

@@ -22,10 +22,14 @@
   when: inventory_hostname in groups['ueransim_nodes']
 
 - name: Run gNB
-  shell: nohup ./nr-gnb -c "../config/custom-gnb.yaml" > /dev/null 2>&1 &
+  command:
+    argv:
+      - ./nr-gnb
+      - -c
+      - ../config/custom-gnb.yaml
   args:
     chdir: ueransim_onramp/build
-  async: 30
+  async: 86400
   poll: 0
   when: "inventory_hostname in groups['ueransim_nodes']"
 
@@ -33,9 +37,15 @@
     seconds: 5
 
 - name: Run UE
-  shell: nohup ./nr-ue -c "../config/custom-ue.yaml" > /dev/null 2>&1 &
+  command:
+    argv:
+      - ./nr-ue
+      - -c
+      - ../config/custom-ue.yaml
   args:
     chdir: ueransim_onramp/build
+  async: 86400
+  poll: 0
   when: "inventory_hostname in groups['ueransim_nodes']"
   become: true
 
@@ -43,12 +53,25 @@
     seconds: 5
 
 - name: Get UE IP address
-  shell: "ip a | grep -A 1 'uesimtun0' | grep inet | awk '{print $2}' | cut -d'/' -f1"
-  register: ue_ip
+  command:
+    argv:
+      - ip
+      - -o
+      - -4
+      - addr
+      - show
+      - uesimtun0
+  register: ue_ip_result
+  retries: 5
+  delay: 2
+  until:
+    - ue_ip_result.rc == 0
+    - (ue_ip_result.stdout | trim) != ''
+  changed_when: false
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - set_fact:
-    ue_ip: "{{ ue_ip.stdout }}"
+    ue_ip: "{{ ue_ip_result.stdout | regex_replace('^.* inet ([^/ ]+).*$','\\1') }}"
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - debug:
@@ -60,7 +83,14 @@
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - name: Run ping command for connectivity
-  shell: "./nr-binder {{ ue_ip }} ping -c 5 {{ ping_target }}"
+  command:
+    argv:
+      - ./nr-binder
+      - "{{ ue_ip }}"
+      - ping
+      - -c
+      - '5'
+      - "{{ ping_target }}"
   register: ue_output
   args:
     chdir: ueransim_onramp/build

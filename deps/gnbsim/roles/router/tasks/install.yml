@@ -75,7 +75,11 @@
   become: true
 
 - name: check if systemd-networkd is active
-  shell: systemctl is-active systemd-networkd 2>/dev/null || true
+  command:
+    argv:
+      - systemctl
+      - is-active
+      - systemd-networkd
   register: systemd_networkd_state
   changed_when: false
   failed_when: false
@@ -87,12 +91,13 @@
     systemd_networkd_active: "{{ (systemd_networkd_state.stdout | default('') | trim) == 'active' }}"
   when: inventory_hostname in groups['gnbsim_nodes']
 
-- name: find {{ gnbsim.router.data_iface }}'s active systemd-networkd file via networkctl
-  shell: |
-    networkctl status {{ gnbsim.router.data_iface }} 2>/dev/null \
-      | awk -F': ' '/Network File:/ && $2 ~ /\.network$/ {print $2; exit}' \
-      | xargs -r basename
-  register: data_iface_network_file_networkctl
+- name: read {{ gnbsim.router.data_iface }} networkctl status
+  command:
+    argv:
+      - networkctl
+      - status
+      - "{{ gnbsim.router.data_iface }}"
+  register: data_iface_networkctl_status
   changed_when: false
   failed_when: false
   when:
@@ -100,29 +105,66 @@
     - systemd_networkd_active
   become: true
 
+- name: derive {{ gnbsim.router.data_iface }}'s active systemd-networkd file via networkctl
+  set_fact:
+    data_iface_network_file_networkctl: >-
+      {{
+        data_iface_networkctl_status.stdout_lines
+        | default([])
+        | select('match', '^\s*Network File:\s+.*\.network\s*$')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\\1')
+        | list
+        | first
+        | default('')
+        | basename
+      }}
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - systemd_networkd_active
+
 - name: find {{ gnbsim.router.data_iface }}'s systemd-networkd file by filename
-  shell: |
-    find /etc/systemd/network /run/systemd/network /lib/systemd/network /usr/lib/systemd/network \
-      -maxdepth 1 -type f -name '*{{ gnbsim.router.data_iface }}.network' -print 2>/dev/null \
-      | sort \
-      | head -n 1 \
-      | xargs -r basename
-  register: data_iface_network_file_cmd
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "*{{ gnbsim.router.data_iface }}.network"
+    recurse: false
+    file_type: file
+  register: data_iface_network_file_matches
   changed_when: false
   failed_when: false
   when:
     - inventory_hostname in groups['gnbsim_nodes']
     - systemd_networkd_active
-    - (data_iface_network_file_networkctl.stdout | default('') | trim) == ''
+    - (data_iface_network_file_networkctl | default('') | trim) == ''
   become: true
+
+- name: derive {{ gnbsim.router.data_iface }}'s systemd-networkd file by filename
+  set_fact:
+    data_iface_network_file_cmd: >-
+      {{
+        data_iface_network_file_matches.files
+        | default([])
+        | map(attribute='path')
+        | map('basename')
+        | sort
+        | first
+        | default('')
+      }}
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - systemd_networkd_active
+    - (data_iface_network_file_networkctl | default('') | trim) == ''
 
 - name: set {{ gnbsim.router.data_iface }}'s systemd-networkd filename
   set_fact:
     data_iface_network_filename: >-
       {{
-        (data_iface_network_file_networkctl.stdout | default('') | trim)
-        if (data_iface_network_file_networkctl.stdout | default('') | trim) != ''
-        else (data_iface_network_file_cmd.stdout | default('') | trim)
+        (data_iface_network_file_networkctl | default('') | trim)
+        if (data_iface_network_file_networkctl | default('') | trim) != ''
+        else (data_iface_network_file_cmd | default('') | trim)
       }}
   when:
     - inventory_hostname in groups['gnbsim_nodes']
@@ -217,14 +259,26 @@
   when: inventory_hostname in groups['gnbsim_nodes']
 
 - name: configure static route for upf traffic on gnbsim node
-  shell: |
-    ip route replace {{ subnet }} via {{ core.amf.ip }}
+  command:
+    argv:
+      - ip
+      - route
+      - replace
+      - "{{ subnet }}"
+      - via
+      - "{{ core.amf.ip }}"
   when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
   become: true
 
 - name: configure static route for gnbsim traffic on aether node
-  shell: |
-    ip route replace {{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', item) }}.0/24 via {{  hostvars[item]['ansible_default_ipv4']['address'] }}
+  command:
+    argv:
+      - ip
+      - route
+      - replace
+      - "{{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', item) }}.0/24"
+      - via
+      - "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
   with_items: "{{ play_hosts | intersect(groups['gnbsim_nodes']) | difference(groups['master_nodes']) }}"
   when: (inventory_hostname in groups['master_nodes'])
   become: true

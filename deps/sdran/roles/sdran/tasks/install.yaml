@@ -13,8 +13,12 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: update sdran helm dependencies
-  shell: |
-    helm dep up "{{ sdran.sdran.helm.chart_ref }}"
+  command:
+    argv:
+      - helm
+      - dep
+      - up
+      - "{{ sdran.sdran.helm.chart_ref }}"
   when: inventory_hostname in groups['master_nodes'] and sdran.sdran.helm.local_charts
 
 - name: deploy sdran from {{ sdran.sdran.helm.chart_ref }}

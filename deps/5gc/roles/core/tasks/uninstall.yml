@@ -17,14 +17,28 @@
   ignore_errors: yes
 
 - name: waiting for aether pods to terminate
-  shell: |
-    kubectl wait -n aether-5gc --for=delete --all=true -l app!=ue pod --timeout=180s
+  command:
+    argv:
+      - kubectl
+      - wait
+      - -n
+      - aether-5gc
+      - --for=delete
+      - --all=true
+      - -l
+      - app!=ue
+      - pod
+      - --timeout=180s
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
 - name: delete namespace aether-5gc
-  shell: |
-    kubectl delete namespace aether-5gc
+  command:
+    argv:
+      - kubectl
+      - delete
+      - namespace
+      - aether-5gc
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 

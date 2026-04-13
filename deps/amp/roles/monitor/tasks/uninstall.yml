@@ -19,8 +19,13 @@
   ignore_errors: yes
 
 - name: delete namespace cattle-dashboards cattle-monitoring-system
-  shell: |
-    kubectl delete namespace cattle-dashboards cattle-monitoring-system
+  command:
+    argv:
+      - kubectl
+      - delete
+      - namespace
+      - cattle-dashboards
+      - cattle-monitoring-system
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 

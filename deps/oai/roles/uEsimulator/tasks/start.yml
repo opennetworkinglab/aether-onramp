@@ -66,10 +66,12 @@
   when: inventory_hostname in groups['oai_nodes']
 
 - name: run ping command to check if the UE is running and show output
-  shell: |
-    docker exec rfsim5g-oai-nr-ue ping -I oaitun_ue1 -c 5 {{ ping_target }}
+  community.docker.docker_container_exec:
+    container: rfsim5g-oai-nr-ue
+    command: "ping -I oaitun_ue1 -c 5 {{ ping_target }}"
   register: uEsimPingOutput
   when: inventory_hostname in groups['oai_nodes']
+  become: true
 
 - debug:
     var: uEsimPingOutput.stdout_lines

@@ -57,8 +57,12 @@
     seconds: 10
 
 - name: add default route for UE
-  shell: |
-    docker exec rfsim5g-nr-ue ip netns exec ue1 ip route replace default via {{ (core.upf.default_upf.ue_ip_pool.split('.'))[:3] | join('.') }}.{{ (core.upf.default_upf.ue_ip_pool.split('.')[3] | int) + 1 }} dev tun_srsue
+  community.docker.docker_container_exec:
+    container: rfsim5g-nr-ue
+    command: >-
+      ip netns exec ue1 ip route replace default via
+      {{ (core.upf.default_upf.ue_ip_pool.split('.'))[:3] | join('.') }}.{{ (core.upf.default_upf.ue_ip_pool.split('.')[3] | int) + 1 }}
+      dev tun_srsue
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
@@ -67,8 +71,9 @@
   when: inventory_hostname in groups['ocudu_nodes']
 
 - name: run ping command to check if the UE is running and show output
-  shell: |
-    docker exec rfsim5g-nr-ue ip netns exec ue1 ping -c 5 {{ ping_target }}
+  community.docker.docker_container_exec:
+    container: rfsim5g-nr-ue
+    command: "ip netns exec ue1 ping -c 5 {{ ping_target }}"
   register: uEsimPingOutput
   when: inventory_hostname in groups['ocudu_nodes']
   become: true

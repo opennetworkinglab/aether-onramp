@@ -1,14 +1,46 @@
 ---
 
 - name: find {{ core.data_iface }}'s subnet for RAN
-  shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
+  command:
+    argv:
+      - ip
+      - -o
+      - route
+      - show
+      - dev
+      - "{{ core.data_iface }}"
   register: result
+  changed_when: false
+  failed_when: false
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
+  ansible.builtin.assert:
+    that:
+      - result.rc == 0
+      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
+    fail_msg: >-
+      Unable to derive ran_subnet from interface {{ core.data_iface }}.
+      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.ran_subnet == ''
+
 # TODO: check if interface subnet is valid
 - set_fact:
-    ran_subnet: "{{ result.stdout if (core.ran_subnet == '') else core.ran_subnet }}"
+    ran_subnet: >-
+      {{
+        (
+          result.stdout_lines
+          | default([])
+          | select('search', ' proto kernel ')
+          | map('regex_replace', '^([^ ]+).*$','\\1')
+          | list
+          | first
+          | default('')
+        ) if (core.ran_subnet == '') else core.ran_subnet
+      }}
   when: inventory_hostname in groups['master_nodes']
 
 - debug:
@@ -55,30 +87,29 @@
 
   rescue:
     - name: Get Pods Status
-      shell: kubectl get po -n omec
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: omec
       register: pod_status
       changed_when: false
       when: inventory_hostname in groups['master_nodes']
 
     - name: restart Pods if not running
-      shell: |
-        while IFS= read -r line; do
-          [[ -z "$line" ]] && continue
-
-          name=$(echo "$line" | awk '{print $1}')
-          status=$(echo "$line" | awk '{print $3}')
-
-          [[ -z "$name" || "$name" == "NAME" ]] && continue
-
-          if [[ "$status" != "Running" ]]; then
-            kubectl delete pod "$name" -n omec
-          fi
-        done <<< "{{ pod_status.stdout }}"
-      args:
-        executable: /bin/bash
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Pod
+        namespace: omec
+        name: "{{ item.metadata.name }}"
+        state: absent
+      loop: "{{ pod_status.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
       register: pod_restart
-      changed_when: "'deleted' in pod_restart.stdout"
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) != 'Running'
+      ignore_errors: yes
   always:
     - pause:
         seconds: 180

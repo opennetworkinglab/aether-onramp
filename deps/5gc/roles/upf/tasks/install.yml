@@ -3,7 +3,13 @@
 - name: check configured VF resources for additional UPFs
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
-      shell: ip link show "{{ core.data_iface }}" | grep -c vf
+      command:
+        argv:
+          - ip
+          - -d
+          - link
+          - show
+          - "{{ core.data_iface }}"
       register: vf_status
       changed_when: false
       failed_when: false
@@ -14,18 +20,50 @@
     - name: verify the required VF resources are configured on {{ core.data_iface }}
       ansible.builtin.assert:
         that:
-          - vf_status.stdout | int >= 2
+          - (vf_status.stdout | regex_findall('(?m)^\s+vf\s+\d+') | length) >= 2
 
   when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"
 
 - name: find {{ core.data_iface }}'s subnet for RAN
-  shell: ip route | grep {{ core.data_iface }} | awk '/kernel/ {print $1}' | head -1
+  command:
+    argv:
+      - ip
+      - -o
+      - route
+      - show
+      - dev
+      - "{{ core.data_iface }}"
   register: result
+  changed_when: false
+  failed_when: false
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
+  ansible.builtin.assert:
+    that:
+      - result.rc == 0
+      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
+    fail_msg: >-
+      Unable to derive ran_subnet from interface {{ core.data_iface }}.
+      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.ran_subnet == ''
+
 - set_fact:
-    ran_subnet: "{{ result.stdout if (core.ran_subnet == '') else core.ran_subnet }}"
+    ran_subnet: >-
+      {{
+        (
+          result.stdout_lines
+          | default([])
+          | select('search', ' proto kernel ')
+          | map('regex_replace', '^([^ ]+).*$','\\1')
+          | list
+          | first
+          | default('')
+        ) if (core.ran_subnet == '') else core.ran_subnet
+      }}
   when: inventory_hostname in groups['master_nodes']
 
 - name: remove /tmp/upf-[].yaml
@@ -50,8 +88,12 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: update helm dependencies
-  shell: |
-    helm dep up "{{ core.upf.helm.chart_ref }}"
+  command:
+    argv:
+      - helm
+      - dep
+      - up
+      - "{{ core.upf.helm.chart_ref }}"
   when: inventory_hostname in groups['master_nodes'] and core.upf.helm.local_charts
 
 - set_fact:
@@ -75,16 +117,26 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: configure route for upf traffic on gnbsim node
-  shell: |
-    ip route add {{ item.value.ue_ip_pool }} via {{ item.value.ip.core }}
+  command:
+    argv:
+      - ip
+      - route
+      - add
+      - "{{ item.value.ue_ip_pool }}"
+      - via
+      - "{{ item.value.ip.core }}"
   when: inventory_hostname in groups['master_nodes']
   with_dict: "{{ core.upf.additional_upfs}}"
   become: true
   # ignore_errors: yes
 
 - name: configure NAT for upf traffic
-  shell: |
-    sudo iptables -t nat -C POSTROUTING -s {{ item.value.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE || sudo iptables -t nat -A POSTROUTING -s {{ item.value.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ item.value.ue_ip_pool }}"
+    out_interface: "{{ core.data_iface }}"
+    jump: MASQUERADE
   when: inventory_hostname in groups['master_nodes']
   with_dict: "{{ core.upf.additional_upfs}}"
   become: true

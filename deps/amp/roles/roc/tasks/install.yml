@@ -8,11 +8,25 @@
 
 # TODO: add a local check to install local store
 # TODO: use kubectl module for ansible
-- name: Setup Local Store
-  shell:
-    cmd: |
-      kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ amp.store.lpp.version }}/deploy/local-path-storage.yaml --wait=true;
-      kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}';
+- name: apply local-path provisioner manifest
+  command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ amp.store.lpp.version }}/deploy/local-path-storage.yaml"
+      - --wait=true
+  when: inventory_hostname in groups['master_nodes']
+
+- name: patch local-path storage class as default
+  command:
+    argv:
+      - kubectl
+      - patch
+      - storageclass
+      - local-path
+      - -p
+      - '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
   when: inventory_hostname in groups['master_nodes']
 
 - name: remove /tmp/roc-values.yaml
@@ -28,8 +42,12 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: update roc helm dependencies
-  shell: |
-    helm dep up "{{ amp.aether_roc.helm.chart_ref }}"
+  command:
+    argv:
+      - helm
+      - dep
+      - up
+      - "{{ amp.aether_roc.helm.chart_ref }}"
   when: inventory_hostname in groups['master_nodes'] and amp.aether_roc.helm.local_charts
 
 - set_fact:
@@ -69,30 +87,30 @@
 
   rescue:
     - name: Get Pods Status
-      shell: kubectl get po -n kube-system
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: kube-system
       register: pod_status
       changed_when: false
       when: inventory_hostname in groups['master_nodes']
 
     - name: restart Pods if not running
-      shell: |
-        while IFS= read -r line; do
-          [[ -z "$line" ]] && continue
-
-          name=$(echo "$line" | awk '{print $1}')
-          status=$(echo "$line" | awk '{print $3}')
-
-          [[ -z "$name" || "$name" == "NAME" ]] && continue
-
-          if [[ "$status" != "Running" && "$status" != "Completed" ]]; then
-            kubectl delete pod "$name" -n kube-system
-          fi
-        done <<< "{{ pod_status.stdout }}"
-      args:
-        executable: /bin/bash
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Pod
+        namespace: kube-system
+        name: "{{ item.metadata.name }}"
+        state: absent
+      loop: "{{ pod_status.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
       register: pod_restart
-      changed_when: "'deleted' in pod_restart.stdout"
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) not in ['Running', 'Succeeded']
+      failed_when: false
+      ignore_errors: yes
 
 - name: deploy ROC from {{ amp.aether_roc.helm.chart_ref }}
   block:
@@ -112,30 +130,30 @@
 
   rescue:
     - name: Get Pods Status
-      shell: kubectl get po -n aether-roc
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: aether-roc
       register: pod_status
       changed_when: false
       when: inventory_hostname in groups['master_nodes']
 
     - name: restart Pods if not running
-      shell: |
-        while IFS= read -r line; do
-          [[ -z "$line" ]] && continue
-
-          name=$(echo "$line" | awk '{print $1}')
-          status=$(echo "$line" | awk '{print $3}')
-
-          [[ -z "$name" || "$name" == "NAME" ]] && continue
-
-          if [[ "$status" != "Running" && "$status" != "Completed" ]]; then
-            kubectl delete pod "$name" -n aether-roc
-          fi
-        done <<< "{{ pod_status.stdout }}"
-      args:
-        executable: /bin/bash
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Pod
+        namespace: aether-roc
+        name: "{{ item.metadata.name }}"
+        state: absent
+      loop: "{{ pod_status.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
       register: pod_restart
-      changed_when: "'deleted' in pod_restart.stdout"
-      when: inventory_hostname in groups['master_nodes']
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (item.status.phase | default('')) not in ['Running', 'Succeeded']
+      failed_when: false
+      ignore_errors: yes
 
 - pause:
     seconds: 5

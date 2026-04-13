@@ -23,8 +23,12 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: apply monitoring dashboard
-  shell: |
-    kubectl apply -k /tmp/monitoring
+  command:
+    argv:
+      - kubectl
+      - apply
+      - -k
+      - /tmp/monitoring
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 

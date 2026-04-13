@@ -56,7 +56,9 @@
   become: true
 
 - name: install rke2 on masters
-  shell: "{{ script_dir }}/install.sh"
+  command:
+    argv:
+      - "{{ script_dir }}/install.sh"
   environment:
     INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
   when: inventory_hostname in groups['master_nodes']
@@ -94,7 +96,13 @@
   become: true
 
 - name: wait for the Kubernetes API to respond
-  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get --raw=/readyz
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/rke2/rke2.yaml
+      - get
+      - --raw=/readyz
   register: rke2_api_ready
   retries: 60
   delay: 5
@@ -104,7 +112,16 @@
   become: true
 
 - name: wait for this master node object to be registered
-  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get node "{{ inventory_hostname }}" -o name
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/rke2/rke2.yaml
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - name
   register: rke2_current_node
   retries: 60
   delay: 5
@@ -114,13 +131,32 @@
   become: true
 
 - name: wait for the master node(s) to get ready
-  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait nodes --for=condition=Ready --all --timeout=300s
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/rke2/rke2.yaml
+      - wait
+      - nodes
+      - --for=condition=Ready
+      - --all
+      - --timeout=300s
   changed_when: false
   when: inventory_hostname in groups['master_nodes']
   become: true
 
 - name: detect kube-system deployments
-  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml get deployment -n kube-system -o name
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/rke2/rke2.yaml
+      - -n
+      - kube-system
+      - get
+      - deployment
+      - -o
+      - name
   register: kube_system_deployments
   retries: 12
   delay: 10
@@ -138,7 +174,18 @@
     - kube_system_deployments.stdout | trim == ''
 
 - name: wait for kube-system deployments to become available
-  shell: kubectl --kubeconfig /etc/rancher/rke2/rke2.yaml wait deployment -n kube-system --for=condition=available --all --timeout=300s
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/rke2/rke2.yaml
+      - wait
+      - deployment
+      - -n
+      - kube-system
+      - --for=condition=available
+      - --all
+      - --timeout=300s
   changed_when: false
   when:
     - inventory_hostname in groups['master_nodes']
@@ -155,7 +202,9 @@
     seconds: 5
 
 - name: install rke2 agent on workers
-  shell: "{{ script_dir }}/install.sh"
+  command:
+    argv:
+      - "{{ script_dir }}/install.sh"
   environment:
     INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
     INSTALL_RKE2_TYPE: "agent"
@@ -215,7 +264,10 @@
     - hostvars[groups['master_nodes'][0]]['ansible_host'] != '127.0.0.1'
 
 - name: change {{ ansible_env.HOME }}/.kube ownership
-  shell: |
-    chown -R $(shell id -u):$(shell id -g) {{ ansible_env.HOME }}/.kube
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    recurse: true
   when: inventory_hostname in groups['master_nodes']
   become: true

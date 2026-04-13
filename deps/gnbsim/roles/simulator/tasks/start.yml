@@ -30,22 +30,41 @@
   when: inventory_hostname in groups['gnbsim_nodes']
 
 - name: copy config files into gnbsim containers
-  shell: |
-    docker cp /tmp/gnbsim-{{ (item.0|int)+1 }}.yaml \
-      gnbsim-{{ (item.0|int)+1 }}:/tmp/gnbsim.yaml
+  command:
+    argv:
+      - docker
+      - cp
+      - "/tmp/gnbsim-{{ (item.0|int)+1 }}.yaml"
+      - "{{ gnbsim.docker.container.prefix }}-{{ (item.0|int)+1 }}:/tmp/gnbsim.yaml"
   with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
-- name: clear Docker logs for gnbsim containers
-  shell: |
-    log_path="{{ container_info.results[item.0].container.LogPath | default('') }}"
-    if [ -n "$log_path" ] && [ -f "$log_path" ]; then
-      truncate -s 0 "$log_path"
-    fi
+- name: stat Docker log paths for gnbsim containers
+  stat:
+    path: "{{ container_info.results[item.0].container.LogPath }}"
+  register: gnbsim_log_path_stat
   with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (container_info.results[item.0].container.LogPath | default('')) != ''
   become: true
+
+- name: truncate Docker logs for gnbsim containers
+  command:
+    argv:
+      - truncate
+      - -s
+      - "0"
+      - "{{ container_info.results[item.0].container.LogPath }}"
+  with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (container_info.results[item.0].container.LogPath | default('')) != ''
+    - gnbsim_log_path_stat.results[item.0].stat.exists | default(false)
+    - gnbsim_log_path_stat.results[item.0].stat.isreg | default(false)
+  become: true
+  failed_when: false
 
 - name: start gnbsim
   community.docker.docker_container_exec:
@@ -70,19 +89,28 @@
     seconds: 1
 
 - name: loop until gnbsim completes
-  shell: |
-    ps aux | grep "\-\-cfg\ /tmp/gnbsim" | wc -l
+  command:
+    argv:
+      - pgrep
+      - -fc
+      - --
+      - --cfg /tmp/gnbsim
   register: async_result
-  until: async_result.stdout == "0"
+  until: async_result.rc == 1
   retries: 100
   delay: 5
   when: inventory_hostname in groups['gnbsim_nodes']
+  failed_when: async_result.rc not in [0, 1]
+  changed_when: false
 
-- name: show outupt of summary.log from gnbsim Pod
-  shell: |
-    docker exec gnbsim-1 cat summary.log
+- name: show output of summary.log from gnbsim container
+  community.docker.docker_container_exec:
+    container: "{{ gnbsim.docker.container.prefix }}-1"
+    command: cat summary.log
   register: gNbsimPod
   when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+  changed_when: false
 
 - name: Check if simulation failed
   set_fact:
