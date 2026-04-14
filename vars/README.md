@@ -61,3 +61,10 @@ blueprints include:
 * `main-n3iwf.yml`: Configures the SD-Core with a N3IWF entity for non-3GPP access.
   Details documented
   [here](https://docs.aetherproject.org/onramp/blueprints.html#non-3gpp-interworking-function).
+
+## Proxy Configuration
+
+All blueprint files include an optional `proxy` section for deploying Aether
+behind an HTTP proxy. Set `proxy.enabled` to `true` and fill in the proxy URLs
+to activate it. When disabled (the default), proxy settings have no effect on the
+deployment. See the top-level `README.md` for details.

@@ -129,6 +129,34 @@ Being able to support more complex configurations of Aether is whole
 point of OnRamp. See the OnRamp documentation available as part of
 the [Aether Guide](https://docs.aetherproject.org) for details.
 
+## Deploying Behind a Proxy
+
+If your servers access the Internet through an HTTP proxy, enable proxy
+support in ``vars/main.yml``:
+
+```yaml
+proxy:
+  enabled: true
+  http_proxy: "http://proxy.example.com:3128"
+  https_proxy: "http://proxy.example.com:3128"
+  no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,.cluster.local"
+```
+
+When ``proxy.enabled`` is ``true``, OnRamp automatically configures
+proxy settings for all deployment steps, including:
+
+* Ansible tasks that download packages and scripts (``apt``, ``pip``,
+  ``get_url``, ``git``, ``helm``).
+* The Docker daemon on nodes that run Docker-based components
+  (gNBsim, OAI, srsRAN, etc.), so that ``docker pull`` works
+  through the proxy.
+* RKE2's embedded containerd runtime on Kubernetes master and worker
+  nodes, so that container image pulls work through the proxy.
+
+Adjust ``no_proxy`` to include any additional internal hosts or
+domains that should bypass the proxy. The default value covers
+localhost, private RFC 1918 subnets, and Kubernetes internal domains.
+
 You might also check the `vars` directory of this repo, where file
 `main.yml` specifies global variables used to configure how Aether is
 deployed. By default, it is configured for the Quick Start deployment.

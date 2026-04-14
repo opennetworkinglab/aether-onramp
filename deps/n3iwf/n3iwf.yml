@@ -7,5 +7,7 @@
   vars_files:
     - "vars/main.yml"
 
+  environment: "{{ proxy_env }}"
+
   roles:
     - n3iwf
