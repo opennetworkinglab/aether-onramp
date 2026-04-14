@@ -75,7 +75,7 @@
     that:
       - ran_subnet is defined
       - ran_subnet | length > 0
-      - ran_subnet is match('^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$')
+      - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
       - (ran_subnet | split('/') | last | int) >= 8
       - (ran_subnet | split('/') | last | int) <= 30
     fail_msg: >-
