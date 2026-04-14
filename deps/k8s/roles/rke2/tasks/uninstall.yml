@@ -18,8 +18,7 @@
 
 - name: uninstall rke2 masters/workers
   command: "/usr/local/bin/rke2-uninstall.sh"
-  environment:
-    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
+  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version}) }}"
   become: true
   ignore_errors: yes
 

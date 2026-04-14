@@ -7,5 +7,7 @@
   vars_files:
     - "vars/default.yml"
 
+  environment: "{{ proxy_env }}"
+
   roles:
     - sdran

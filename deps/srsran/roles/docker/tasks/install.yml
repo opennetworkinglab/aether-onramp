@@ -35,6 +35,51 @@
     - inventory_hostname in groups['srsran_nodes']
     - docker_version.rc == 0
 
+- name: create docker systemd drop-in directory
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+  when:
+    - inventory_hostname in groups['srsran_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: configure docker daemon proxy
+  copy:
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+    content: |
+      [Service]
+      Environment="HTTP_PROXY={{ proxy.http_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+      Environment="HTTPS_PROXY={{ proxy.https_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+      Environment="NO_PROXY={{ proxy.no_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+    mode: '0600'
+  register: docker_proxy_config
+  when:
+    - inventory_hostname in groups['srsran_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: remove docker daemon proxy when disabled
+  file:
+    path: /etc/systemd/system/docker.service.d/http-proxy.conf
+    state: absent
+  register: docker_proxy_removed
+  when:
+    - inventory_hostname in groups['srsran_nodes']
+    - (proxy is not defined) or not (proxy.enabled | default(false))
+  become: true
+
+- name: restart docker after proxy configuration change
+  systemd:
+    name: docker
+    state: restarted
+    daemon_reload: true
+  when:
+    - inventory_hostname in groups['srsran_nodes']
+    - (docker_proxy_config is defined and docker_proxy_config is changed) or (docker_proxy_removed is defined and docker_proxy_removed is changed)
+    - docker_already_installed_and_valid | default(false)
+  become: true
+
 - meta: end_host
   when:
     - inventory_hostname in groups['srsran_nodes']

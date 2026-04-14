@@ -420,8 +420,7 @@
     update_cache: yes
   when: inventory_hostname in groups['master_nodes']
   become: true
-  environment:
-    DEBIAN_FRONTEND: noninteractive
+  environment: "{{ proxy_env | combine({'DEBIAN_FRONTEND': 'noninteractive'}) }}"
 
 - name: create /etc/iptables directory
   file:

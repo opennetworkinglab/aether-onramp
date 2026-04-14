@@ -59,8 +59,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment:
-    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
+  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version}) }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
@@ -79,11 +78,51 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+- name: configure proxy for rke2-server
+  blockinfile:
+    path: /etc/default/rke2-server
+    create: true
+    owner: root
+    group: root
+    mode: '0600'
+    marker: "# {mark} ANSIBLE MANAGED PROXY BLOCK"
+    block: |
+      HTTP_PROXY={{ proxy.http_proxy | quote }}
+      HTTPS_PROXY={{ proxy.https_proxy | quote }}
+      NO_PROXY={{ proxy.no_proxy | quote }}
+  register: rke2_server_proxy_present
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: remove proxy for rke2-server when disabled
+  blockinfile:
+    path: /etc/default/rke2-server
+    marker: "# {mark} ANSIBLE MANAGED PROXY BLOCK"
+    state: absent
+  register: rke2_server_proxy_absent
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (proxy is not defined) or not (proxy.enabled | default(false))
+  failed_when: false
+  become: true
+
 - name: start rke2-server on masters
   systemd:
     name: rke2-server
     state: started
   when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: restart rke2-server after proxy configuration change
+  systemd:
+    name: rke2-server
+    state: restarted
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (rke2_server_proxy_present is defined and rke2_server_proxy_present is changed) or
+      (rke2_server_proxy_absent is defined and rke2_server_proxy_absent is changed)
   become: true
 
 - name: copy kubectl
@@ -205,9 +244,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment:
-    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
-    INSTALL_RKE2_TYPE: "agent"
+  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version, 'INSTALL_RKE2_TYPE': 'agent'}) }}"
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
@@ -225,12 +262,53 @@
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
+- name: configure proxy for rke2-agent
+  blockinfile:
+    path: /etc/default/rke2-agent
+    create: true
+    owner: root
+    group: root
+    mode: '0600'
+    marker: "# {mark} ANSIBLE MANAGED PROXY BLOCK"
+    block: |
+      HTTP_PROXY={{ proxy.http_proxy | quote }}
+      HTTPS_PROXY={{ proxy.https_proxy | quote }}
+      NO_PROXY={{ proxy.no_proxy | quote }}
+  register: rke2_agent_proxy_present
+  when:
+    - inventory_hostname in groups['worker_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: remove proxy for rke2-agent when disabled
+  blockinfile:
+    path: /etc/default/rke2-agent
+    marker: "# {mark} ANSIBLE MANAGED PROXY BLOCK"
+    state: absent
+  register: rke2_agent_proxy_absent
+  when:
+    - inventory_hostname in groups['worker_nodes']
+    - (proxy is not defined) or not (proxy.enabled | default(false))
+  failed_when: false
+  become: true
+
 - name: start rke2-agent on workers (sequentially)
   systemd:
     name: rke2-agent
     state: started
   throttle: 1
   when: inventory_hostname in groups['worker_nodes']
+  become: true
+
+- name: restart rke2-agent after proxy configuration change
+  systemd:
+    name: rke2-agent
+    state: restarted
+  throttle: 1
+  when:
+    - inventory_hostname in groups['worker_nodes']
+    - (rke2_agent_proxy_present is defined and rke2_agent_proxy_present is changed) or
+      (rke2_agent_proxy_absent is defined and rke2_agent_proxy_absent is changed)
   become: true
 
 - name: force systemd to reread configs
