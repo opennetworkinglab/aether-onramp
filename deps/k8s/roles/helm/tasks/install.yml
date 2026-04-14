@@ -27,7 +27,6 @@
   command:
     argv:
       - "{{ script_dir }}/get-helm.sh"
-  environment:
-    DESIRED_VERSION: "{{ k8s.helm.version }}"
+  environment: "{{ proxy_env | combine({'DESIRED_VERSION': k8s.helm.version}) }}"
   when: inventory_hostname in groups['master_nodes']
   become: true

@@ -60,8 +60,7 @@
     update_cache: yes
   when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
   become: true
-  environment:
-    DEBIAN_FRONTEND: noninteractive
+  environment: "{{ proxy_env | combine({'DEBIAN_FRONTEND': 'noninteractive'}) }}"
 
 - name: create /etc/iptables directory
   file:

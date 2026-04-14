@@ -59,8 +59,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment:
-    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
+  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version}) }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
@@ -94,7 +93,7 @@
   register: rke2_server_proxy_present
   when:
     - inventory_hostname in groups['master_nodes']
-    - proxy.enabled | default(false)
+    - (proxy is defined) and (proxy.enabled | default(false))
   become: true
 
 - name: remove proxy for rke2-server when disabled
@@ -105,7 +104,7 @@
   register: rke2_server_proxy_absent
   when:
     - inventory_hostname in groups['master_nodes']
-    - not (proxy.enabled | default(false))
+    - (proxy is not defined) or not (proxy.enabled | default(false))
   failed_when: false
   become: true
 
@@ -245,9 +244,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment:
-    INSTALL_RKE2_CHANNEL: "{{ k8s.rke2.version }}"
-    INSTALL_RKE2_TYPE: "agent"
+  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version, 'INSTALL_RKE2_TYPE': 'agent'}) }}"
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
@@ -280,7 +277,7 @@
   register: rke2_agent_proxy_present
   when:
     - inventory_hostname in groups['worker_nodes']
-    - proxy.enabled | default(false)
+    - (proxy is defined) and (proxy.enabled | default(false))
   become: true
 
 - name: remove proxy for rke2-agent when disabled
@@ -291,7 +288,7 @@
   register: rke2_agent_proxy_absent
   when:
     - inventory_hostname in groups['worker_nodes']
-    - not (proxy.enabled | default(false))
+    - (proxy is not defined) or not (proxy.enabled | default(false))
   failed_when: false
   become: true
 
