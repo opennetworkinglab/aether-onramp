@@ -345,7 +345,6 @@
   file:
     path: "{{ ansible_env.HOME }}/.kube"
     owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
     recurse: true
   when: inventory_hostname in groups['master_nodes']
   become: true
