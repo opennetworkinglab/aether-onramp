@@ -4,6 +4,11 @@ proxy:
   https_proxy: ""
   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,.cluster.local"
 
+# Airgap behaviour for `apt: update_cache` tasks. See vars/main.yml
+# for full documentation.
+airgapped:
+  enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
+
 k8s:
   rke2:
     version: v1.24.17+rke2r1

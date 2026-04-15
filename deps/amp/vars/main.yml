@@ -1,3 +1,8 @@
+# Airgap behaviour for `apt: update_cache` tasks. See vars/main.yml
+# for full documentation.
+airgapped:
+  enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
+
 amp:
   roc_models: "roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "roles/monitor-load/templates/5g-monitoring"

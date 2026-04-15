@@ -57,7 +57,7 @@
   apt:
     name: iptables-persistent
     state: present
-    update_cache: yes
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
   when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
   become: true
   environment: "{{ proxy_env | combine({'DEBIAN_FRONTEND': 'noninteractive'}) }}"
