@@ -64,6 +64,7 @@
 
 - debug:
     var: "ran_subnet"
+  when: inventory_hostname in groups['master_nodes']
 
 - name: remove /tmp/sdcore-4g-values.yaml
   file:
