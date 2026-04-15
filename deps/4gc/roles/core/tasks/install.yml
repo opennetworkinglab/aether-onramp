@@ -27,7 +27,6 @@
     - inventory_hostname in groups['master_nodes']
     - core.ran_subnet == ''
 
-# TODO: check if interface subnet is valid
 - set_fact:
     ran_subnet: >-
       {{
@@ -35,7 +34,7 @@
           result.stdout_lines
           | default([])
           | select('search', ' proto kernel ')
-          | map('regex_replace', '^([^ ]+).*$','\\1')
+          | map('regex_search', '^[^ ]+')
           | list
           | first
           | default('')
@@ -43,8 +42,29 @@
       }}
   when: inventory_hostname in groups['master_nodes']
 
+- name: validate ran_subnet is in valid CIDR format
+  ansible.builtin.assert:
+    that:
+      - ran_subnet is defined
+      - ran_subnet | length > 0
+      - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
+      - (ran_subnet | split('/') | last | int) >= 8
+      - (ran_subnet | split('/') | last | int) <= 30
+      - >-
+        ((
+          (ran_subnet.split('/')[0].split('.')[0] | int) * 16777216 +
+          (ran_subnet.split('/')[0].split('.')[1] | int) * 65536 +
+          (ran_subnet.split('/')[0].split('.')[2] | int) * 256 +
+          (ran_subnet.split('/')[0].split('.')[3] | int)
+        ) % (2 ** (32 - (ran_subnet.split('/')[1] | int)))) == 0
+    fail_msg: >-
+      Invalid ran_subnet '{{ ran_subnet }}'. Must be in valid CIDR notation
+      with no host bits set (e.g., 172.20.0.0/16) and prefix length between /8 and /30.
+  when: inventory_hostname in groups['master_nodes']
+
 - debug:
     var: "ran_subnet"
+  when: inventory_hostname in groups['master_nodes']
 
 - name: remove /tmp/sdcore-4g-values.yaml
   file:
