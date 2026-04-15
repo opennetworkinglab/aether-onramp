@@ -1,5 +1,6 @@
 core:
-  data_iface: ens18
+  # Empty = auto-derive from default-route interface at install time.
+  data_iface: ""
   ran_subnet: "172.20.0.0/16"  # set to empty string to get subnet from 'data_iface'
 
   upf:

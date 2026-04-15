@@ -1,2 +1,3 @@
 core:
-  data_iface: data
+  # Empty = auto-derive from default-route interface at install time.
+  data_iface: ""
