@@ -4,7 +4,9 @@
 - name: update cache
   apt:
     update_cache: yes
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
   become: true
 
 - name: install software-properties-common package

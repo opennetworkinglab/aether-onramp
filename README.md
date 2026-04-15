@@ -163,3 +163,29 @@ deployed. By default, it is configured for the Quick Start deployment.
 The other files define other common configurations, any one of which
 you can copy to `main.yml`, and then edit to account for your local
 details. These alternative configurations are identified in the README.
+
+## Deploying Offline / On Local Mirrors (Airgap)
+
+Several roles run `apt: update_cache=yes` to refresh the apt cache
+before installing packages (`iptables-persistent` in the 5gc/router
+and oai/router roles, `python3-software-properties` in
+amp/monitor, the docker-ce stack in srsran/ocudu/oai/n3iwf/gnbsim/
+oscric docker roles, build deps in ueransim/simulator). On a host
+that can't reach upstream apt archives — airgapped sites, baked
+images, internal mirrors that don't need upstream refresh — that
+refresh hard-fails and aborts the install.
+
+Set the `airgapped` block in `vars/main.yml` (and in any
+`vars/main-<flavor>.yml` you `cp` over `main.yml`) to opt out:
+
+```yaml
+airgapped:
+  enabled: true                 # skip `apt update_cache` for offline / mirror-only sites
+```
+
+When `enabled: true`, every gated `apt: update_cache` call site is
+skipped. Operators are responsible for ensuring the required
+packages are already installed (offline bundle, baked image, or a
+local mirror keeping the apt cache fresh out-of-band) before running
+the install. The default (`enabled: false`) preserves online
+behaviour — apt cache is refreshed as before.

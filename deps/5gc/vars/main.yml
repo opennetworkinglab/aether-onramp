@@ -1,3 +1,8 @@
+# Airgap behaviour for `apt: update_cache` tasks. See vars/main.yml
+# for full documentation.
+airgapped:
+  enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
+
 core:
   standalone: true
   data_iface: ens18

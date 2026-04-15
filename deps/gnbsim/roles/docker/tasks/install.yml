@@ -89,7 +89,9 @@
 - name: update apt cache
   apt:
     update_cache: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
   become: true
 
 - name: Delete previous apt sources (1)
@@ -186,7 +188,9 @@
 - name: update apt cache
   apt:
     update_cache: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
   become: true
 
 - name: install Docker packages
