@@ -1,5 +1,19 @@
 ---
 
+# kubernetes.core modules used later in this role require the python
+# `kubernetes` client library, which is NOT pulled in by a stock apt
+# install of ansible on Ubuntu. Install it up-front. `airgapped.enabled`
+# gates update_cache so airgapped hosts don't try to reach unreachable
+# archives; when unset, the default of false preserves current online
+# behaviour.
+- name: install kubernetes.core python prerequisite (python3-kubernetes)
+  ansible.builtin.apt:
+    name: python3-kubernetes
+    state: present
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
 - name: Create a k8s "aether-5gc" namespace
   kubernetes.core.k8s:
     name: aether-5gc
