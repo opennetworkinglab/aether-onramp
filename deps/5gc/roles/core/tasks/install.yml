@@ -208,6 +208,14 @@
       when: inventory_hostname in groups['master_nodes']
 
   rescue:
+    # Intentionally non-fatal: when helm failed because the cluster is
+    # unreachable or kubeconfig is missing, k8s_info will hit the same
+    # error. Letting it abort the rescue would mean the loud-fail task
+    # below never runs and operators see the k8s_info error instead of
+    # the underlying helm failure. failed_when: false registers
+    # pod_status in both the "empty namespace" and "API unreachable"
+    # cases; `pod_status.resources | default([])` below normalises
+    # both to an empty list so the loud-fail fires.
     - name: Get Pods Status
       kubernetes.core.k8s_info:
         api_version: v1
@@ -215,7 +223,35 @@
         namespace: aether-5gc
       register: pod_status
       changed_when: false
+      failed_when: false
       when: inventory_hostname in groups['master_nodes']
+
+    # The restart loop below can only recover from "pods were created but
+    # some are not Running". When pod_status.resources is empty the helm
+    # deploy never produced any pods (typical when chart_ref is
+    # unreachable, the cluster API is down, or kubeconfig is missing),
+    # so there is nothing for the rescue to fix. Re-raise with the
+    # original failure details so operators see the helm error directly
+    # instead of hunting through earlier task output.
+    # `pod_status.resources | length == 0` is true in two cases now
+    # that k8s_info is non-fatal: the namespace genuinely has no
+    # pods, OR k8s_info itself failed (cluster unreachable,
+    # kubeconfig missing, RBAC denial). Both indicate "nothing to
+    # recover" from this rescue's perspective; the surfaced
+    # ansible_failed_result tells the operator which one.
+    - name: fail loudly when helm deploy produced no pods to recover
+      ansible.builtin.fail:
+        msg: |-
+          sd-core helm deploy failed and no pods were found in
+          aether-5gc (the namespace is empty, or k8s_info could not
+          query the cluster API) — nothing for the rescue to recover.
+
+          Original failure in task '{{ ansible_failed_task.name | default('unknown', true) }}':
+          {{ ansible_failed_result.msg | default('', true)
+             | default(ansible_failed_result | default({}, true) | to_nice_yaml, true) }}
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (pod_status.resources | default([])) | length == 0
 
     - name: restart Pods if not running
       kubernetes.core.k8s:
