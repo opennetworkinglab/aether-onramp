@@ -58,7 +58,7 @@
           result.stdout_lines
           | default([])
           | select('search', ' proto kernel ')
-          | map('regex_replace', '^([^ ]+).*$','\\1')
+          | map('regex_search', '^[^ ]+')
           | list
           | first
           | default('')
@@ -78,9 +78,16 @@
       - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
       - (ran_subnet | split('/') | last | int) >= 8
       - (ran_subnet | split('/') | last | int) <= 30
+      - >-
+        ((
+          (ran_subnet.split('/')[0].split('.')[0] | int) * 16777216 +
+          (ran_subnet.split('/')[0].split('.')[1] | int) * 65536 +
+          (ran_subnet.split('/')[0].split('.')[2] | int) * 256 +
+          (ran_subnet.split('/')[0].split('.')[3] | int)
+        ) % (2 ** (32 - (ran_subnet.split('/')[1] | int)))) == 0
     fail_msg: >-
       Invalid ran_subnet '{{ ran_subnet }}'. Must be in valid CIDR notation
-      (e.g., 172.20.0.0/16) with prefix length between /8 and /30.
+      with no host bits set (e.g., 172.20.0.0/16) and prefix length between /8 and /30.
   when: inventory_hostname in groups['master_nodes']
 
 - debug:
