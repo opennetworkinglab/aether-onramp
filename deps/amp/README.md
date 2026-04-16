@@ -14,10 +14,10 @@ To install AMP, follow these steps:
    - Provision a Kubernetes cluster before installing AMP. Use the companion k8s repository or another supported cluster provisioning workflow.
 2. Install ROC
    - Specify Helm chart settings for `atomix`, `onosproject`, and `aether_roc`.
-   - Run `make roc-install`.
+   - Run `make amp-roc-install`.
 3. Install Monitoring
    - Specify Helm chart settings for `monitor` and `monitor_crd`.
-   - Run `make monitor-install`.
+   - Run `make amp-monitor-install`.
 
 #### One-Step Installation
 To install AMP in one go, run `make amp-install`.
