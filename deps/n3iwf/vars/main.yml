@@ -5,7 +5,7 @@ airgapped:
 
 n3iwf:
   docker:
-    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.0
+    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.1
     network:
       name: host
   servers:
