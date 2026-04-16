@@ -19,31 +19,31 @@ amp-pingall:
 
 #### b. Provision k8s with AMP ####
 # k8s-install
-amp-install: roc-install roc-load monitor-install monitor-load
-amp-uninstall: monitor-uninstall roc-uninstall
+amp-install: amp-roc-install amp-roc-load amp-monitor-install amp-monitor-load
+amp-uninstall: amp-monitor-uninstall amp-roc-uninstall
 
 #### c. Provision ROC ####
-roc-install:
+amp-roc-install:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/roc.yml --tags install \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
-roc-uninstall:
+amp-roc-uninstall:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/roc.yml --tags uninstall \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 ### c.1 Load ROC Models ###
-roc-load: # roc-install
+amp-roc-load:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/roc-load.yml --tags install \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 #### d. Provision Monitoring ####
-monitor-install:
+amp-monitor-install:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/monitor.yml --tags install \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
-monitor-uninstall:
+amp-monitor-uninstall:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/monitor.yml --tags uninstall \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 #### d.1 Load Monitoring Dashboards ####
-monitor-load:
+amp-monitor-load:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(AMP_ROOT_DIR)/monitor-load.yml --tags install \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)

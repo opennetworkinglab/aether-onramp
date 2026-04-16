@@ -61,7 +61,7 @@ aether-n3iwf-uninstall: n3iwf-uninstall
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
-aether-uninstall: monitor-uninstall roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
+aether-uninstall: amp-monitor-uninstall amp-roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 #### Provision AETHER for 4G ####
 #### 4G/5G share router role ####
@@ -78,8 +78,8 @@ aether-ueransim-run: ueransim-run
 aether-ueransim-stop: ueransim-stop
 
 # Rules:
-#	amp-install: roc-install roc-load monitor-install monitor-load
-#	amp-uninstall: monitor-uninstall roc-uninstall
+#	amp-install: amp-roc-install amp-roc-load amp-monitor-install amp-monitor-load
+#	amp-uninstall: amp-monitor-uninstall amp-roc-uninstall
 
 #	5gc-install: 5gc-router-install 5gc-core-install
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall
@@ -103,18 +103,18 @@ aether-ueransim-stop: ueransim-stop
 #	5gc-core-reset
 
 ### Provision  AMP ####
-# amp-install: k8s-install roc-install roc-load monitor-install monitor-load
-# amp-uninstall: monitor-uninstall roc-uninstall k8s-uninstall
+# amp-install: k8s-install amp-roc-install amp-roc-load amp-monitor-install amp-monitor-load
+# amp-uninstall: amp-monitor-uninstall amp-roc-uninstall k8s-uninstall
 
 ### Provision and load ROC ###
-# roc-install
-# roc-load
-# roc-uninstall
+# amp-roc-install
+# amp-roc-load
+# amp-roc-uninstall
 
 ### Provision and load Monitoring ###
-# monitor-install
-# monitor-load
-# monitor-uninstall
+# amp-monitor-install
+# amp-monitor-load
+# amp-monitor-uninstall
 
 ### Provision and run gnbsim ###
 # 	gnbsim-docker-install
