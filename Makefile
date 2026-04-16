@@ -61,7 +61,7 @@ aether-n3iwf-uninstall: n3iwf-uninstall
 
 #### Shortcut for QuickStart Only ####
 aether-install: k8s-install 5gc-install gnbsim-install amp-install
-aether-uninstall: amp-monitor-uninstall amp-roc-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
+aether-uninstall: amp-uninstall gnbsim-uninstall 5gc-uninstall k8s-uninstall
 
 #### Provision AETHER for 4G ####
 #### 4G/5G share router role ####

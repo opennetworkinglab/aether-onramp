@@ -43,5 +43,5 @@ jobs:
       artifact_name: quickstart-amp-logs
       extra_log_commands: |
         docker logs gnbsim-1 > logs/gnbsim.log 2>&1 || echo "Failed to get gnbsim container logs"
-      cleanup_targets: gnbsim-uninstall 5gc-uninstall amp-roc-uninstall k8s-uninstall
+      cleanup_targets: gnbsim-uninstall 5gc-uninstall amp-uninstall k8s-uninstall
     secrets: inherit
