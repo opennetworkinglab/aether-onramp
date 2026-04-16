@@ -32,6 +32,19 @@
 - set_fact:
     script_dir: /tmp/rke2
 
+- name: build RKE2 installer environment
+  set_fact:
+    rke2_install_env: >-
+      {{
+        proxy_env | combine(
+          (k8s.rke2.version is search('\\+rke2r'))
+          | ternary(
+              {'INSTALL_RKE2_VERSION': k8s.rke2.version},
+              {'INSTALL_RKE2_CHANNEL': k8s.rke2.version}
+            )
+        )
+      }}
+
 - name: remove {{ script_dir }}
   file:
     path: "{{ script_dir }}"
@@ -59,7 +72,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version}) }}"
+  environment: "{{ rke2_install_env }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
@@ -244,7 +257,7 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment: "{{ proxy_env | combine({'INSTALL_RKE2_CHANNEL': k8s.rke2.version, 'INSTALL_RKE2_TYPE': 'agent'}) }}"
+  environment: "{{ rke2_install_env | combine({'INSTALL_RKE2_TYPE': 'agent'}) }}"
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
