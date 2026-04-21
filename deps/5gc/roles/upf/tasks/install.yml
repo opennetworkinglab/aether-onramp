@@ -41,6 +41,88 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+# Ensure ~/.kube/config exists for the ansible user so kubernetes.core
+# tasks below find a valid config. See the 5gc/core role for the full
+# rationale and for why we only act when the file is absent.
+- name: check for existing ansible-user kubeconfig
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+  register: _user_kubeconfig_stat
+  when: inventory_hostname in groups['master_nodes']
+
+- name: locate on-disk cluster kubeconfig
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/rancher/rke2/rke2.yaml
+    - /etc/rancher/k3s/k3s.yaml
+  register: _kubeconfig_candidates
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is not defined
+
+- name: resolve kubeconfig_source to first existing candidate
+  ansible.builtin.set_fact:
+    kubeconfig_source: "{{ item.item }}"
+  loop: "{{ _kubeconfig_candidates.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default('') }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is not defined
+    - item.stat.exists | default(false)
+
+- name: ensure ~/.kube exists for ansible user
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    mode: "0700"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is defined
+
+- name: install cluster kubeconfig at ~/.kube/config
+  ansible.builtin.copy:
+    src: "{{ kubeconfig_source }}"
+    dest: "{{ ansible_env.HOME }}/.kube/config"
+    remote_src: yes
+    mode: "0600"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is defined
+  become: true
+
+- name: rewrite 127.0.0.1 in kubeconfig when master is remote
+  ansible.builtin.replace:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ hostvars[groups['master_nodes'][0]]['ansible_host'] }}:6443"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is defined
+    - hostvars[groups['master_nodes'][0]]['ansible_host'] is defined
+    - hostvars[groups['master_nodes'][0]]['ansible_host'] != '127.0.0.1'
+  # Required: the preceding `copy` ran with become: true and wrote
+  # the file as root@0600. Without become here the replace would
+  # hit permission denied on a non-root ansible_user.
+  become: true
+
+- name: set ~/.kube ownership
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    owner: "{{ ansible_user }}"
+    recurse: true
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_stat.stat.exists | default(false))
+    - kubeconfig_source is defined
+  become: true
+
 - name: check configured VF resources for additional UPFs
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
