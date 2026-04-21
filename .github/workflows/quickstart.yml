@@ -8,11 +8,15 @@ name: Aether OnRamp Quickstart
 on:
   workflow_dispatch:
     inputs:
-      agent_label:
-        description: "Label for selecting runner (if using self-hosted)"
+      ubuntu_version:
+        description: "Ubuntu version to test"
         required: false
-        default: "ubuntu-latest"
-        type: string
+        default: all
+        type: choice
+        options:
+          - all
+          - ubuntu-22.04
+          - ubuntu-24.04
   push:
     branches:
       - main
@@ -22,9 +26,13 @@ on:
 
 jobs:
   quickstart:
+    name: quickstart (${{ matrix.agent_label }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON((github.event_name == 'workflow_dispatch' && github.event.inputs.ubuntu_version != 'all' && format('{{"agent_label":["{0}"]}}', github.event.inputs.ubuntu_version)) || '{"agent_label":["ubuntu-22.04","ubuntu-24.04"]}') }}
     uses: ./.github/workflows/reusable-quickstart.yml
     with:
-      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+      agent_label: ${{ matrix.agent_label }}
       target_group: gnbsim_nodes
       vars_template: vars/main-quickstart.yml
       configure_commands: |
@@ -43,7 +51,7 @@ jobs:
       validate_commands: |
         docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
       log_prefix: quickstart
-      artifact_name: quickstart-logs
+      artifact_name: quickstart-logs-${{ matrix.agent_label }}
       extra_log_commands: |
         docker logs gnbsim-1 > logs/gnbsim.log 2>&1 || echo "Failed to get gnbsim container logs"
       cleanup_targets: gnbsim-uninstall 5gc-uninstall k8s-uninstall
