@@ -9,10 +9,19 @@ on:
   workflow_dispatch:
     inputs:
       agent_label:
-        description: "Label for selecting runner (if using self-hosted)"
+        description: "Runner label override (for example, a self-hosted label)"
         required: false
-        default: "ubuntu-latest"
+        default: ""
         type: string
+      ubuntu_version:
+        description: "Ubuntu version to test"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "ubuntu-22.04"
+          - "ubuntu-24.04"
   push:
     branches:
       - main
@@ -21,10 +30,55 @@ on:
       - main
 
 jobs:
+  prepare:
+    name: prepare matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Compute runner matrix
+        id: set-matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          AGENT_LABEL: ${{ github.event.inputs.agent_label || '' }}
+          UBUNTU_VERSION: ${{ github.event.inputs.ubuntu_version || 'all' }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import sys
+
+          event_name = os.environ.get("EVENT_NAME", "")
+          agent_label = os.environ.get("AGENT_LABEL", "")
+          ubuntu_version = os.environ.get("UBUNTU_VERSION", "all")
+
+          if event_name == "workflow_dispatch" and agent_label and ubuntu_version != "all":
+              print(
+                  "Set either agent_label or ubuntu_version for workflow_dispatch, not both.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          if event_name == "workflow_dispatch" and agent_label:
+              matrix = {"runner_label": [agent_label]}
+          elif event_name == "workflow_dispatch" and ubuntu_version != "all":
+              matrix = {"runner_label": [ubuntu_version]}
+          else:
+              matrix = {"runner_label": ["ubuntu-22.04", "ubuntu-24.04"]}
+
+          print(f"matrix={json.dumps(matrix)}")
+          PY
+
   quickstart:
+    needs: prepare
+    name: quickstart (${{ matrix.runner_label }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     uses: ./.github/workflows/reusable-quickstart.yml
     with:
-      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+      agent_label: ${{ matrix.runner_label }}
       target_group: gnbsim_nodes
       vars_template: vars/main-quickstart.yml
       configure_commands: |
@@ -43,7 +97,7 @@ jobs:
       validate_commands: |
         docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
       log_prefix: quickstart
-      artifact_name: quickstart-logs
+      artifact_name: quickstart-logs-${{ matrix.runner_label }}
       extra_log_commands: |
         docker logs gnbsim-1 > logs/gnbsim.log 2>&1 || echo "Failed to get gnbsim container logs"
       cleanup_targets: gnbsim-uninstall 5gc-uninstall k8s-uninstall
