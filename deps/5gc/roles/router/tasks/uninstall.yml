@@ -2,10 +2,80 @@
 
 # TODO: running on master node for now (fix to run on multiple nodes)
 
+# Path is shared with install.yml; declared up-front so the recovery
+# slurp below and the later set_fact block use one source of truth.
+- name: declare paths shared with install.yml
+  ansible.builtin.set_fact:
+    router_sysctl_backup_file: /var/lib/aether-5gc-router-sysctl-backup.conf
+
+# Recover the install-time data_iface from the sysctl backup file.
+# The backup was written by install.yml in the form
+#     net/ipv4/conf/<install-time-iface>/forwarding=<original-value>
+# Reading it back here guarantees uninstall targets the same
+# interface install used, even if the host's default route has since
+# moved to a different NIC. Operator overrides via vars/main.yml or
+# inventory still win; the auto-derive below only fires if both the
+# explicit override and the backup file are absent/unparseable.
+# `become: true`: the backup file is written by install at mode 0600
+# owned by root, so an unprivileged ansible_user can't slurp it.
+- name: read sysctl backup file for install-time data_iface
+  ansible.builtin.slurp:
+    src: "{{ router_sysctl_backup_file }}"
+  register: _router_sysctl_backup
+  failed_when: false
+  changed_when: false
+  become: true
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.data_iface is not defined or core.data_iface in ['', 'data']
+
+- name: recover core.data_iface from sysctl backup file
+  ansible.builtin.set_fact:
+    core: "{{ core | combine({'data_iface':
+      _router_sysctl_backup.content | b64decode
+        | regex_findall('(?m)^net/ipv4/conf/([^/]+)/forwarding=') | first }) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.data_iface is not defined or core.data_iface in ['', 'data']
+    - _router_sysctl_backup.content is defined
+    - (_router_sysctl_backup.content | b64decode) is regex('(?m)^net/ipv4/conf/[^/]+/forwarding=')
+
+# Mirror the install-time auto-derive when neither an explicit
+# operator value nor the backup-file recovery resolved the interface.
+- name: derive core.data_iface from default-route interface when unset
+  ansible.builtin.set_fact:
+    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - ansible_default_ipv4.interface is defined
+    - core.data_iface is not defined or core.data_iface in ['', 'data']
+
+# Non-fatal in uninstall: cleanup is best-effort (most tasks below
+# use `ignore_errors: yes`), so a hard failure here would block
+# legitimate uninstall runs on hosts where the install-time interface
+# is no longer present (renamed NIC, decommissioned hardware, etc.).
+# Surface a warning instead — interface-dependent tasks downstream
+# will fail individually under their existing ignore_errors and the
+# rest of the cleanup still completes.
+- name: warn when core.data_iface cannot be resolved on this host
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: core.data_iface (={{ core.data_iface | default('<unset>') | to_json }})
+      is not a valid network interface on this host. Either it was
+      left at a placeholder and no IPv4 default route was available
+      to derive from, or the configured value does not match any
+      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
+      Interface-specific cleanup steps may be skipped; re-run with
+      `core.data_iface` set explicitly to fully clean up.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (core.data_iface is not defined)
+      or (core.data_iface in ['', 'data'])
+      or (core.data_iface not in (ansible_interfaces | default([])))
+
 - set_fact:
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
-    router_sysctl_backup_file: /var/lib/aether-5gc-router-sysctl-backup.conf
     router_data_iface_forwarding_sysctl: net/ipv4/conf/{{ core.data_iface }}/forwarding
     router_data_iface_forwarding_backup_regexp: >-
       ^(net\.ipv4\.conf\.{{ core.data_iface | regex_escape }}\.forwarding|net/ipv4/conf/{{ core.data_iface | regex_escape }}/forwarding)=(.+)$

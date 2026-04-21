@@ -1,5 +1,32 @@
 ---
 
+# Resolve `core.data_iface` from the default-route interface when it
+# is unset or left at one of the stock defaults. See the router
+# role's install.yml for the full rationale.
+- name: derive core.data_iface from default-route interface when unset
+  ansible.builtin.set_fact:
+    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - ansible_default_ipv4.interface is defined
+    - core.data_iface is not defined or core.data_iface in ['', 'data']
+
+- name: validate core.data_iface is set and exists on this host
+  ansible.builtin.fail:
+    msg: >-
+      core.data_iface (={{ core.data_iface | default('<unset>') | to_json }}) is
+      not a valid network interface on this host. Either it was left
+      at a placeholder and no IPv4 default route was available to
+      derive from, or the configured value does not match any
+      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
+      Set core.data_iface in vars/main.yml to the data-plane
+      interface name on the target node.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (core.data_iface is not defined)
+      or (core.data_iface in ['', 'data'])
+      or (core.data_iface not in (ansible_interfaces | default([])))
+
 - name: check configured VF resources for built-in UPF
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
