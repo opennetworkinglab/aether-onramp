@@ -26,13 +26,13 @@ on:
 
 jobs:
   quickstart:
-    name: quickstart (${{ matrix.agent_label }})
+    name: quickstart (${{ matrix.ubuntu_version }})
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON((github.event_name == 'workflow_dispatch' && github.event.inputs.ubuntu_version != 'all' && format('{{"agent_label":["{0}"]}}', github.event.inputs.ubuntu_version)) || '{"agent_label":["ubuntu-22.04","ubuntu-24.04"]}') }}
+      matrix: ${{ fromJSON((github.event_name == 'workflow_dispatch' && github.event.inputs.ubuntu_version != 'all' && format('{{"ubuntu_version":["{0}"]}}', github.event.inputs.ubuntu_version)) || '{"ubuntu_version":["ubuntu-22.04","ubuntu-24.04"]}') }}
     uses: ./.github/workflows/reusable-quickstart.yml
     with:
-      agent_label: ${{ matrix.agent_label }}
+      agent_label: ${{ matrix.ubuntu_version }}
       target_group: gnbsim_nodes
       vars_template: vars/main-quickstart.yml
       configure_commands: |
@@ -51,7 +51,7 @@ jobs:
       validate_commands: |
         docker exec gnbsim-1 cat summary.log | grep "Ue's Passed" | grep -v "Passed: 0"
       log_prefix: quickstart
-      artifact_name: quickstart-logs-${{ matrix.agent_label }}
+      artifact_name: quickstart-logs-${{ matrix.ubuntu_version }}
       extra_log_commands: |
         docker logs gnbsim-1 > logs/gnbsim.log 2>&1 || echo "Failed to get gnbsim container logs"
       cleanup_targets: gnbsim-uninstall 5gc-uninstall k8s-uninstall
