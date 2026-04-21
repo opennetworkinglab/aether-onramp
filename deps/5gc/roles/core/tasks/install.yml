@@ -27,6 +27,21 @@
       or (core.data_iface in ['', 'data'])
       or (core.data_iface not in (ansible_interfaces | default([])))
 
+# kubernetes.core modules (helm, k8s, k8s_info, etc.) require the python
+# `kubernetes` client library, which is NOT pulled in by a stock apt
+# install of ansible on Ubuntu. Install it up-front so later tasks in
+# this role don't fail with "Failed to import the required Python
+# library (kubernetes)". `airgapped.enabled` gates update_cache so
+# airgapped hosts don't try to reach unreachable archives; when unset,
+# the default of false preserves current online behaviour.
+- name: install kubernetes.core python prerequisite (python3-kubernetes)
+  ansible.builtin.apt:
+    name: python3-kubernetes
+    state: present
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
 - name: check configured VF resources for built-in UPF
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
