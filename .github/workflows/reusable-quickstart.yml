@@ -79,8 +79,24 @@ jobs:
 
       - name: Install Ansible
         run: |
-          sudo apt update
-          sudo apt install -y ansible
+          if command -v ansible-playbook >/dev/null 2>&1; then
+            echo "Ansible is already installed"
+            exit 0
+          fi
+
+          if [ "${{ runner.os }}" = "Linux" ] && command -v apt-get >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y ansible
+            else
+              apt-get update
+              apt-get install -y ansible
+            fi
+          else
+            echo "ansible-playbook is not installed and automatic installation is only supported on Linux runners with apt-get." >&2
+            echo "Use an Ubuntu/Debian runner or preinstall Ansible on the selected runner." >&2
+            exit 1
+          fi
 
       - name: Configure OnRamp
         run: |

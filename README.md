@@ -40,7 +40,8 @@ find the following.
    repo onto). Example multi-node inventories are commented out.
 
 OnRamp is officially supported on Ubuntu 22.04 and Ubuntu 24.04.
-Install Ansible from the Ubuntu package repository on those releases:
+Install the prerequisites, including Ansible, from the Ubuntu package
+repository on those releases:
 
 ```
 $ sudo apt update
