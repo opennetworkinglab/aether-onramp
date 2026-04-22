@@ -77,17 +77,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.x"
-
-      - name: Create Python virtual environment
+      - name: Install Ansible
         run: |
-          python -m venv "$HOME/ubuntu_venv"
-          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
-          "$HOME/ubuntu_venv/bin/pip" install --upgrade pip
-          "$HOME/ubuntu_venv/bin/pip" install ansible requests
+          if command -v ansible-playbook >/dev/null 2>&1; then
+            echo "Ansible is already installed"
+            exit 0
+          fi
+
+          if [ "${{ runner.os }}" = "Linux" ] && command -v apt-get >/dev/null 2>&1; then
+            if command -v sudo >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y ansible
+            else
+              apt-get update
+              apt-get install -y ansible
+            fi
+          else
+            echo "ansible-playbook is not installed and automatic installation is only supported on Linux runners with apt-get." >&2
+            echo "Use an Ubuntu/Debian runner or preinstall Ansible on the selected runner." >&2
+            exit 1
+          fi
 
       - name: Configure OnRamp
         run: |
