@@ -77,17 +77,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.x"
-
-      - name: Create Python virtual environment
+      - name: Install Ansible
         run: |
-          python -m venv "$HOME/ubuntu_venv"
-          echo "$HOME/ubuntu_venv/bin" >> "$GITHUB_PATH"
-          "$HOME/ubuntu_venv/bin/pip" install --upgrade pip
-          "$HOME/ubuntu_venv/bin/pip" install ansible requests
+          sudo apt update
+          sudo apt install -y ansible
 
       - name: Configure OnRamp
         run: |

@@ -39,6 +39,14 @@ find the following.
    everything on a single server (the one you've cloned the
    repo onto). Example multi-node inventories are commented out.
 
+OnRamp is officially supported on Ubuntu 22.04 and Ubuntu 24.04.
+Install Ansible from the Ubuntu package repository on those releases:
+
+```
+$ sudo apt update
+$ sudo apt install sshpass ansible make git
+```
+
 Aether OnRamp assumes Ansible is installed. (See the
 [Aether Guide](https://docs.aetherproject.org/onramp/start.html#prep-environment)
 for instructions on doing this, along with additional guidance if this
