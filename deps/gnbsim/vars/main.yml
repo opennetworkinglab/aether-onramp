@@ -6,7 +6,7 @@ airgapped:
 gnbsim:
   docker:
     container:
-      image: ghcr.io/omec-project/5gc-gnbsim:rel-1.8.0
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-1.9.0
       prefix: gnbsim
       count: 2
     network:
