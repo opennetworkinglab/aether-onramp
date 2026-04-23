@@ -13,30 +13,29 @@ on:
         required: false
         default: "ubuntu-latest"
         type: string
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  quickstart-srsran:
+  srsran:
     uses: ./.github/workflows/reusable-quickstart.yml
     with:
       agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
       target_group: srsran_nodes
       vars_template: vars/main-srsran.yml
       configure_commands: |
-        MYIPNET=$(ip addr show $MYIFC | grep 'inet ' | awk '{print $2}')
-        echo "MY IPNET is: $MYIPNET"
-        VARS_MAIN="vars/main.yml"
-        sed -i "s|ens18|$MYIFC|g" "$VARS_MAIN"
-        sed -i "s|10.76.28.113|$MYIP|" "$VARS_MAIN"
-        sed -i 's|172.20.0.0/16|""|' "$VARS_MAIN"
-        sed -i "s|10.76.28.115|$MYIP|" "$VARS_MAIN"
-        sed -i "s|10.76.28.0/24|$MYIPNET|" "$VARS_MAIN"
-        git diff "$VARS_MAIN"
+        sed -i "s|ens18|$MYIFC|g" vars/main.yml
+        sed -i "s|10.76.28.113|$MYIP|" vars/main.yml
+        sed -i 's|172.20.0.0/16|""|' vars/main.yml
+        sed -i "s|10.76.28.115|$MYIP|" vars/main.yml
+        git diff vars/main.yml
       install_commands: |
         make aether-k8s-install
         make aether-5gc-install
         sleep 10
         make aether-srsran-gnb-install
-        sleep 10
+        sleep 30
       inspect_commands: |
         kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
         docker ps
