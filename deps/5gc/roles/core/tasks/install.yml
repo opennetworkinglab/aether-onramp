@@ -256,12 +256,17 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: copy local_charts to /tmp/sdcore-helm-charts
-  synchronize:
+  # Previously used ansible.posix.synchronize, which runs rsync as a
+  # controller-side subprocess. When the controller user differs from
+  # ansible_user (systemd service account, CI runner, sudo -u wrapper),
+  # the destination tree is owned by the controller user and the
+  # subsequent SSH-transported `helm dep up` task hits permission denied
+  # when it tries to populate the charts/ subdirectory. ansible.builtin.copy
+  # ships files through the normal Ansible connection, so they land owned
+  # by ansible_user. See opennetworkinglab/aether-onramp#190.
+  ansible.builtin.copy:
     src: "{{ local_sd_core_chart_root }}/"
-    dest: /tmp/sdcore-helm-charts
-    recursive: yes
-    rsync_opts:
-      - "--exclude=.git"
+    dest: /tmp/sdcore-helm-charts/
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
 - debug:
