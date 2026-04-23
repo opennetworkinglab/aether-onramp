@@ -4,17 +4,10 @@ proxy:
   https_proxy: ""
   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,.cluster.local"
 
-# Airgap behaviour for `apt: update_cache` tasks.
-#
-# When `enabled: true`, roles that touch apt (5gc/router, the docker
-# installs under srsran/ocudu/oai/n3iwf/gnbsim/oscric, ueransim/simulator,
-# amp/monitor, gnbsim/router, oai/router) skip `update_cache`. Set this
-# for offline / airgapped sites or for sites running off a local mirror
-# that does not need refresh from upstream. See the airgap section in
-# the README and the Aether Docs (https://docs.aetherproject.org/) for
-# operational details.
+# Skip `apt update_cache` in package-installing roles. Enable for
+# offline / airgapped sites or those backed by a local apt mirror.
 airgapped:
-  enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
+  enabled: false
 
 k8s:
   rke2:
