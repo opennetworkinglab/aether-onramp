@@ -33,7 +33,7 @@ jobs:
       install_commands: |
         make aether-k8s-install
         make aether-5gc-install
-        sleep 10
+        sleep 30
         make aether-srsran-gnb-install
         sleep 30
       inspect_commands: |
