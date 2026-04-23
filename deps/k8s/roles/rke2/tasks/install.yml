@@ -201,7 +201,7 @@
     rke2_expected_node_name: >-
       {{ (rke2_config_node_name_line.stdout | default('') | regex_replace('^node-name:\s*', '') | trim)
          if (rke2_config_node_name_line.rc | default(1)) == 0 and (rke2_config_node_name_line.stdout | default('') | trim) != ''
-         else inventory_hostname }}
+         else (ansible_hostname | default(inventory_hostname)) }}
   when: inventory_hostname in groups['master_nodes']
 
 - name: wait for this master node object to be registered
