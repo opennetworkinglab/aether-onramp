@@ -269,6 +269,7 @@
       register: core_local_chart_archive
       delegate_to: localhost
       become: false
+      run_once: true
 
     - name: archive local_charts without git metadata
       ansible.builtin.archive:
@@ -279,6 +280,15 @@
           - "{{ local_sd_core_chart_root }}/.git"
       delegate_to: localhost
       become: false
+      run_once: true
+
+    - name: publish local sd-core charts archive path
+      ansible.builtin.set_fact:
+        core_local_chart_archive_path: "{{ core_local_chart_archive.path }}"
+      delegate_to: localhost
+      delegate_facts: true
+      become: false
+      run_once: true
 
     - name: remove remote sd-core chart staging directory
       ansible.builtin.file:
@@ -293,16 +303,18 @@
 
     - name: unpack local_charts to /tmp/sdcore-helm-charts
       ansible.builtin.unarchive:
-        src: "{{ core_local_chart_archive.path }}"
+        src: "{{ hostvars['localhost'].core_local_chart_archive_path }}"
         dest: /tmp/sdcore-helm-charts/
 
+  always:
     - name: remove local sd-core charts archive
       ansible.builtin.file:
-        path: "{{ core_local_chart_archive.path }}"
+        path: "{{ hostvars['localhost'].core_local_chart_archive_path }}"
         state: absent
       delegate_to: localhost
       become: false
-      when: core_local_chart_archive.path is defined
+      run_once: true
+      when: hostvars['localhost'].core_local_chart_archive_path is defined
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
 - debug:
