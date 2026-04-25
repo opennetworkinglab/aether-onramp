@@ -256,17 +256,67 @@
   when: inventory_hostname in groups['master_nodes']
 
 - name: copy local_charts to /tmp/sdcore-helm-charts
-  # Previously used ansible.posix.synchronize, which runs rsync as a
-  # controller-side subprocess. When the controller user differs from
-  # ansible_user (systemd service account, CI runner, sudo -u wrapper),
-  # the destination tree is owned by the controller user and the
-  # subsequent SSH-transported `helm dep up` task hits permission denied
-  # when it tries to populate the charts/ subdirectory. ansible.builtin.copy
-  # ships files through the normal Ansible connection, so they land owned
-  # by ansible_user. See opennetworkinglab/aether-onramp#190.
-  ansible.builtin.copy:
-    src: "{{ local_sd_core_chart_root }}/"
-    dest: /tmp/sdcore-helm-charts/
+  # ansible.builtin.copy cannot exclude paths during recursive directory
+  # copies, so package the chart tree on the controller while omitting the
+  # local git metadata and then unarchive it on the target via the normal
+  # Ansible transport. This preserves ansible_user ownership on the remote
+  # host and avoids spending time traversing .git.
+  block:
+    - name: create local archive path for sd-core charts
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .tar.gz
+      register: core_local_chart_archive
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: archive local_charts without git metadata
+      ansible.builtin.archive:
+        path: "{{ local_sd_core_chart_root }}/"
+        dest: "{{ core_local_chart_archive.path }}"
+        format: gz
+        exclude_path:
+          - "{{ local_sd_core_chart_root }}/.git"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: publish local sd-core charts archive path
+      ansible.builtin.set_fact:
+        core_local_chart_archive_path: "{{ core_local_chart_archive.path }}"
+      delegate_to: localhost
+      delegate_facts: true
+      become: false
+      run_once: true
+
+    - name: remove remote sd-core chart staging directory
+      ansible.builtin.file:
+        path: /tmp/sdcore-helm-charts
+        state: absent
+
+    - name: create remote sd-core chart staging directory
+      ansible.builtin.file:
+        path: /tmp/sdcore-helm-charts
+        state: directory
+        mode: "0755"
+
+    - name: unpack local_charts to /tmp/sdcore-helm-charts
+      ansible.builtin.unarchive:
+        src: "{{ hostvars['localhost'].core_local_chart_archive_path }}"
+        dest: /tmp/sdcore-helm-charts/
+
+  always:
+    - name: remove local sd-core charts archive
+      ansible.builtin.file:
+        path: "{{ core_local_chart_archive.path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      run_once: true
+      when:
+        - core_local_chart_archive is defined
+        - core_local_chart_archive.path is defined
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
 - debug:
