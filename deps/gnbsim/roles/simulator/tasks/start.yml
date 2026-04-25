@@ -114,10 +114,11 @@
 
 - name: Check if simulation failed
   set_fact:
-    status_fail: "{{ 'Status: FAIL' in gNbsimPod.stdout }}"
+    status_fail: "{{ 'Profile Status: FAIL' in gNbsimPod.stdout or 'Status: FAIL' in gNbsimPod.stdout }}"
+    status_empty: "{{ (gNbsimPod.stdout | trim) == '' }}"
 
 - debug:
-    msg: "{{ gNbsimPod.stdout_lines | map('regex_replace', '^([^\t]*\t){3}([^\t]*)\t.*$', '\\2') | list }}"
+    msg: "{{ gNbsimPod.stdout_lines | map('regex_replace', '^([^\t]*\t){3}([^\t]*)\t.*$', '\\2') | list if not status_empty else ['summary.log is empty; gnbsim did not emit a summary'] }}"
   when: inventory_hostname in groups['gnbsim_nodes']
-  failed_when: status_fail
+  failed_when: status_fail or status_empty
   ignore_errors: yes
