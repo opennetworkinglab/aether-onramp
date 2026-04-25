@@ -309,12 +309,14 @@
   always:
     - name: remove local sd-core charts archive
       ansible.builtin.file:
-        path: "{{ hostvars['localhost'].core_local_chart_archive_path }}"
+        path: "{{ core_local_chart_archive.path }}"
         state: absent
       delegate_to: localhost
       become: false
       run_once: true
-      when: hostvars['localhost'].core_local_chart_archive_path is defined
+      when:
+        - core_local_chart_archive is defined
+        - core_local_chart_archive.path is defined
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
 - debug:
