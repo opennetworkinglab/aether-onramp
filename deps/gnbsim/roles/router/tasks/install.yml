@@ -283,9 +283,9 @@
   when: (inventory_hostname in groups['master_nodes'])
   become: true
 
-- name: install iptables-persistent package
+- name: install iptables package
   apt:
-    name: iptables-persistent
+    name: iptables
     state: present
     update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
   when: inventory_hostname in groups['gnbsim_nodes']

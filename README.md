@@ -176,12 +176,12 @@ details. These alternative configurations are identified in the README.
 ## Deploying Offline / On Local Mirrors (Airgap)
 
 Several roles run `apt: update_cache=yes` to refresh the apt cache
-before installing packages (`iptables-persistent` in the 5gc/router
-and oai/router roles, `python3-software-properties` in
+before installing packages (`iptables` in the 5gc/router, gnbsim/router,
+and oai/router roles, `software-properties-common` in
 amp/monitor, the docker-ce stack in srsran/ocudu/oai/n3iwf/gnbsim/
 oscric docker roles, build deps in ueransim/simulator). On a host
-that can't reach upstream apt archives — airgapped sites, baked
-images, internal mirrors that don't need upstream refresh — that
+that can not reach upstream apt archives — airgapped sites, baked
+images, internal mirrors that do not need upstream refresh — that
 refresh hard-fails and aborts the install.
 
 Set the `airgapped` block in `vars/main.yml` (and in any
@@ -189,7 +189,7 @@ Set the `airgapped` block in `vars/main.yml` (and in any
 
 ```yaml
 airgapped:
-  enabled: true                 # skip `apt update_cache` for offline / mirror-only sites
+  enabled: true
 ```
 
 When `enabled: true`, every gated `apt: update_cache` call site is

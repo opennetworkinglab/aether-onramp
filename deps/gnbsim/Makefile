@@ -49,4 +49,3 @@ gnbsim-simulator-run:
 gnbsim-install: gnbsim-docker-install gnbsim-router-install gnbsim-container-start
 gnbsim-uninstall:  gnbsim-container-stop gnbsim-router-uninstall
 gnbsim-reset: gnbsim-container-stop gnbsim-container-start
-gnbsim-run: gnbsim-simulator-run
