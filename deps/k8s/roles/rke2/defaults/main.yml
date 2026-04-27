@@ -2,6 +2,7 @@ k8s:
   rke2:
     version: v1.35.3+rke2r3
     config:
+      preserve_existing: true
       token: aether-k8s-rke2
       port: 9345
       params_file:
