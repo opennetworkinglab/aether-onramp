@@ -23,7 +23,7 @@
     src: "{{ ROOT_DIR }}/{{ item.1 }}"
     dest: /tmp/gnbsim-{{ (item.0|int)+1 }}.yaml
   vars:
-    ping_target: "{{ core.upf.core_subnet[:-3] }}"
+    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
     amf_ip: "{{ core.amf.ip }}"
     container_ip: "{{ container_info.results[item.0].container.NetworkSettings.Networks[network_macvlan_name].IPAddress }}"
   with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"
