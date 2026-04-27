@@ -188,20 +188,23 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: read node-name from rke2 config
-  command: grep '^node-name:' /etc/rancher/rke2/config.yaml
-  register: rke2_config_node_name_line
+- name: read rke2 config
+  slurp:
+    path: /etc/rancher/rke2/config.yaml
+  register: rke2_config_raw
   changed_when: false
-  failed_when: false
   when: inventory_hostname in groups['master_nodes']
   become: true
+
+- name: parse rke2 config
+  set_fact:
+    rke2_config_parsed: "{{ (rke2_config_raw.content | b64decode | from_yaml) | default({}, true) }}"
+  when: inventory_hostname in groups['master_nodes']
 
 - name: resolve expected node name
   set_fact:
     rke2_expected_node_name: >-
-      {{ (rke2_config_node_name_line.stdout | default('') | regex_replace('^node-name:\s*', '') | trim)
-         if (rke2_config_node_name_line.rc | default(1)) == 0 and (rke2_config_node_name_line.stdout | default('') | trim) != ''
-         else (ansible_hostname | default(inventory_hostname)) }}
+      {{ rke2_config_parsed['node-name'] | default(ansible_hostname | default(inventory_hostname)) }}
   when: inventory_hostname in groups['master_nodes']
 
 - name: wait for this master node object to be registered
