@@ -11,6 +11,34 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
+- name: initialize missing gnbsim container list
+  set_fact:
+    missing_gnbsim_containers: []
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: collect missing gnbsim containers
+  set_fact:
+    missing_gnbsim_containers: >-
+      {{
+        missing_gnbsim_containers
+        + [gnbsim.docker.container.prefix ~ '-' ~ ((item.item.0 | int) + 1)]
+      }}
+  loop: "{{ container_info.results | default([]) }}"
+  loop_control:
+    label: "{{ gnbsim.docker.container.prefix }}-{{ (item.item.0 | int) + 1 }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - item.container is none
+
+- name: ensure gnbsim containers exist
+  ansible.builtin.fail:
+    msg: >-
+      Missing container {{ missing_gnbsim_containers | join(', ') }}.
+      Run make gnbsim-install or make gnbsim-container-start before make aether-gnbsim-run.
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (missing_gnbsim_containers | default([]) | length) > 0
+
 - name: Remove config file on host
   ansible.builtin.file:
     path: "/tmp/gnbsim-{{ (item.0|int)+1 }}.yaml"
