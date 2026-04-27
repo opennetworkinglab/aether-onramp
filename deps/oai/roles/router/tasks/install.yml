@@ -53,9 +53,9 @@
   when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"
   become: true
 
-- name: install iptables-persistent package
+- name: install iptables package
   apt:
-    name: iptables-persistent
+    name: iptables
     state: present
     update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
   when: inventory_hostname in groups['oai_nodes'] and oai.docker.network.name != "host"

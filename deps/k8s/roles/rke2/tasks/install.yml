@@ -250,9 +250,6 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- pause:
-    seconds: 5
-
 - name: install rke2 agent on workers
   command:
     argv:
