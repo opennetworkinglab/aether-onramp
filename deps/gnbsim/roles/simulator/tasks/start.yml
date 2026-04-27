@@ -14,30 +14,44 @@
 - name: initialize missing gnbsim container list
   set_fact:
     missing_gnbsim_containers: []
+    stopped_gnbsim_containers: []
   when: inventory_hostname in groups['gnbsim_nodes']
 
-- name: collect missing gnbsim containers
+- name: collect unavailable gnbsim containers
   set_fact:
     missing_gnbsim_containers: >-
       {{
         missing_gnbsim_containers
-        + [gnbsim.docker.container.prefix ~ '-' ~ ((item.item.0 | int) + 1)]
+        + ([container_name] if item.container is none else [])
+      }}
+    stopped_gnbsim_containers: >-
+      {{
+        stopped_gnbsim_containers
+        + ([container_name] if item.container is not none and not (item.container.State.Running | default(false)) else [])
       }}
   loop: "{{ container_info.results | default([]) }}"
   loop_control:
-    label: "{{ gnbsim.docker.container.prefix }}-{{ (item.item.0 | int) + 1 }}"
+    label: "{{ container_name }}"
+  vars:
+    container_name: "{{ gnbsim.docker.container.prefix }}-{{ (item.item.0 | int) + 1 }}"
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - item.container is none
 
-- name: ensure gnbsim containers exist
+- name: ensure gnbsim containers are ready
   ansible.builtin.fail:
     msg: >-
-      Missing container {{ missing_gnbsim_containers | join(', ') }}.
-      Run make gnbsim-install or make gnbsim-container-start before make aether-gnbsim-run.
+      {% if (missing_gnbsim_containers | default([]) | length) > 0 %}
+      Missing container(s): {{ missing_gnbsim_containers | join(', ') }}.
+      {% endif %}
+      {% if (stopped_gnbsim_containers | default([]) | length) > 0 %}
+      Stopped container(s): {{ stopped_gnbsim_containers | join(', ') }}.
+      {% endif %}
+      Run make gnbsim-install or make gnbsim-container-start before running make aether-gnbsim-run.
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - (missing_gnbsim_containers | default([]) | length) > 0
+    - >-
+      (missing_gnbsim_containers | default([]) | length) > 0 or
+      (stopped_gnbsim_containers | default([]) | length) > 0
 
 - name: Remove config file on host
   ansible.builtin.file:
