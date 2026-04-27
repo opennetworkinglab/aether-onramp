@@ -229,14 +229,17 @@
       register: rke2_config_raw
       changed_when: false
       become: true
+      no_log: true
 
     - name: parse rke2 config
       set_fact:
         rke2_config_parsed: "{{ (rke2_config_raw.content | b64decode | from_yaml) | default({}, true) }}"
+      no_log: true
   rescue:
     - name: fall back when rke2 config cannot be parsed
       set_fact:
         rke2_config_parsed: {}
+      no_log: true
   when: inventory_hostname in groups['master_nodes']
 
 - name: resolve expected node name
