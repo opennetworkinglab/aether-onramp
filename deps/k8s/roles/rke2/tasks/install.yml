@@ -46,7 +46,7 @@
   when:
     - inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
     - rke2_binary.stat.exists
-    - rke2_binary.stat.executable
+    - rke2_binary.stat.executable | default(false)
   become: true
 
 - name: build RKE2 installer environment
@@ -244,7 +244,11 @@
     rke2_expected_node_name: >-
       {{
         rke2_config_parsed.get('node-name')
-        if (rke2_config_parsed.get('node-name') is string and (rke2_config_parsed.get('node-name') | trim) != '')
+        if (
+          rke2_config_parsed is mapping and
+          rke2_config_parsed.get('node-name') is string and
+          (rke2_config_parsed.get('node-name') | trim) != ''
+        )
         else ((rke2_system_hostname.stdout | default('') | trim) or inventory_hostname)
       }}
   when: inventory_hostname in groups['master_nodes']
