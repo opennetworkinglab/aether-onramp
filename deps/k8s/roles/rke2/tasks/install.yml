@@ -32,6 +32,23 @@
 - set_fact:
     script_dir: /tmp/rke2
 
+- name: check for installed rke2 binary
+  stat:
+    path: /usr/local/bin/rke2
+  register: rke2_binary
+  when: inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
+  become: true
+
+- name: detect installed rke2 version
+  command: /usr/local/bin/rke2 --version
+  register: rke2_installed_version
+  changed_when: false
+  when:
+    - inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
+    - rke2_binary.stat.exists
+    - rke2_binary.stat.executable | default(false)
+  become: true
+
 - name: build RKE2 installer environment
   set_fact:
     rke2_install_env: >-
@@ -44,16 +61,32 @@
             )
         )
       }}
+    rke2_install_needed: >-
+      {{
+        not (rke2_binary.stat.exists | default(false) and rke2_binary.stat.executable | default(false))
+        or (
+          (k8s.rke2.version is search('\\+rke2r'))
+          and (((rke2_installed_version.stdout_lines[0] | default('')) | regex_search('v[^ ]+') | default('', true)) != k8s.rke2.version)
+        )
+        or (k8s.rke2.version is not search('\\+rke2r'))
+      }}
+  when: inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
 
 - name: remove {{ script_dir }}
   file:
     path: "{{ script_dir }}"
     state: absent
+  when:
+    - inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
+    - rke2_install_needed
 
 - name: create {{ script_dir }}
   file:
     path: "{{ script_dir }}"
     state: directory
+  when:
+    - inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
+    - rke2_install_needed
 
 - name: download rke2
   get_url:
@@ -61,19 +94,26 @@
     validate_certs: false
     dest: "{{ script_dir }}/install.sh"
     mode: "a+x"
+  when:
+    - inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
+    - rke2_install_needed
 
 - name: create /etc/rancher/rke2
   file:
     path: "/etc/rancher/rke2"
     state: directory
+  when: inventory_hostname in (groups['master_nodes'] + groups['worker_nodes'])
   become: true
 
 - name: install rke2 on masters
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment: "{{ rke2_install_env }}"
-  when: inventory_hostname in groups['master_nodes']
+  environment: "{{ rke2_install_env | combine({'INSTALL_RKE2_SKIP_ENABLE': 'true', 'INSTALL_RKE2_SKIP_START': 'true'}) }}"
+  register: rke2_server_install
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - rke2_install_needed
   become: true
 
 - name: enable rke2-server on masters
@@ -84,11 +124,21 @@
   become: true
 
 # TODO: fix multi-master issue (tls-san)
+- name: check for existing /etc/rancher/rke2/config.yaml
+  stat:
+    path: /etc/rancher/rke2/config.yaml
+  register: rke2_existing_config
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
 - name: copy master-config.yaml to /etc/rancher/rke2/config.yaml
   template:
     src: "{{ ROOT_DIR }}/{{ k8s.rke2.config.params_file.master }}"
     dest: /etc/rancher/rke2/config.yaml
-  when: inventory_hostname in groups['master_nodes']
+  register: rke2_server_config
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (rke2_existing_config.stat.exists and (k8s.rke2.config.preserve_existing | default(true)))
   become: true
 
 - name: configure proxy for rke2-server
@@ -128,13 +178,15 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: restart rke2-server after proxy configuration change
+- name: restart rke2-server after configuration change
   systemd:
     name: rke2-server
     state: restarted
   when:
     - inventory_hostname in groups['master_nodes']
-    - (rke2_server_proxy_present is defined and rke2_server_proxy_present is changed) or
+    - (rke2_server_install is defined and rke2_server_install is changed) or
+      (rke2_server_config is defined and rke2_server_config is changed) or
+      (rke2_server_proxy_present is defined and rke2_server_proxy_present is changed) or
       (rke2_server_proxy_absent is defined and rke2_server_proxy_absent is changed)
   become: true
 
@@ -163,6 +215,47 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+- name: read system hostname
+  command: hostname
+  register: rke2_system_hostname
+  changed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- block:
+    - name: read rke2 config
+      slurp:
+        path: /etc/rancher/rke2/config.yaml
+      register: rke2_config_raw
+      changed_when: false
+      become: true
+      no_log: true
+
+    - name: parse rke2 config
+      set_fact:
+        rke2_config_parsed: "{{ (rke2_config_raw.content | b64decode | from_yaml) | default({}, true) }}"
+      no_log: true
+  rescue:
+    - name: fall back when rke2 config cannot be parsed
+      set_fact:
+        rke2_config_parsed: {}
+      no_log: true
+  when: inventory_hostname in groups['master_nodes']
+
+- name: resolve expected node name
+  set_fact:
+    rke2_expected_node_name: >-
+      {{
+        rke2_config_parsed.get('node-name')
+        if (
+          rke2_config_parsed is mapping and
+          rke2_config_parsed.get('node-name') is string and
+          (rke2_config_parsed.get('node-name') | trim) != ''
+        )
+        else ((rke2_system_hostname.stdout | default('') | trim) or inventory_hostname)
+      }}
+  when: inventory_hostname in groups['master_nodes']
+
 - name: wait for this master node object to be registered
   command:
     argv:
@@ -171,7 +264,7 @@
       - /etc/rancher/rke2/rke2.yaml
       - get
       - node
-      - "{{ inventory_hostname }}"
+      - "{{ rke2_expected_node_name }}"
       - -o
       - name
   register: rke2_current_node
@@ -254,8 +347,11 @@
   command:
     argv:
       - "{{ script_dir }}/install.sh"
-  environment: "{{ rke2_install_env | combine({'INSTALL_RKE2_TYPE': 'agent'}) }}"
-  when: inventory_hostname in groups['worker_nodes']
+  environment: "{{ rke2_install_env | combine({'INSTALL_RKE2_TYPE': 'agent', 'INSTALL_RKE2_SKIP_ENABLE': 'true', 'INSTALL_RKE2_SKIP_START': 'true'}) }}"
+  register: rke2_agent_install
+  when:
+    - inventory_hostname in groups['worker_nodes']
+    - rke2_install_needed
   become: true
 
 - name: enable rke2-agent on workers
@@ -265,11 +361,21 @@
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
+- name: check for existing /etc/rancher/rke2/config.yaml on workers
+  stat:
+    path: /etc/rancher/rke2/config.yaml
+  register: rke2_existing_worker_config
+  when: inventory_hostname in groups['worker_nodes']
+  become: true
+
 - name: copy worker-config.yaml to /etc/rancher/rke2/config.yaml
   template:
     src: "{{ ROOT_DIR }}/{{ k8s.rke2.config.params_file.worker }}"
     dest: /etc/rancher/rke2/config.yaml
-  when: inventory_hostname in groups['worker_nodes']
+  register: rke2_agent_config
+  when:
+    - inventory_hostname in groups['worker_nodes']
+    - not (rke2_existing_worker_config.stat.exists and (k8s.rke2.config.preserve_existing | default(true)))
   become: true
 
 - name: configure proxy for rke2-agent
@@ -310,14 +416,16 @@
   when: inventory_hostname in groups['worker_nodes']
   become: true
 
-- name: restart rke2-agent after proxy configuration change
+- name: restart rke2-agent after configuration change
   systemd:
     name: rke2-agent
     state: restarted
   throttle: 1
   when:
     - inventory_hostname in groups['worker_nodes']
-    - (rke2_agent_proxy_present is defined and rke2_agent_proxy_present is changed) or
+    - (rke2_agent_install is defined and rke2_agent_install is changed) or
+      (rke2_agent_config is defined and rke2_agent_config is changed) or
+      (rke2_agent_proxy_present is defined and rke2_agent_proxy_present is changed) or
       (rke2_agent_proxy_absent is defined and rke2_agent_proxy_absent is changed)
   become: true
 
