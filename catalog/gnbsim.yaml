@@ -1,0 +1,78 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: gnbsim
+description: gNBSim simulated RAN
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/master/onramp/gnbsim.html
+status: active
+ui_visible: true
+group: simulator
+vars_key: gnbsim
+blueprint_file: main-gnbsim.yml
+install_tier: 3
+actions:
+  - name: install
+    description: Deploy gNBSim
+    target: aether-gnbsim-install
+  - name: uninstall
+    description: Remove gNBSim
+    target: aether-gnbsim-uninstall
+  - name: run
+    description: Run gNBSim simulation
+    target: aether-gnbsim-run
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: docker_container
+  container: gnbsim-1
+schema:
+  type: object
+  properties:
+    docker:
+      type: object
+      description: Docker container and network settings for gNBSim
+      properties:
+        container:
+          type: object
+          properties:
+            image:
+              type: string
+              description: gNBSim container image
+            prefix:
+              type: string
+              description: Container name prefix
+            count:
+              type: integer
+              description: Number of gNBSim instances
+        network:
+          type: object
+          properties:
+            macvlan:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Macvlan network name
+    router:
+      type: object
+      description: Router settings for gNBSim traffic
+      properties:
+        data_iface:
+          type: string
+          description: Data-plane interface used for routing
+        macvlan:
+          type: object
+          properties:
+            subnet_prefix:
+              type: string
+              description: Macvlan subnet prefix
+    servers:
+      type: object
+      description: Server-to-profile assignment map
+      additionalProperties:
+        type: array
+        items:
+          type: string
+          description: Path to a gNBSim profile file
+

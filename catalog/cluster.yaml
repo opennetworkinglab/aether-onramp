@@ -1,0 +1,34 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: cluster
+description: Cluster-level operations
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/master/onramp/start.html
+status: active
+ui_visible: false
+group: meta
+install_tier: 4
+actions:
+  - name: pingall
+    description: Ping all cluster nodes
+    target: aether-pingall
+  - name: install
+    description: Deploy the quickstart stack
+    target: aether-install
+  - name: uninstall
+    description: Remove the quickstart stack
+    target: aether-uninstall
+  - name: add-upfs
+    description: Add additional UPFs
+    target: aether-add-upfs
+  - name: remove-upfs
+    description: Remove additional UPFs
+    target: aether-remove-upfs
+dependencies:
+  requires: []
+  required_by: []
+probe:
+  type: none
+schema:
+  type: object
+  properties: {}

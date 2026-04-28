@@ -1,0 +1,133 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: 5gc
+description: 5G core network (SD-Core)
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/master/onramp/start.html
+status: active
+ui_visible: true
+group: core
+vars_key: core
+install_tier: 1
+actions:
+  - name: install
+    description: Deploy 5G core
+    target: aether-5gc-install
+  - name: uninstall
+    description: Remove 5G core
+    target: aether-5gc-uninstall
+  - name: reset
+    description: Reset 5G core state
+    target: aether-5gc-reset
+dependencies:
+  requires: [k8s]
+  required_by: [gnbsim, ueransim, oai, srsran, ocudu, n3iwf]
+probe:
+  type: namespace_pods
+  namespace: aether-5gc
+schema:
+  type: object
+  properties:
+    standalone:
+      type: boolean
+      description: Run SD-Core in standalone mode instead of under ROC control
+    closed_loop:
+      type: boolean
+      description: Enable SD-Core closed-loop control plane behavior
+    data_iface:
+      type: string
+      description: Data-plane network interface used for UPF traffic
+    values_file:
+      type: string
+      description: Helm values file path for the core deployment
+    ran_subnet:
+      type: string
+      description: RAN-side subnet in CIDR notation
+    helm:
+      type: object
+      description: Helm chart reference for SD-Core
+      properties:
+        local_charts:
+          type: boolean
+          description: Use local charts instead of fetching from a registry
+        chart_ref:
+          type: string
+          description: Chart registry reference or local chart path
+        chart_version:
+          type: string
+          description: Chart version constraint
+    upf:
+      type: object
+      description: User Plane Function configuration
+      properties:
+        access_subnet:
+          type: string
+          description: Access subnet and gateway for the N3 side
+        core_subnet:
+          type: string
+          description: Core subnet and gateway for the N6 side
+        mode:
+          type: string
+          description: UPF operating mode
+          enum: [af_packet, dpdk]
+        multihop_gnb:
+          type: boolean
+          description: When true, the access subnet shares data_iface instead of using a separate RAN-facing interface
+        helm:
+          type: object
+          description: Helm chart reference for the optional standalone UPF
+          properties:
+            local_charts:
+              type: boolean
+              description: Use local charts instead of fetching from a registry
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+        values_file:
+          type: string
+          description: Helm values file path for the UPF deployment
+        default_upf:
+          type: object
+          description: Default UPF instance settings
+          properties:
+            ip:
+              type: object
+              properties:
+                access:
+                  type: string
+                  description: UPF access-side IP
+                core:
+                  type: string
+                  description: UPF core-side IP
+            ue_ip_pool:
+              type: string
+              description: UE address pool in CIDR notation
+        additional_upfs:
+          type: object
+          description: Additional UPFs keyed by identifier
+          additionalProperties:
+            type: object
+            properties:
+              ip:
+                type: object
+                properties:
+                  access:
+                    type: string
+                    description: UPF access-side IP
+                  core:
+                    type: string
+                    description: UPF core-side IP
+              ue_ip_pool:
+                type: string
+                description: UE address pool in CIDR notation
+    amf:
+      type: object
+      description: AMF connectivity settings
+      properties:
+        ip:
+          type: string
+          description: AMF N2 IP address
+

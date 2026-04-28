@@ -1,0 +1,63 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: n3iwf
+description: Non-3GPP Interworking Function
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/master/onramp/start.html
+status: active
+ui_visible: true
+group: network
+vars_key: n3iwf
+blueprint_file: main-n3iwf.yml
+install_tier: 3
+actions:
+  - name: install
+    description: Deploy N3IWF
+    target: aether-n3iwf-install
+  - name: uninstall
+    description: Remove N3IWF
+    target: aether-n3iwf-uninstall
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: docker_container
+  container: n3iwf
+schema:
+  type: object
+  properties:
+    docker:
+      type: object
+      description: Docker container settings for N3IWF
+      properties:
+        image:
+          type: string
+          description: N3IWF container image
+        network:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Docker network name
+    servers:
+      type: object
+      description: Per-server N3IWF deployment config
+      additionalProperties:
+        type: object
+        properties:
+          conf_file:
+            type: string
+            description: Path to the N3IWF config file
+          n3iwf_ip:
+            type: string
+            description: N3IWF control-plane IP address
+          n2_ip:
+            type: string
+            description: N2 interface IP address
+          n3_ip:
+            type: string
+            description: N3 interface IP address
+          nwu_ip:
+            type: string
+            description: NWu interface address in CIDR notation (used as ipSecAddress)
+

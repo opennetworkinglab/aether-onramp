@@ -1,0 +1,106 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: amp
+description: Aether Management Platform
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/master/onramp/start.html
+status: active
+ui_visible: true
+group: platform
+vars_key: amp
+install_tier: 2
+actions:
+  - name: install
+    description: Deploy AMP
+    target: aether-amp-install
+  - name: uninstall
+    description: Remove AMP
+    target: aether-amp-uninstall
+dependencies:
+  requires: [k8s]
+  required_by: []
+probe:
+  type: helm_release
+  namespace: aether-roc
+schema:
+  type: object
+  properties:
+    roc_models:
+      type: string
+      description: Path to ROC data models
+    monitor_dashboard:
+      type: string
+      description: Path to the monitoring dashboard bundle
+    aether_roc:
+      type: object
+      properties:
+        helm:
+          type: object
+          properties:
+            local_charts:
+              type: boolean
+              description: Use local charts instead of fetching from a registry
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+    atomix:
+      type: object
+      properties:
+        helm:
+          type: object
+          properties:
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+    onosproject:
+      type: object
+      properties:
+        helm:
+          type: object
+          properties:
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+    store:
+      type: object
+      properties:
+        lpp:
+          type: object
+          properties:
+            version:
+              type: string
+              description: Local persistent provisioner version
+    monitor:
+      type: object
+      properties:
+        helm:
+          type: object
+          properties:
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+    monitor_crd:
+      type: object
+      properties:
+        helm:
+          type: object
+          properties:
+            chart_ref:
+              type: string
+              description: Chart registry reference or local chart path
+            chart_version:
+              type: string
+              description: Chart version constraint
+
