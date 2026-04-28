@@ -1,0 +1,53 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Aether OnRamp OCUDU
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_label:
+        description: "Label for selecting runner (if using self-hosted)"
+        required: false
+        default: "ubuntu-latest"
+        type: string
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ocudu:
+    uses: ./.github/workflows/reusable-quickstart.yml
+    with:
+      agent_label: ${{ github.event.inputs.agent_label || 'ubuntu-latest' }}
+      target_group: ocudu_nodes
+      vars_template: vars/main-ocudu.yml
+      configure_commands: |
+        sed -i "s|ens18|$MYIFC|g" vars/main.yml
+        sed -i "s|10.76.28.113|$MYIP|" vars/main.yml
+        sed -i 's|172.20.0.0/16|""|' vars/main.yml
+        sed -i "s|10.76.28.115|$MYIP|" vars/main.yml
+        git diff
+      install_commands: |
+        make aether-k8s-install
+        make aether-5gc-install
+        sleep 30
+        make aether-ocudu-gnb-install
+        sleep 60
+      inspect_commands: |
+        kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
+        docker ps
+      run_commands: |
+        make aether-ocudu-uesim-start
+      run_continue_on_error: true
+      validate_commands: |
+        docker exec rfsim5g-nr-ue ip netns exec ue1 ping -c 5 192.168.250.1 > ocudu-uesim.log
+        grep "0% packet loss" ocudu-uesim.log
+      log_prefix: ocudu
+      artifact_name: ocudu-logs
+      extra_log_commands: |
+        docker logs ocudu-gnb > logs/ocudu_gnb.log 2>&1 || echo "Failed to get ocudu-gnb logs"
+        docker logs rfsim5g-nr-ue > logs/ocudu_ue.log 2>&1 || echo "Failed to get rfsim5g-nr-ue logs"
+      cleanup_targets: aether-ocudu-uesim-stop aether-ocudu-gnb-uninstall aether-5gc-uninstall aether-k8s-uninstall
+    secrets: inherit
