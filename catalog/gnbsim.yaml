@@ -3,7 +3,7 @@ kind: Component
 name: gnbsim
 description: gNBSim simulated RAN
 repo_url: https://github.com/opennetworkinglab/aether-onramp
-docs_url: https://docs.aetherproject.org/master/onramp/gnbsim.html
+docs_url: https://docs.aetherproject.org/onramp/gnbsim.html
 status: active
 ui_visible: true
 group: simulator

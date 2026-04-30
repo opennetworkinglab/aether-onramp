@@ -64,7 +64,6 @@ The current catalog covers:
 
 - `k8s`
 - `5gc`
-- `4gc`
 - `amp`
 - `sdran`
 - `oscric`

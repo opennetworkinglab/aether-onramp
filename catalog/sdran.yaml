@@ -3,7 +3,7 @@ kind: Component
 name: sdran
 description: SD-RAN intelligent RAN controller
 repo_url: https://github.com/opennetworkinglab/aether-onramp
-docs_url: https://docs.aetherproject.org/master/onramp/start.html
+docs_url: https://docs.aetherproject.org/onramp/start.html
 status: active
 ui_visible: true
 group: ran
