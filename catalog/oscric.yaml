@@ -1,0 +1,45 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: oscric
+description: O-RAN SC near-RT RIC
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: true
+group: ran
+vars_key: oscric
+install_tier: 2
+actions:
+  - name: ric-install
+    description: Deploy OSC near-RT RIC
+    target: aether-oscric-ric-install
+  - name: ric-uninstall
+    description: Remove OSC near-RT RIC
+    target: aether-oscric-ric-uninstall
+dependencies:
+  requires: []
+  required_by: []
+probe:
+  type: docker_container
+  container: python_xapp_runner
+schema:
+  type: object
+  properties:
+    e2t:
+      type: object
+      description: E2 termination connectivity settings
+      properties:
+        ip:
+          type: string
+          description: E2T service IP address
+    import:
+      type: object
+      description: Feature flags controlling imported xApps
+      properties:
+        kpimon:
+          type: boolean
+          description: Enable the KPI monitoring xApp
+        rc:
+          type: boolean
+          description: Enable the RC xApp
+

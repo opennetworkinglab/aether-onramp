@@ -1,0 +1,72 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: srsran
+description: srsRAN Project RAN
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: true
+group: ran
+vars_key: srsran
+blueprint_file: main-srsran.yml
+install_tier: 3
+actions:
+  - name: gnb-install
+    description: Deploy srsRAN gNB
+    target: aether-srsran-gnb-install
+  - name: gnb-uninstall
+    description: Remove srsRAN gNB
+    target: aether-srsran-gnb-uninstall
+  - name: uesim-start
+    description: Start srsRAN UE simulator
+    target: aether-srsran-uesim-start
+  - name: uesim-stop
+    description: Stop srsRAN UE simulator
+    target: aether-srsran-uesim-stop
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: docker_container
+  container: srsran-gnb
+schema:
+  type: object
+  properties:
+    docker:
+      type: object
+      description: Docker container and network settings for srsRAN
+      properties:
+        container:
+          type: object
+          properties:
+            gnb_image:
+              type: string
+              description: srsRAN gNB container image
+            ue_image:
+              type: string
+              description: srsRAN UE simulator container image
+        network:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Docker network name
+    simulation:
+      type: boolean
+      description: Run srsRAN in simulation mode
+    servers:
+      type: object
+      description: Per-server srsRAN deployment config
+      additionalProperties:
+        type: object
+        properties:
+          gnb_ip:
+            type: string
+            description: gNB N2/N3 IP address
+          gnb_conf:
+            type: string
+            description: Path to the gNB config file
+          ue_conf:
+            type: string
+            description: Path to the UE config file
+

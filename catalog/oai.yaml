@@ -1,0 +1,83 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: oai
+description: OpenAirInterface RAN
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: true
+group: ran
+vars_key: oai
+blueprint_file: main-oai.yml
+install_tier: 3
+actions:
+  - name: gnb-install
+    description: Deploy OAI gNB
+    target: aether-oai-gnb-install
+  - name: gnb-uninstall
+    description: Remove OAI gNB
+    target: aether-oai-gnb-uninstall
+  - name: uesim-start
+    description: Start OAI UE simulator
+    target: aether-oai-uesim-start
+  - name: uesim-stop
+    description: Stop OAI UE simulator
+    target: aether-oai-uesim-stop
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: docker_container
+  container: oai-gnb
+schema:
+  type: object
+  properties:
+    docker:
+      type: object
+      description: Docker container and network settings for OAI
+      properties:
+        container:
+          type: object
+          properties:
+            gnb_image:
+              type: string
+              description: OAI gNB container image
+            ue_image:
+              type: string
+              description: OAI UE simulator container image
+        network:
+          type: object
+          properties:
+            data_iface:
+              type: string
+              description: Host data-plane interface for container networking
+            name:
+              type: string
+              description: Docker network name
+            subnet:
+              type: string
+              description: Docker network subnet in CIDR notation
+            bridge:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Linux bridge name
+    simulation:
+      type: boolean
+      description: Run OAI in RF simulation mode
+    servers:
+      type: object
+      description: Per-server OAI deployment config
+      additionalProperties:
+        type: object
+        properties:
+          gnb_conf:
+            type: string
+            description: Path to the gNB config file
+          gnb_ip:
+            type: string
+            description: gNB N2/N3 IP address
+          ue_conf:
+            type: string
+            description: Path to the UE config file

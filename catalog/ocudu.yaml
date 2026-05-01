@@ -1,0 +1,72 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: ocudu
+description: O-CU-DU RAN
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: true
+group: ran
+vars_key: ocudu
+blueprint_file: main-ocudu.yml
+install_tier: 3
+actions:
+  - name: gnb-install
+    description: Deploy O-CU-DU gNB
+    target: aether-ocudu-gnb-install
+  - name: gnb-uninstall
+    description: Remove O-CU-DU gNB
+    target: aether-ocudu-gnb-uninstall
+  - name: uesim-start
+    description: Start O-CU-DU UE simulator
+    target: aether-ocudu-uesim-start
+  - name: uesim-stop
+    description: Stop O-CU-DU UE simulator
+    target: aether-ocudu-uesim-stop
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: docker_container
+  container: ocudu-gnb
+schema:
+  type: object
+  properties:
+    docker:
+      type: object
+      description: Docker container and network settings for O-CU-DU
+      properties:
+        container:
+          type: object
+          properties:
+            gnb_image:
+              type: string
+              description: O-CU-DU gNB container image
+            ue_image:
+              type: string
+              description: UE simulator container image
+        network:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Docker network name
+    simulation:
+      type: boolean
+      description: Run O-CU-DU in simulation mode
+    servers:
+      type: object
+      description: Per-server O-CU-DU deployment config
+      additionalProperties:
+        type: object
+        properties:
+          gnb_ip:
+            type: string
+            description: gNB N2/N3 IP address
+          gnb_conf:
+            type: string
+            description: Path to the gNB config file
+          ue_conf:
+            type: string
+            description: Path to the UE config file
+

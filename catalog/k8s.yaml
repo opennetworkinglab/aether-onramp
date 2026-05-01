@@ -1,0 +1,61 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: k8s
+description: Kubernetes (RKE2) cluster lifecycle
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: false
+group: core
+vars_key: k8s
+install_tier: 0
+actions:
+  - name: install
+    description: Deploy Kubernetes (RKE2)
+    target: aether-k8s-install
+  - name: uninstall
+    description: Remove Kubernetes (RKE2)
+    target: aether-k8s-uninstall
+dependencies:
+  requires: []
+  required_by: [5gc, 4gc, amp, sdran]
+probe:
+  type: kubectl_nodes
+schema:
+  type: object
+  properties:
+    rke2:
+      type: object
+      description: RKE2 Kubernetes distribution settings
+      properties:
+        version:
+          type: string
+          description: RKE2 release version to install
+          default: v1.35.3+rke2r3
+        config:
+          type: object
+          description: Cluster join and bootstrap settings
+          properties:
+            token:
+              type: string
+              description: Shared secret used when nodes join the cluster
+            port:
+              type: integer
+              description: RKE2 supervisor API port
+            params_file:
+              type: object
+              description: Per-role RKE2 config template paths
+              properties:
+                master:
+                  type: string
+                  description: Path to the server/master config template
+                worker:
+                  type: string
+                  description: Path to the agent/worker config template
+    helm:
+      type: object
+      description: Helm package manager configuration
+      properties:
+        version:
+          type: string
+          description: Helm binary version to install

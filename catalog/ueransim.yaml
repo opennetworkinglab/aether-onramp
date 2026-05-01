@@ -1,0 +1,55 @@
+apiVersion: onramp.aetherproject.org/v1
+kind: Component
+name: ueransim
+description: UERANSIM UE and gNB simulator
+repo_url: https://github.com/opennetworkinglab/aether-onramp
+docs_url: https://docs.aetherproject.org/onramp/start.html
+status: active
+ui_visible: true
+group: simulator
+vars_key: ueransim
+blueprint_file: main-ueransim.yml
+install_tier: 3
+actions:
+  - name: install
+    description: Deploy UERANSIM
+    target: aether-ueransim-install
+  - name: uninstall
+    description: Remove UERANSIM
+    target: aether-ueransim-uninstall
+  - name: run
+    description: Start UERANSIM simulation
+    target: aether-ueransim-run
+  - name: stop
+    description: Stop UERANSIM simulation
+    target: aether-ueransim-stop
+dependencies:
+  requires: [5gc]
+  required_by: []
+probe:
+  type: none
+schema:
+  type: object
+  properties:
+    version:
+      type: string
+      description: UERANSIM release version to install
+    gnb:
+      type: object
+      description: UERANSIM gNB configuration
+      properties:
+        ip:
+          type: string
+          description: gNB N2/N3 IP address
+    servers:
+      type: object
+      description: Per-server UERANSIM deployment config
+      additionalProperties:
+        type: object
+        properties:
+          gnb:
+            type: string
+            description: Path to the gNB config file
+          ue:
+            type: string
+            description: Path to the UE config file
