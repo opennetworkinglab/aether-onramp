@@ -38,9 +38,9 @@
             {{ _preflight_docker_cpu.stdout | default('(none)') }}
 
           Verify that the Docker daemon is running on this host and that the probe image
-          ({{ preflight_probe_image | default('busybox:latest') }}) is reachable. In
-          airgapped installs, mirror this image or override `preflight_probe_image` to
-          one that is already available on the host.
+          ({{ preflight_probe_image | default('busybox:latest') }}) is available. To
+          point at a different image already present on the host, override
+          `preflight_probe_image`.
       when: _preflight_docker_cpu.rc != 0
 
     - name: "Preflight ({{ preflight_label }}) | Assert Docker has enough CPUs visible"
