@@ -10,7 +10,7 @@ oai:
       # Tiny image used only to read `nproc` inside Docker. The airgap
       # bundle tool packages this dependency automatically; override
       # only if you want to point at an image already on the host.
-      probe_image: "busybox:latest"
+      probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.2"
   simulation: true
   servers:
     0:
