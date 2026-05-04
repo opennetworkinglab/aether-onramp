@@ -4,6 +4,12 @@ oai:
       gnb_image: oaisoftwarealliance/oai-gnb:2026.w10
     network:
       name: public_net
+    preflight:
+      enabled: true
+      min_cpus: 4
+      # In airgapped installs, mirror this image or override to one already
+      # available on the host.
+      probe_image: "busybox:latest"
   simulation: true
   servers:
     0:

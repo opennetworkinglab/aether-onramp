@@ -1,0 +1,82 @@
+---
+# Verifies that the Docker daemon on the target host can see at least
+# `preflight_min_cpus` CPU cores. Catches systemd cgroup CPU starvation
+# (e.g. AllowedCPUs=0,12 inherited from a parent slice) before any
+# gNB container is started, since that condition causes RF underflows,
+# PRACH buffer depletion, and RFNoC OpTimeouts at runtime.
+#
+# Caller-supplied vars:
+#   preflight_label        Short human label, e.g. "srsRAN gNB"
+#   preflight_min_cpus     Required minimum CPU count (int)
+#   preflight_probe_image  Image used to read nproc (default: busybox:latest)
+#   preflight_enabled      Bool kill-switch (default: true)
+
+- name: "Preflight ({{ preflight_label }}) | Docker CPU availability"
+  when: preflight_enabled | default(true) | bool
+  block:
+
+    - name: "Preflight ({{ preflight_label }}) | Probe Docker-visible CPU count"
+      ansible.builtin.command:
+        cmd: "docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc"
+      register: _preflight_docker_cpu
+      changed_when: false
+      failed_when: false
+      become: true
+
+    - name: "Preflight ({{ preflight_label }}) | Fail if Docker probe could not run"
+      ansible.builtin.fail:
+        msg: |-
+          {{ preflight_label }} preflight failed: unable to verify CPU availability inside Docker.
+
+          Command:
+            docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc
+
+          stderr:
+            {{ _preflight_docker_cpu.stderr | default('(none)') }}
+
+          stdout:
+            {{ _preflight_docker_cpu.stdout | default('(none)') }}
+
+          Verify that the Docker daemon is running on this host and that the probe image
+          ({{ preflight_probe_image | default('busybox:latest') }}) is reachable. In
+          airgapped installs, mirror this image or override `preflight_probe_image` to
+          one that is already available on the host.
+      when: _preflight_docker_cpu.rc != 0
+
+    - name: "Preflight ({{ preflight_label }}) | Assert Docker has enough CPUs visible"
+      ansible.builtin.assert:
+        that:
+          - _preflight_docker_cpu.stdout | int >= preflight_min_cpus | int
+        quiet: true
+        fail_msg: |-
+          {{ preflight_label }} preflight failed: insufficient CPUs available inside Docker.
+
+          Docker containers on this host currently see:
+            {{ _preflight_docker_cpu.stdout | trim }} CPU core(s)
+
+          Required minimum:
+            {{ preflight_min_cpus }} CPU core(s)
+
+          This usually means Docker inherited a CPU restriction from systemd / cgroups.
+          A common cause is a parent systemd slice (or docker.service itself) limiting
+          Docker to a small CPU set, for example:
+
+              AllowedCPUs=0,12
+
+          Suggested fix:
+            Remove or widen the CPU restriction on the parent systemd slice and/or
+            docker.service, then reload systemd and restart Docker:
+
+              sudo systemctl revert docker.service        # or edit the offending slice
+              sudo systemctl daemon-reload
+              sudo systemctl restart docker
+
+          Useful diagnostics:
+            systemctl show docker.service -p Slice -p CPUAffinity -p AllowedCPUs -p CPUQuota
+            systemctl show "$(systemctl show docker.service -p Slice --value)" \
+                -p CPUAffinity -p AllowedCPUs -p CPUQuota
+            docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc
+
+          The {{ preflight_label }} container was not started because this condition
+          commonly causes RF underflows, PRACH buffer depletion, and RFNoC OpTimeouts
+          during gNB startup.

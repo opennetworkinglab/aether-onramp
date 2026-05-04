@@ -4,6 +4,12 @@ srsran:
       gnb_image: aetherproject/srsran-gnb:rel-0.7.0
     network:
       name: public_net
+    preflight:
+      enabled: true
+      min_cpus: 4
+      # In airgapped installs, mirror this image or override to one already
+      # available on the host.
+      probe_image: "busybox:latest"
   simulation: true
 
 core:
