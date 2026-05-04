@@ -136,6 +136,24 @@
     - kubeconfig_source is defined
   become: true
 
+- name: verify ansible-user kubeconfig after bootstrap
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+  register: _user_kubeconfig_ready_stat
+  when: inventory_hostname in groups['master_nodes']
+
+- name: fail when ansible-user kubeconfig is still unavailable
+  ansible.builtin.fail:
+    msg: >-
+      5GC core install requires a readable kubeconfig at
+      {{ ansible_env.HOME }}/.kube/config for ansible_user {{ ansible_user }},
+      but it is still missing or unreadable after the bootstrap step. Run the
+      k8s provisioning flow first, or set kubeconfig_source to a valid cluster
+      kubeconfig path on the target host.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (_user_kubeconfig_ready_stat.stat.exists | default(false)) or not (_user_kubeconfig_ready_stat.stat.readable | default(false))
+
 - name: check configured VF resources for built-in UPF
   block:
     - name: Get number of configured VFs for interface {{ core.data_iface }}
