@@ -25,7 +25,7 @@ on:
       ueransim_image:
         description: "UERANSIM image to test"
         required: false
-        default: "aetherproject/ueransim:rel-0.7.0"
+        default: "aetherproject/ueransim:rel-0.8.0"
         type: string
 
 jobs:
@@ -82,7 +82,7 @@ jobs:
         sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
         sed -i "s/10.76.28.111/$MYIP/" vars/main.yml
         sed -i "s/ens18/$MYIFC/g" vars/main.yml
-        sed -i "s|aetherproject/ueransim:rel-0.7.0|${{ github.event.inputs.ueransim_image || 'aetherproject/ueransim:rel-0.7.0' }}|" vars/main.yml
+        sed -i "s|aetherproject/ueransim:rel-0.8.0|${{ github.event.inputs.ueransim_image || 'aetherproject/ueransim:rel-0.8.0' }}|" vars/main.yml
         git diff vars/main.yml
       install_commands: |
         if command -v apt-get >/dev/null 2>&1; then
