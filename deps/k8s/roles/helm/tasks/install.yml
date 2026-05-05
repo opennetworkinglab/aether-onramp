@@ -3,17 +3,41 @@
 - set_fact:
     script_dir: /tmp/helm
 
+- name: check for installed helm binary
+  stat:
+    path: /usr/local/bin/helm
+  register: helm_binary
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: detect installed helm version
+  command: /usr/local/bin/helm version --short
+  register: helm_installed_version
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes'] and (helm_binary.stat.exists | default(false))
+  become: true
+
+- name: determine if helm install is needed
+  set_fact:
+    helm_install_needed: >-
+      {{
+        not (helm_binary.stat.exists | default(false))
+        or (k8s.helm.version not in (helm_installed_version.stdout | default('')))
+      }}
+  when: inventory_hostname in groups['master_nodes']
+
 - name: remove {{ script_dir }}
   file:
     path: "{{ script_dir }}"
     state: absent
-  when: inventory_hostname in groups['master_nodes']
+  when: inventory_hostname in groups['master_nodes'] and (helm_install_needed | default(false))
 
 - name: create {{ script_dir }}
   file:
     path: "{{ script_dir }}"
     state: directory
-  when: inventory_hostname in groups['master_nodes']
+  when: inventory_hostname in groups['master_nodes'] and (helm_install_needed | default(false))
 
 - name: download get-helm.sh
   get_url:
@@ -21,12 +45,12 @@
     validate_certs: true
     dest: "{{ script_dir }}/get-helm.sh"
     mode: "a+x"
-  when: inventory_hostname in groups['master_nodes']
+  when: inventory_hostname in groups['master_nodes'] and (helm_install_needed | default(false))
 
 - name: install helm on masters
   command:
     argv:
       - "{{ script_dir }}/get-helm.sh"
   environment: "{{ proxy_env | combine({'DESIRED_VERSION': k8s.helm.version}) }}"
-  when: inventory_hostname in groups['master_nodes']
+  when: inventory_hostname in groups['master_nodes'] and (helm_install_needed | default(false))
   become: true
