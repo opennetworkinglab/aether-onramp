@@ -5,6 +5,17 @@
     msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
   when: ocudu.servers|length != groups['ocudu_nodes']|length
 
+- name: Preflight | Docker CPU availability for O-CU/DU gNB
+  ansible.builtin.include_role:
+    name: preflight
+    tasks_from: docker_cpu
+  vars:
+    preflight_label: "O-CU/DU gNB"
+    preflight_min_cpus: "{{ ocudu.docker.preflight.min_cpus }}"
+    preflight_probe_image: "{{ ocudu.docker.preflight.probe_image }}"
+    preflight_enabled: "{{ ocudu.docker.preflight.enabled }}"
+  when: inventory_hostname in groups['ocudu_nodes']
+
 # prep Ubuntu to support OCUDU gNB in DPDK-mode
 - name: set net.core.wmem_max to 24912805
   ansible.posix.sysctl:

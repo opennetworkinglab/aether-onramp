@@ -1,0 +1,41 @@
+---
+argument_specs:
+
+  docker_cpu:
+    short_description: Verify the Docker daemon can see a minimum number of CPUs.
+    description:
+      - >-
+        Runs `docker run --rm <probe_image> nproc` on the target host and fails
+        loudly if the count is below `preflight_min_cpus`. Catches systemd
+        cgroup CPU starvation (e.g. `AllowedCPUs=0,12` on a parent slice)
+        before a gNB container is started, since that condition surfaces later
+        as RF underflows, PRACH buffer depletion, and RFNoC OpTimeouts that are
+        hard to trace back to the cgroup configuration.
+    options:
+      preflight_label:
+        type: str
+        required: true
+        description: >-
+          Short human label included in task names and failure messages, e.g.
+          "srsRAN gNB" or "OAI gNB". Identifies which component triggered the
+          failure.
+      preflight_min_cpus:
+        type: int
+        required: true
+        description: >-
+          Required minimum CPU count visible inside a Docker container on the
+          target host. Failing the assertion stops the play before the
+          component's container is started.
+      preflight_probe_image:
+        type: str
+        default: "ghcr.io/omec-project/pod-init:rel-1.2.2"
+        description: >-
+          Image used to read `nproc` inside Docker. Any small image with
+          `nproc` available will do; override to point at an image already
+          present on the host.
+      preflight_enabled:
+        type: bool
+        default: true
+        description: >-
+          Kill switch. When false, the entire preflight block is skipped.
+          Default-on so production deployments fail loudly by default.

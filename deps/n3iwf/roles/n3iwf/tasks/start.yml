@@ -5,6 +5,17 @@
     msg: "Mismatch in number of servers and n3iwf nodes: {{ n3iwf.servers|length }} vs {{ groups['n3iwf_nodes']|length }}"
   when: n3iwf.servers|length != groups['n3iwf_nodes']|length
 
+- name: Preflight | Docker CPU availability for N3IWF
+  ansible.builtin.include_role:
+    name: preflight
+    tasks_from: docker_cpu
+  vars:
+    preflight_label: "N3IWF"
+    preflight_min_cpus: "{{ n3iwf.docker.preflight.min_cpus }}"
+    preflight_probe_image: "{{ n3iwf.docker.preflight.probe_image }}"
+    preflight_enabled: "{{ n3iwf.docker.preflight.enabled }}"
+  when: inventory_hostname in groups['n3iwf_nodes']
+
 - name: pull {{ n3iwf.docker.image }} image
   community.docker.docker_image:
     name: "{{ n3iwf.docker.image }}"
