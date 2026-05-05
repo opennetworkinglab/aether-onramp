@@ -5,6 +5,14 @@
     msg: "Number of ueransim nodes and servers in config file are not equal"
   when: ueransim.servers|length != groups['ueransim_nodes']|length
 
+- name: create UERANSIM config directory
+  file:
+    path: /tmp/ueransim
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
 - name: copy gNb config files to ueransim host
   template:
     src: "{{ ROOT_DIR }}/{{ ueransim.servers[server_index | int].gnb }}"
@@ -38,7 +46,6 @@
     volumes:
       - /tmp/ueransim:/opt/ueransim/config
     privileged: true
-    restart_policy: unless-stopped
     state: started
     detach: true
     command: sleep infinity
@@ -46,12 +53,10 @@
   become: true
 
 - name: Run gNB
-  command:
+  community.docker.docker_container_exec:
+    container: "{{ ueransim.docker.container.name }}"
+    detach: true
     argv:
-      - docker
-      - exec
-      - -d
-      - "{{ ueransim.docker.container.name }}"
       - nr-gnb
       - -c
       - /opt/ueransim/config/custom-gnb.yaml
@@ -62,12 +67,10 @@
     seconds: 5
 
 - name: Run UE
-  command:
+  community.docker.docker_container_exec:
+    container: "{{ ueransim.docker.container.name }}"
+    detach: true
     argv:
-      - docker
-      - exec
-      - -d
-      - "{{ ueransim.docker.container.name }}"
       - nr-ue
       - -c
       - /opt/ueransim/config/custom-ue.yaml
@@ -108,11 +111,9 @@
   when: "inventory_hostname in groups['ueransim_nodes']"
 
 - name: Run ping command for connectivity
-  command:
+  community.docker.docker_container_exec:
+    container: "{{ ueransim.docker.container.name }}"
     argv:
-      - docker
-      - exec
-      - "{{ ueransim.docker.container.name }}"
       - nr-binder
       - "{{ ue_ip }}"
       - ping
