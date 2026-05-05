@@ -5,19 +5,15 @@
 # gNB container is started, since that condition causes RF underflows,
 # PRACH buffer depletion, and RFNoC OpTimeouts at runtime.
 #
-# Caller-supplied vars:
-#   preflight_label        Short human label, e.g. "srsRAN gNB"
-#   preflight_min_cpus     Required minimum CPU count (int)
-#   preflight_probe_image  Image used to read nproc (default: busybox:latest)
-#   preflight_enabled      Bool kill-switch (default: true)
+# Inputs are validated by meta/argument_specs.yml.
 
 - name: "Preflight ({{ preflight_label }}) | Docker CPU availability"
-  when: preflight_enabled | default(true) | bool
+  when: preflight_enabled | bool
   block:
 
     - name: "Preflight ({{ preflight_label }}) | Probe Docker-visible CPU count"
       ansible.builtin.command:
-        cmd: "docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc"
+        cmd: "docker run --rm {{ preflight_probe_image }} nproc"
       register: _preflight_docker_cpu
       changed_when: false
       failed_when: false
@@ -29,7 +25,7 @@
           {{ preflight_label }} preflight failed: unable to verify CPU availability inside Docker.
 
           Command:
-            docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc
+            docker run --rm {{ preflight_probe_image }} nproc
 
           stderr:
             {{ _preflight_docker_cpu.stderr | default('(none)') }}
@@ -38,9 +34,8 @@
             {{ _preflight_docker_cpu.stdout | default('(none)') }}
 
           Verify that the Docker daemon is running on this host and that the probe image
-          ({{ preflight_probe_image | default('busybox:latest') }}) is available. To
-          point at a different image already present on the host, override
-          `preflight_probe_image`.
+          ({{ preflight_probe_image }}) is available. To point at a different image
+          already present on the host, override `preflight_probe_image`.
       when: _preflight_docker_cpu.rc != 0
 
     - name: "Preflight ({{ preflight_label }}) | Assert Docker has enough CPUs visible"
@@ -75,7 +70,7 @@
             systemctl show docker.service -p Slice -p CPUAffinity -p AllowedCPUs -p CPUQuota
             systemctl show "$(systemctl show docker.service -p Slice --value)" \
                 -p CPUAffinity -p AllowedCPUs -p CPUQuota
-            docker run --rm {{ preflight_probe_image | default('busybox:latest') }} nproc
+            docker run --rm {{ preflight_probe_image }} nproc
 
           The {{ preflight_label }} container was not started because this condition
           commonly causes RF underflows, PRACH buffer depletion, and RFNoC OpTimeouts

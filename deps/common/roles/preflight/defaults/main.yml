@@ -1,0 +1,24 @@
+---
+# Defaults for the preflight role. These provide a safe fallback when a caller
+# omits a value; per-deployment overrides should go in inventory or in the
+# calling role's `defaults/main.yml` (e.g. `<role>.docker.preflight.*`).
+
+# Short human label included in task names and failure messages, e.g.
+# "srsRAN gNB" or "OAI gNB". Callers should always set this so the message
+# clearly identifies which component triggered the failure.
+preflight_label: "preflight"
+
+# Required minimum CPU count visible inside a Docker container on the target
+# host. The empirical floor for RF-bound gNBs (srsRAN, OCUDU, OAI) is 4
+# (see PR #206 sweep results); non-RF workloads such as N3IWF can use less.
+preflight_min_cpus: 4
+
+# Image used to read `nproc` inside Docker. The OnRamp airgap bundle tool
+# packages this dependency automatically. Override only if you want to point
+# at an image already present on the host.
+preflight_probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.2"
+
+# Kill switch. Setting this to false skips the entire preflight block, which
+# is useful in dev/test environments where the threshold is intentionally
+# violated. Default-on so production deployments fail loudly by default.
+preflight_enabled: true

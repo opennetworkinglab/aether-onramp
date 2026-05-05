@@ -6,12 +6,14 @@
   when: srsran.servers|length != groups['srsran_nodes']|length
 
 - name: Preflight | Docker CPU availability for srsRAN gNB
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/deps/common/tasks/preflight_docker_cpu.yml"
+  ansible.builtin.include_role:
+    name: preflight
+    tasks_from: docker_cpu
   vars:
     preflight_label: "srsRAN gNB"
-    preflight_min_cpus: "{{ srsran.docker.preflight.min_cpus | default(4) }}"
-    preflight_probe_image: "{{ srsran.docker.preflight.probe_image | default('busybox:latest') }}"
-    preflight_enabled: "{{ srsran.docker.preflight.enabled | default(true) }}"
+    preflight_min_cpus: "{{ srsran.docker.preflight.min_cpus }}"
+    preflight_probe_image: "{{ srsran.docker.preflight.probe_image }}"
+    preflight_enabled: "{{ srsran.docker.preflight.enabled }}"
   when: inventory_hostname in groups['srsran_nodes']
 
 # prep Ubuntu to support srsRAN gNB in DPDK-mode

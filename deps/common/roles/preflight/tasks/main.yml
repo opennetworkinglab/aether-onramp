@@ -1,0 +1,14 @@
+---
+# This role is intended to be invoked with an explicit `tasks_from:` so each
+# caller picks only the checks it needs. For example:
+#
+#   - ansible.builtin.include_role:
+#       name: preflight
+#       tasks_from: docker_cpu
+#     vars:
+#       preflight_label: "srsRAN gNB"
+#       preflight_min_cpus: 4
+#
+# Importing the role without a `tasks_from:` is intentionally a no-op rather
+# than implicitly running every check, so callers don't pick up new checks
+# silently as the role grows.
