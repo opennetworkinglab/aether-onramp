@@ -21,7 +21,7 @@ ueransim-pingall:
 #### b. Provision ueransim ####
 ueransim-docker-install:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(UERANSIM_ROOT_DIR)/docker.yml --tags install \
-		--extra-vars "ROOT_DIR=$(ROOT_DIR)"  --extra-vars $(EXTRA_VARS) -v
+		--extra-vars "ROOT_DIR=$(ROOT_DIR)"  --extra-vars $(EXTRA_VARS)
 
 ueransim-install: ueransim-docker-install
 	ansible-playbook -i $(HOSTS_INI_FILE) $(UERANSIM_ROOT_DIR)/simulator.yml --tags install \
