@@ -1,0 +1,269 @@
+---
+
+- name: collect installed package facts
+  package_facts:
+    manager: auto
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: check if docker is installed
+  command: docker --version
+  register: docker_version
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: set docker installation status
+  set_fact:
+    docker_official_packages_installed: >-
+      {{
+        ['docker-ce', 'docker-ce-cli', 'containerd.io', 'docker-buildx-plugin', 'docker-compose-plugin']
+        | difference(ansible_facts.packages.keys() | list)
+        | length == 0
+      }}
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: set docker runtime status
+  set_fact:
+    docker_already_installed_and_valid: "{{ docker_version.rc == 0 }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: print docker version output
+  debug:
+    var: docker_version.stdout
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - docker_version.rc == 0
+
+- name: create docker systemd drop-in directory
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: configure docker daemon proxy
+  copy:
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+    content: |
+      [Service]
+      Environment="HTTP_PROXY={{ proxy.http_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+      Environment="HTTPS_PROXY={{ proxy.https_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+      Environment="NO_PROXY={{ proxy.no_proxy | replace('\\', '\\\\') | replace('"', '\\"') }}"
+    mode: '0600'
+  register: docker_proxy_config
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - (proxy is defined) and (proxy.enabled | default(false))
+  become: true
+
+- name: remove docker daemon proxy when disabled
+  file:
+    path: /etc/systemd/system/docker.service.d/http-proxy.conf
+    state: absent
+  register: docker_proxy_removed
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - (proxy is not defined) or not (proxy.enabled | default(false))
+  become: true
+
+- name: restart docker after proxy configuration change
+  systemd:
+    name: docker
+    state: restarted
+    daemon_reload: true
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - (docker_proxy_config is defined and docker_proxy_config is changed) or (docker_proxy_removed is defined and docker_proxy_removed is changed)
+    - docker_already_installed_and_valid | default(false)
+  become: true
+
+- meta: end_host
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - docker_already_installed_and_valid | default(false)
+    - docker_official_packages_installed | default(false)
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+  become: true
+
+- name: Delete previous apt sources (1)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Delete previous apt sources (2)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Remove previous Docker deb822 source
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.sources
+    state: absent
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (docker_official_packages_installed | default(false))
+  become: true
+
+- name: uninstall conflicting Docker packages
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+      - docker-compose-v2
+      - docker-doc
+      - podman-docker
+      - containerd
+      - runc
+    state: absent
+    purge: true
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (docker_official_packages_installed | default(false))
+  become: true
+
+- name: install required system packages
+  apt:
+    pkg:
+      - ca-certificates
+      - curl
+      - python3-pip
+      - virtualenv
+      - python3-setuptools
+    state: present
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Create directory for Docker's GPG key
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Download Docker GPG key
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+    owner: root
+    group: root
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Add Docker repository to APT sources
+  vars:
+    arch_mapping:
+      x86_64: amd64
+      aarch64: arm64
+      armv7l: armhf
+      ppc64le: ppc64el
+      s390x: s390x
+  copy:
+    dest: /etc/apt/sources.list.d/docker.sources
+    mode: '0644'
+    content: |
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: {{ ansible_distribution_release }}
+      Components: stable
+      Architectures: {{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}
+      Signed-By: /etc/apt/keyrings/docker.asc
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: update apt cache
+  apt:
+    update_cache: true
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+  become: true
+
+- name: install Docker packages
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (docker_official_packages_installed | default(false))
+  become: true
+
+- name: ensure docker service is enabled and started
+  service:
+    name: docker
+    state: started
+    enabled: true
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- set_fact:
+    UBUNTU_VERSION: "{{ ansible_distribution_version }}"
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: install docker module for Python
+  pip:
+    name: docker
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - UBUNTU_VERSION is version('24.04', '<')
+  become: true
+
+- name: install python3-docker package
+  apt:
+    name: python3-docker
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - UBUNTU_VERSION is version('24.04', '>=')
+  become: true
+
+- name: pull hello-world docker image
+  community.docker.docker_image:
+    name: "hello-world"
+    source: pull
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: create hello-world container
+  community.docker.docker_container:
+    name: "hello-world"
+    image: "hello-world"
+    state: started
+    auto_remove: true
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Create docker group
+  group:
+    name: docker
+    state: present
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: Add current user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true

@@ -31,9 +31,6 @@ probe:
 schema:
   type: object
   properties:
-    version:
-      type: string
-      description: UERANSIM release version included in the container image
     docker:
       type: object
       description: UERANSIM Docker runtime configuration

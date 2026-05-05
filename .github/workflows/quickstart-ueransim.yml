@@ -85,11 +85,6 @@ jobs:
         sed -i "s|aetherproject/ueransim:rel-0.8.0|${{ github.event.inputs.ueransim_image || 'aetherproject/ueransim:rel-0.8.0' }}|" vars/main.yml
         git diff vars/main.yml
       install_commands: |
-        if command -v apt-get >/dev/null 2>&1; then
-          sudo apt-get update
-          sudo apt-get install -y python3-docker
-        fi
-        docker version
         make aether-k8s-install
         make aether-5gc-install
         make aether-ueransim-install
