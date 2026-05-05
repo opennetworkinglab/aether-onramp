@@ -13,7 +13,7 @@ To install ueransim, follow these steps:
 [ueransim_nodes]
 node2
 ```
-2. Install the UERANSIM
+2. Install the UERANSIM container image and host routing
    - Update the config files under `config/` for both UE and gNB.
    - Run `make ueransim-install`.
 3. Start the simulation

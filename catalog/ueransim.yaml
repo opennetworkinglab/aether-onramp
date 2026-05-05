@@ -33,7 +33,26 @@ schema:
   properties:
     version:
       type: string
-      description: UERANSIM release version to install
+      description: UERANSIM release version included in the container image
+    docker:
+      type: object
+      description: UERANSIM Docker runtime configuration
+      properties:
+        container:
+          type: object
+          properties:
+            image:
+              type: string
+              description: UERANSIM container image
+            name:
+              type: string
+              description: UERANSIM container name
+        network:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Docker network mode or network name
     gnb:
       type: object
       description: UERANSIM gNB configuration

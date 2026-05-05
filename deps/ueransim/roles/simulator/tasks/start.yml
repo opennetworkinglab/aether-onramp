@@ -8,30 +8,55 @@
 - name: copy gNb config files to ueransim host
   template:
     src: "{{ ROOT_DIR }}/{{ ueransim.servers[server_index | int].gnb }}"
-    dest: ueransim_onramp/config/custom-gnb.yaml
+    dest: /tmp/ueransim/custom-gnb.yaml
   vars:
     server_index: "{{ groups['ueransim_nodes'].index(inventory_hostname) }}"
   when: inventory_hostname in groups['ueransim_nodes']
+  become: true
 
 - name: copy UE config files to ueransim host
   template:
     src: "{{ ROOT_DIR }}/{{ ueransim.servers[server_index | int].ue }}"
-    dest: ueransim_onramp/config/custom-ue.yaml
+    dest: /tmp/ueransim/custom-ue.yaml
   vars:
     server_index: "{{ groups['ueransim_nodes'].index(inventory_hostname) }}"
   when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: remove existing UERANSIM container
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.name }}"
+    state: absent
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
+
+- name: create UERANSIM container
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.name }}"
+    image: "{{ ueransim.docker.container.image }}"
+    network_mode: "{{ ueransim.docker.network.name }}"
+    volumes:
+      - /tmp/ueransim:/opt/ueransim/config
+    privileged: true
+    restart_policy: unless-stopped
+    state: started
+    detach: true
+    command: sleep infinity
+  when: inventory_hostname in groups['ueransim_nodes']
+  become: true
 
 - name: Run gNB
   command:
     argv:
-      - ./nr-gnb
+      - docker
+      - exec
+      - -d
+      - "{{ ueransim.docker.container.name }}"
+      - nr-gnb
       - -c
-      - ../config/custom-gnb.yaml
-  args:
-    chdir: ueransim_onramp/build
-  async: 86400
-  poll: 0
+      - /opt/ueransim/config/custom-gnb.yaml
   when: "inventory_hostname in groups['ueransim_nodes']"
+  become: true
 
 - pause:
     seconds: 5
@@ -39,13 +64,13 @@
 - name: Run UE
   command:
     argv:
-      - ./nr-ue
+      - docker
+      - exec
+      - -d
+      - "{{ ueransim.docker.container.name }}"
+      - nr-ue
       - -c
-      - ../config/custom-ue.yaml
-  args:
-    chdir: ueransim_onramp/build
-  async: 86400
-  poll: 0
+      - /opt/ueransim/config/custom-ue.yaml
   when: "inventory_hostname in groups['ueransim_nodes']"
   become: true
 
@@ -85,16 +110,18 @@
 - name: Run ping command for connectivity
   command:
     argv:
-      - ./nr-binder
+      - docker
+      - exec
+      - "{{ ueransim.docker.container.name }}"
+      - nr-binder
       - "{{ ue_ip }}"
       - ping
       - -c
       - '5'
       - "{{ ping_target }}"
   register: ue_output
-  args:
-    chdir: ueransim_onramp/build
   when: "inventory_hostname in groups['ueransim_nodes']"
+  become: true
 
 - debug:
     var: ue_output.stdout_lines

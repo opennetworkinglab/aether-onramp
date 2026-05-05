@@ -1,9 +1,11 @@
 ueransim:
   version: v3.2.7
   docker:
+    container:
+      image: aetherproject/ueransim:rel-0.7.0
+      name: ueransim
     network:
-      macvlan:
-        name: ueransimnet
+      name: host
 
   gnb:
     ip: "172.20.0.2"
@@ -14,6 +16,7 @@ ueransim:
       ue: "config/custom-ue.yaml"
 core:
   upf:
+    core_subnet: "192.168.250.1/24"
     multihop_gnb: false
   amf:
     ip: "172.16.248.6"
