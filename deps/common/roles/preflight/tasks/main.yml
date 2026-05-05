@@ -12,3 +12,4 @@
 # Importing the role without a `tasks_from:` is intentionally a no-op rather
 # than implicitly running every check, so callers don't pick up new checks
 # silently as the role grows.
+[]
