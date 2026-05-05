@@ -3,6 +3,13 @@ n3iwf:
     image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.1
     network:
       name: public_net
+    preflight:
+      enabled: true
+      min_cpus: 2
+      # Tiny image used only to read `nproc` inside Docker. The airgap
+      # bundle tool packages this dependency automatically; override
+      # only if you want to point at an image already on the host.
+      probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.2"
   servers:
     0:
       conf_file: roles/n3iwf/templates/n3iwf-default.yaml

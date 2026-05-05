@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: preflight
+  namespace: aether
+  author: Aether OnRamp
+  description: >-
+    Shared preflight checks for OnRamp deployments. Each entry point under
+    `tasks/` is a self-contained sanity check that callers include via
+    `tasks_from:` from their role's `start.yml` or `install.yml`.
+  license: Apache-2.0
+  min_ansible_version: "2.11"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+
+dependencies: []
