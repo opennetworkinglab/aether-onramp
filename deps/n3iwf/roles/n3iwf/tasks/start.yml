@@ -16,10 +16,12 @@
     preflight_enabled: "{{ n3iwf.docker.preflight.enabled }}"
   when: inventory_hostname in groups['n3iwf_nodes']
 
-- name: pull {{ n3iwf.docker.image }} image
+- name: ensure {{ n3iwf.docker.image }} image is present
+  # `source: local` reuses the image staged into Docker by the
+  # bundle's dockerimages step. Online installs still pull.
   community.docker.docker_image:
     name: "{{ n3iwf.docker.image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['n3iwf_nodes']
   become: true
 

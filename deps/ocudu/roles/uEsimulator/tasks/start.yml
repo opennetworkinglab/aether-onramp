@@ -10,10 +10,13 @@
     msg: "Simulation is not enabled"
   when: ocudu.simulation == false
 
-- name: pull {{ ocudu.docker.container.ue_image }} image
+- name: ensure {{ ocudu.docker.container.ue_image }} image is present
+  # `source: local` reuses the image staged into Docker by the
+  # bundle's dockerimages step. Online installs still pull so
+  # operators can refresh tags out-of-band.
   community.docker.docker_image:
     name: "{{ ocudu.docker.container.ue_image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
