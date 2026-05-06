@@ -16,10 +16,24 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
+- name: notice | preserve {{ gnbsim.docker.container.image }} in airgap mode
+  debug:
+    msg: |
+      Skipping image purge of '{{ gnbsim.docker.container.image }}' to
+      preserve the airgap install cache. Reinstalling without the
+      cached image would require network access. Re-run with
+      `-e airgapped.allow_purge=true` to remove the image as well.
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove {{ gnbsim.docker.container.image }} image
   community.docker.docker_image:
     name: "{{ gnbsim.docker.container.image }}"
     state: absent
     force_absent: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true

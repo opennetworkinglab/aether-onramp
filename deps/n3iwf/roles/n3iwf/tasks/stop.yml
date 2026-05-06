@@ -28,10 +28,24 @@
   when: inventory_hostname in groups['n3iwf_nodes']
   become: true
 
+- name: notice | preserve {{ n3iwf.docker.image }} in airgap mode
+  debug:
+    msg: |
+      Skipping image purge of '{{ n3iwf.docker.image }}' to preserve the
+      airgap install cache. Reinstalling without the cached image
+      would require network access. Re-run with
+      `-e airgapped.allow_purge=true` to remove the image as well.
+  when:
+    - inventory_hostname in groups['n3iwf_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove {{ n3iwf.docker.image }} image
   community.docker.docker_image:
     name: "{{ n3iwf.docker.image }}"
     state: absent
     force_absent: true
-  when: inventory_hostname in groups['n3iwf_nodes']
+  when:
+    - inventory_hostname in groups['n3iwf_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
