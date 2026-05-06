@@ -3,11 +3,28 @@
 - set_fact:
     script_dir: /tmp/helm
 
+- name: notice | preserve helm binary in airgap mode
+  # In airgap mode the helm binary at /usr/local/bin/helm came
+  # from the bundle's helm component. Removing it forces a
+  # network-bound reinstall. Default behaviour is to leave the
+  # binary in place; operators can opt in with allow_purge.
+  debug:
+    msg: |
+      Skipping helm binary removal to preserve the airgap install
+      cache. Re-run with `-e airgapped.allow_purge=true` to remove
+      /usr/local/bin/helm as well.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove /usr/local/bin/helm
   file:
     path: "/usr/local/bin/helm"
     state: absent
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
 
 - name: remove {{ script_dir }}
