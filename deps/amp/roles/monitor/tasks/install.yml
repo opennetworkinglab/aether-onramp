@@ -71,10 +71,16 @@
   become: true
 
 - name: add rancher chart repo
+  # Adding a remote helm repo hits the network at registration. In
+  # airgap mode operators must pre-stage chart artifacts via the
+  # bundle; skip the network add. Downstream helm install tasks
+  # would still need a local equivalent of this chart available.
   kubernetes.core.helm_repository:
     name: rancher
     repo_url: "https://charts.rancher.io"
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
 
 - name: remove /tmp/monitor-values.yaml
   file:

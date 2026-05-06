@@ -1,8 +1,10 @@
 ---
-- name: pull {{ ueransim.docker.container.image }} image
+- name: ensure {{ ueransim.docker.container.image }} image is present
+  # `source: local` reuses the image staged into Docker by the
+  # bundle's dockerimages step. Online installs still pull.
   community.docker.docker_image:
     name: "{{ ueransim.docker.container.image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['ueransim_nodes']
   become: true
 

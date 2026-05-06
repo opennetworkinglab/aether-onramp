@@ -15,14 +15,25 @@
   become: true
 
 - name: add atomix chart repo
+  # Adding a remote helm repo hits the network at registration. In
+  # airgap mode the operator is expected to pre-stage atomix and
+  # other chart artifacts via the bundle; skip the network add.
+  # Downstream helm install tasks would still need a local
+  # equivalent of this chart available for amp/roc to come up.
   kubernetes.core.helm_repository:
     name: atomix
     repo_url: "https://atomix.github.io/charts.atomix.io"
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
 
 # TODO: add a local check to install local store
 # TODO: use kubectl module for ansible
 - name: apply local-path provisioner manifest
+  # `kubectl apply -f https://...` fetches the manifest from
+  # raw.githubusercontent.com at run time. In airgap mode the
+  # operator must pre-stage the manifest locally and apply it
+  # out-of-band; skip the network fetch here.
   command:
     argv:
       - kubectl
@@ -30,7 +41,9 @@
       - -f
       - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ amp.store.lpp.version }}/deploy/local-path-storage.yaml"
       - --wait=true
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
 
 - name: patch local-path storage class as default
   command:
