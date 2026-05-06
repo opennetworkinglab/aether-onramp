@@ -236,11 +236,15 @@
   become: true
 
 - name: pull hello-world docker image
+  # Smoke test only — `hello-world` isn't part of the airgap
+  # bundle, so skip the network round-trip when offline. Docker's
+  # own apt install already validates the daemon is functional.
   community.docker.docker_image:
     name: "hello-world"
     source: pull
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
   become: true
 
 - name: create hello-world container
@@ -251,6 +255,7 @@
     auto_remove: true
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - not (airgapped.enabled | default(false) | bool)
   become: true
 
 - name: Create docker group

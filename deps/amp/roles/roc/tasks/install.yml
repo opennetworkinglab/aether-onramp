@@ -14,6 +14,34 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+# Short-circuit the rest of the role in airgap mode. The downstream
+# tasks register a remote `helm_repository`, fetch a local-path
+# manifest from raw.githubusercontent.com, run `helm dep up`, and
+# deploy three OCI / HTTPS-hosted charts (atomix, onos-operator,
+# aether-roc-umbrella) with `update_repo_cache: true`. None of
+# those have a local-charts path today, so partial gating would
+# leave the role half-applied with confusing follow-on errors.
+# Surface the limitation explicitly and skip cleanly. When bundle
+# support for these charts lands, the early-exit can be relaxed.
+- name: notice | amp/roc has no airgap support yet
+  ansible.builtin.debug:
+    msg: |
+      amp/roc is not supported in airgap mode today. The role
+      registers a remote helm repo, fetches a manifest over
+      HTTPS, and deploys charts (atomix, onos-operator,
+      aether-roc-umbrella) from network sources the bundle does
+      not vendor. Skipping the rest of this role on this host.
+      Set `airgapped.enabled: false` to deploy ROC online.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
+- name: end host | airgap mode short-circuits amp/roc
+  ansible.builtin.meta: end_host
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
 - name: add atomix chart repo
   kubernetes.core.helm_repository:
     name: atomix

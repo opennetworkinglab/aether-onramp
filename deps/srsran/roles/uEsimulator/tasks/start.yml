@@ -10,10 +10,12 @@
     msg: "Simulation is not enabled"
   when: srsran.simulation == false
 
-- name: pull {{ srsran.docker.container.ue_image }} image
+- name: ensure {{ srsran.docker.container.ue_image }} image is present
+  # `source: local` reuses the image staged into Docker by the
+  # bundle's dockerimages step. Online installs still pull.
   community.docker.docker_image:
     name: "{{ srsran.docker.container.ue_image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['srsran_nodes']
   become: true
 

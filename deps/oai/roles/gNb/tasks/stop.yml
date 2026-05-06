@@ -19,10 +19,24 @@
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
+- name: notice | preserve {{ oai.docker.container.gnb_image }} in airgap mode
+  debug:
+    msg: |
+      Skipping image purge of '{{ oai.docker.container.gnb_image }}' to
+      preserve the airgap install cache. Reinstalling without the
+      cached image would require network access. Re-run with
+      `-e airgapped.allow_purge=true` to remove the image as well.
+  when:
+    - inventory_hostname in groups['oai_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove {{ oai.docker.container.gnb_image }} image
   community.docker.docker_image:
     name: "{{ oai.docker.container.gnb_image }}"
     state: absent
     force_absent: true
-  when: inventory_hostname in groups['oai_nodes']
+  when:
+    - inventory_hostname in groups['oai_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
