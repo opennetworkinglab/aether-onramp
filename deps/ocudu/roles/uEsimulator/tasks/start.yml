@@ -53,8 +53,16 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- pause:
-    seconds: 10
+- name: wait for UE tunnel interface
+  community.docker.docker_container_exec:
+    container: rfsim5g-nr-ue
+    command: "ip netns exec ue1 ip link show tun_srsue"
+  register: ocudu_ue_tunnel
+  retries: 30
+  delay: 2
+  until: ocudu_ue_tunnel.rc == 0
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
 
 - name: add default route for UE
   community.docker.docker_container_exec:
