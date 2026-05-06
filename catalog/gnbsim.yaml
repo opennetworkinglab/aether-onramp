@@ -14,12 +14,15 @@ actions:
   - name: install
     description: Deploy gNBSim
     target: aether-gnbsim-install
+    lifecycle: install
   - name: uninstall
     description: Remove gNBSim
     target: aether-gnbsim-uninstall
+    lifecycle: uninstall
   - name: run
     description: Run gNBSim simulation
     target: aether-gnbsim-run
+    lifecycle: start
 dependencies:
   requires: [5gc]
   required_by: []
@@ -75,4 +78,20 @@ schema:
         items:
           type: string
           description: Path to a gNBSim profile file
+
+defaults:
+  docker:
+    container:
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-1.9.0
+      prefix: gnbsim
+      count: 1
+    network:
+      macvlan:
+        name: gnbnet
+  router:
+    macvlan:
+      subnet_prefix: "172.20"
+  servers:
+    "0":
+      - "deps/gnbsim/config/gnbsim-default.yaml"
 

@@ -15,9 +15,11 @@ actions:
   - name: install
     description: Deploy the quickstart stack
     target: aether-install
+    lifecycle: install
   - name: uninstall
     description: Remove the quickstart stack
     target: aether-uninstall
+    lifecycle: uninstall
   - name: add-upfs
     description: Add additional UPFs
     target: aether-add-upfs
