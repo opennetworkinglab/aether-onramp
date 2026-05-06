@@ -4,20 +4,6 @@ proxy:
   https_proxy: ""
   no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,.cluster.local"
 
-# Skip `apt update_cache` in package-installing roles. Enable for
-# offline / airgapped sites or those backed by a local apt mirror.
-#
-# When `enabled: true`:
-#   - container image pulls in start tasks resolve from the local
-#     Docker store (`source: local`) instead of hitting registries
-#   - smoke-test pulls (hello-world) in docker install roles are
-#     skipped — no network is available to validate them
-#   - stop / uninstall tasks preserve cached container images, the
-#     RKE2 image dir, and bundled binaries by default. Re-running
-#     install would otherwise need to re-fetch those artifacts.
-#     Override with `allow_purge: true` (or `-e airgapped.allow_purge=true`)
-#     when you really want to clean up — typically only when
-#     decommissioning a host.
 airgapped:
   enabled: false
   allow_purge: false
