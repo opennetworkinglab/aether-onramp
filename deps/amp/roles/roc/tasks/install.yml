@@ -14,26 +14,43 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
+# Short-circuit the rest of the role in airgap mode. The downstream
+# tasks register a remote `helm_repository`, fetch a local-path
+# manifest from raw.githubusercontent.com, run `helm dep up`, and
+# deploy three OCI / HTTPS-hosted charts (atomix, onos-operator,
+# aether-roc-umbrella) with `update_repo_cache: true`. None of
+# those have a local-charts path today, so partial gating would
+# leave the role half-applied with confusing follow-on errors.
+# Surface the limitation explicitly and skip cleanly. When bundle
+# support for these charts lands, the early-exit can be relaxed.
+- name: notice | amp/roc has no airgap support yet
+  ansible.builtin.debug:
+    msg: |
+      amp/roc is not supported in airgap mode today. The role
+      registers a remote helm repo, fetches a manifest over
+      HTTPS, and deploys charts (atomix, onos-operator,
+      aether-roc-umbrella) from network sources the bundle does
+      not vendor. Skipping the rest of this role on this host.
+      Set `airgapped.enabled: false` to deploy ROC online.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
+- name: end host | airgap mode short-circuits amp/roc
+  ansible.builtin.meta: end_host
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
 - name: add atomix chart repo
-  # Adding a remote helm repo hits the network at registration. In
-  # airgap mode the operator is expected to pre-stage atomix and
-  # other chart artifacts via the bundle; skip the network add.
-  # Downstream helm install tasks would still need a local
-  # equivalent of this chart available for amp/roc to come up.
   kubernetes.core.helm_repository:
     name: atomix
     repo_url: "https://atomix.github.io/charts.atomix.io"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not (airgapped.enabled | default(false) | bool)
+  when: inventory_hostname in groups['master_nodes']
 
 # TODO: add a local check to install local store
 # TODO: use kubectl module for ansible
 - name: apply local-path provisioner manifest
-  # `kubectl apply -f https://...` fetches the manifest from
-  # raw.githubusercontent.com at run time. In airgap mode the
-  # operator must pre-stage the manifest locally and apply it
-  # out-of-band; skip the network fetch here.
   command:
     argv:
       - kubectl
@@ -41,9 +58,7 @@
       - -f
       - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ amp.store.lpp.version }}/deploy/local-path-storage.yaml"
       - --wait=true
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not (airgapped.enabled | default(false) | bool)
+  when: inventory_hostname in groups['master_nodes']
 
 - name: patch local-path storage class as default
   command:

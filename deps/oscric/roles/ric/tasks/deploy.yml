@@ -42,6 +42,35 @@
     - not (airgapped.enabled | default(false) | bool)
   become: true
 
+# In airgap mode the clone is skipped, so the `replace:` tasks below
+# would fail trying to edit a docker-compose.yml that does not
+# exist. Verify the operator pre-staged the tree and fail with a
+# clear message before the dependent tasks run.
+- name: check pre-staged oran-sc-ric tree exists in airgap mode
+  ansible.builtin.stat:
+    path: /opt/oran-sc-ric/docker-compose.yml
+  register: oscric_compose_stat
+  when:
+    - inventory_hostname in groups['oscric_nodes']
+    - airgapped.enabled | default(false) | bool
+
+- name: airgap mode requires pre-staged oran-sc-ric tree
+  ansible.builtin.fail:
+    msg: |
+      `/opt/oran-sc-ric/docker-compose.yml` is not on this host.
+      The role's git clone is skipped when
+      `airgapped.enabled: true` (the bundle does not vendor
+      oran-sc-ric today), so the operator must pre-stage the
+      tree at `/opt/oran-sc-ric/` (including
+      `docker-compose.yml`) plus pre-load any container images
+      it references into Docker before invoking this play. To
+      run oscric online and let the role fetch everything, set
+      `airgapped.enabled: false`.
+  when:
+    - inventory_hostname in groups['oscric_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (oscric_compose_stat.stat.exists | default(false))
+
 - name: Uncomment 'ports' in oran-sc-ric/docker-compose.yml
   replace:
     path: /opt/oran-sc-ric/docker-compose.yml
