@@ -14,15 +14,19 @@ actions:
   - name: install
     description: Deploy UERANSIM
     target: aether-ueransim-install
+    lifecycle: install
   - name: uninstall
     description: Remove UERANSIM
     target: aether-ueransim-uninstall
+    lifecycle: uninstall
   - name: run
     description: Start UERANSIM simulation
     target: aether-ueransim-run
+    lifecycle: start
   - name: stop
     description: Stop UERANSIM simulation
     target: aether-ueransim-stop
+    lifecycle: stop
 dependencies:
   requires: [5gc]
   required_by: []
@@ -53,3 +57,10 @@ schema:
           ue:
             type: string
             description: Path to the UE config file
+
+defaults:
+  version: v3.2.7
+  servers:
+    "0":
+      gnb: "deps/ueransim/config/custom-gnb.yaml"
+      ue: "deps/ueransim/config/custom-ue.yaml"

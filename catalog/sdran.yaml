@@ -14,9 +14,11 @@ actions:
   - name: install
     description: Deploy SD-RAN
     target: aether-sdran-install
+    lifecycle: install
   - name: uninstall
     description: Remove SD-RAN
     target: aether-sdran-uninstall
+    lifecycle: uninstall
 dependencies:
   requires: [k8s]
   required_by: []
@@ -115,3 +117,37 @@ schema:
             metric:
               type: string
               description: Metrics profile name or file
+
+defaults:
+  platform:
+    atomix:
+      helm:
+        chart_ref: atomix/atomix
+        chart_version: 1.1.2
+    onosproject:
+      helm:
+        chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
+        chart_version: 0.5.6
+    store:
+      lpp:
+        version: v0.0.24
+  sdran:
+    helm:
+      local_charts: false
+      chart_ref: oci://ghcr.io/onosproject/charts/sd-ran
+      chart_version: 1.5.2
+    import:
+      e2t: true
+      a1t: true
+      uenib: true
+      topo: true
+      config: true
+      ransim: true
+      kpimon: true
+      pci: false
+      mho: false
+      mlb: false
+      ts: false
+    ransim:
+      model: model
+      metric: metrics

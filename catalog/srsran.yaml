@@ -14,15 +14,19 @@ actions:
   - name: gnb-install
     description: Deploy srsRAN gNB
     target: aether-srsran-gnb-install
+    lifecycle: install
   - name: gnb-uninstall
     description: Remove srsRAN gNB
     target: aether-srsran-gnb-uninstall
+    lifecycle: uninstall
   - name: uesim-start
     description: Start srsRAN UE simulator
     target: aether-srsran-uesim-start
+    lifecycle: start
   - name: uesim-stop
     description: Stop srsRAN UE simulator
     target: aether-srsran-uesim-stop
+    lifecycle: stop
 dependencies:
   requires: [5gc]
   required_by: []
@@ -70,3 +74,15 @@ schema:
             type: string
             description: Path to the UE config file
 
+defaults:
+  docker:
+    container:
+      gnb_image: aetherproject/srsran-gnb:rel-0.7.0
+      ue_image: aetherproject/srsran-ue:rel-0.7.0
+    network:
+      name: host
+  simulation: true
+  servers:
+    "0":
+      gnb_conf: deps/srsran/roles/gNB/templates/gnb_zmq.yaml
+      ue_conf: deps/srsran/roles/uEsimulator/templates/ue_zmq.conf

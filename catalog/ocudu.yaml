@@ -14,15 +14,19 @@ actions:
   - name: gnb-install
     description: Deploy O-CU-DU gNB
     target: aether-ocudu-gnb-install
+    lifecycle: install
   - name: gnb-uninstall
     description: Remove O-CU-DU gNB
     target: aether-ocudu-gnb-uninstall
+    lifecycle: uninstall
   - name: uesim-start
     description: Start O-CU-DU UE simulator
     target: aether-ocudu-uesim-start
+    lifecycle: start
   - name: uesim-stop
     description: Stop O-CU-DU UE simulator
     target: aether-ocudu-uesim-stop
+    lifecycle: stop
 dependencies:
   requires: [5gc]
   required_by: []
@@ -70,3 +74,15 @@ schema:
             type: string
             description: Path to the UE config file
 
+defaults:
+  docker:
+    container:
+      gnb_image: aetherproject/ocudu:rel-0.7.0
+      ue_image: aetherproject/srsran-ue:rel-0.7.0
+    network:
+      name: host
+  simulation: true
+  servers:
+    "0":
+      gnb_conf: gnb_zmq.yaml
+      ue_conf: ue_zmq.conf

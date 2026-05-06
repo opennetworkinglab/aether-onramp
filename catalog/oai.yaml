@@ -14,15 +14,19 @@ actions:
   - name: gnb-install
     description: Deploy OAI gNB
     target: aether-oai-gnb-install
+    lifecycle: install
   - name: gnb-uninstall
     description: Remove OAI gNB
     target: aether-oai-gnb-uninstall
+    lifecycle: uninstall
   - name: uesim-start
     description: Start OAI UE simulator
     target: aether-oai-uesim-start
+    lifecycle: start
   - name: uesim-stop
     description: Stop OAI UE simulator
     target: aether-oai-uesim-stop
+    lifecycle: stop
 dependencies:
   requires: [5gc]
   required_by: []
@@ -81,3 +85,19 @@ schema:
           ue_conf:
             type: string
             description: Path to the UE config file
+
+defaults:
+  docker:
+    container:
+      gnb_image: oaisoftwarealliance/oai-gnb:2026.w10
+      ue_image: oaisoftwarealliance/oai-nr-ue:2026.w10
+    network:
+      name: public_net
+      subnet: "172.20.0.0/16"
+      bridge:
+        name: rfsim5g-public
+  simulation: true
+  servers:
+    "0":
+      gnb_conf: deps/oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
+      ue_conf: deps/oai/roles/uEsimulator/templates/ue.conf

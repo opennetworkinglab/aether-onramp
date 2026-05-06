@@ -13,12 +13,15 @@ actions:
   - name: install
     description: Deploy 5G core
     target: aether-5gc-install
+    lifecycle: install
   - name: uninstall
     description: Remove 5G core
     target: aether-5gc-uninstall
+    lifecycle: uninstall
   - name: reset
     description: Reset 5G core state
     target: aether-5gc-reset
+    lifecycle: reset
 dependencies:
   requires: [k8s]
   required_by: [gnbsim, ueransim, oai, srsran, ocudu, n3iwf]
@@ -130,4 +133,18 @@ schema:
         ip:
           type: string
           description: AMF N2 IP address
+
+defaults:
+  standalone: true
+  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  ran_subnet: ""
+  helm:
+    local_charts: false
+    chart_ref: oci://ghcr.io/omec-project/sd-core
+    chart_version: 3.5.0
+  upf:
+    access_subnet: "192.168.252.1/24"
+    core_subnet: "192.168.250.1/24"
+    mode: af_packet
+    multihop_gnb: false
 
