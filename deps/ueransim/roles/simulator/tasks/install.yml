@@ -6,14 +6,6 @@
   when: inventory_hostname in groups['ueransim_nodes']
   become: true
 
-- name: create UERANSIM config directory
-  file:
-    path: /tmp/ueransim
-    state: directory
-    mode: '0755'
-  when: inventory_hostname in groups['ueransim_nodes']
-  become: true
-
 - set_fact:
     subnet: "{{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }}"
   when: inventory_hostname in groups['ueransim_nodes']
