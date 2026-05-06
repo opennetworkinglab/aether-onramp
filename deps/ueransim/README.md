@@ -8,12 +8,12 @@ Global vars file `vars/main-ueransim.yml` gives the overall blueprint specificat
 
 ## Step-by-Step Installation
 To install ueransim, follow these steps:
-1. Inventory file hosts.ini needs to be modified to identify the server that is to run UERANSIM. Currently, a second server is needed, as UERANSIM and SD-Core cannot be deployed on the same server.
+1. Inventory file hosts.ini needs to be modified to identify the server that is to run UERANSIM. UERANSIM can run on the same server as SD-Core or on a separate server. For single-node deployments, set the AMF IP and UERANSIM gNB IP to the host IP. For multi-node deployments, ensure the UERANSIM host can reach the SD-Core N2/N3 addresses.
 ```
 [ueransim_nodes]
 node2
 ```
-2. Install the UERANSIM
+2. Install the UERANSIM container image and host routing
    - Update the config files under `config/` for both UE and gNB.
    - Run `make ueransim-install`.
 3. Start the simulation

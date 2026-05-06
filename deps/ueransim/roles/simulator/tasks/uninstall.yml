@@ -1,8 +1,25 @@
 ---
-- name: remove UERANSIM
-  file:
-    path: ueransim_onramp
+- name: remove UERANSIM container
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.name }}"
     state: absent
+  ignore_errors: yes
+  become: true
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: remove UERANSIM config directory
+  file:
+    path: /tmp/ueransim
+    state: absent
+  ignore_errors: yes
+  become: true
+  when: inventory_hostname in groups['ueransim_nodes']
+
+- name: remove {{ ueransim.docker.container.image }} image
+  community.docker.docker_image:
+    name: "{{ ueransim.docker.container.image }}"
+    state: absent
+    force_absent: true
   ignore_errors: yes
   become: true
   when: inventory_hostname in groups['ueransim_nodes']

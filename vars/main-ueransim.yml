@@ -45,6 +45,12 @@ core:
     ip: "10.76.28.113"
 
 ueransim:
+  docker:
+    container:
+      image: aetherproject/ueransim:rel-0.8.0
+      name: ueransim
+    network:
+      name: host
   gnb:
     ip: "10.76.28.111"
   servers:

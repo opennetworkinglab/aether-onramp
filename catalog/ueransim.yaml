@@ -27,13 +27,30 @@ dependencies:
   requires: [5gc]
   required_by: []
 probe:
-  type: none
+  type: docker_container
+  container: ueransim
 schema:
   type: object
   properties:
-    version:
-      type: string
-      description: UERANSIM release version to install
+    docker:
+      type: object
+      description: UERANSIM Docker runtime configuration
+      properties:
+        container:
+          type: object
+          properties:
+            image:
+              type: string
+              description: UERANSIM container image
+            name:
+              type: string
+              description: UERANSIM container name
+        network:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Docker network mode. UERANSIM currently requires host networking.
     gnb:
       type: object
       description: UERANSIM gNB configuration

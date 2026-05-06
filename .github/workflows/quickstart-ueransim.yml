@@ -1,0 +1,110 @@
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+# GitHub Actions workflow for validating SD-Core with UERANSIM.
+
+name: Aether OnRamp UERANSIM
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_label:
+        description: "Runner label override (for example, a self-hosted label)"
+        required: false
+        default: ""
+        type: string
+      ubuntu_version:
+        description: "Ubuntu version to test"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "ubuntu-22.04"
+          - "ubuntu-24.04"
+      ueransim_image:
+        description: "UERANSIM image to test"
+        required: false
+        default: "aetherproject/ueransim:rel-0.8.0"
+        type: string
+
+jobs:
+  prepare:
+    name: prepare matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - name: Compute runner matrix
+        id: set-matrix
+        env:
+          AGENT_LABEL: ${{ github.event.inputs.agent_label || '' }}
+          UBUNTU_VERSION: ${{ github.event.inputs.ubuntu_version || 'all' }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import sys
+
+          agent_label = os.environ.get("AGENT_LABEL", "")
+          ubuntu_version = os.environ.get("UBUNTU_VERSION", "all")
+
+          if agent_label and ubuntu_version != "all":
+              print(
+                  "Set either agent_label or ubuntu_version, not both.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          if agent_label:
+              matrix = {"runner_label": [agent_label]}
+          elif ubuntu_version != "all":
+              matrix = {"runner_label": [ubuntu_version]}
+          else:
+              matrix = {"runner_label": ["ubuntu-22.04", "ubuntu-24.04"]}
+
+          print(f"matrix={json.dumps(matrix)}")
+          PY
+
+  quickstart-ueransim:
+    needs: prepare
+    name: ueransim (${{ matrix.runner_label }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    uses: ./.github/workflows/reusable-quickstart.yml
+    with:
+      agent_label: ${{ matrix.runner_label }}
+      target_group: ueransim_nodes
+      vars_template: vars/main-ueransim.yml
+      configure_commands: |
+        sed -i "s/10.76.28.113/$MYIP/" vars/main.yml
+        sed -i "s/10.76.28.111/$MYIP/" vars/main.yml
+        sed -i "s/ens18/$MYIFC/g" vars/main.yml
+        sed -i "s|aetherproject/ueransim:rel-0.8.0|${{ github.event.inputs.ueransim_image || 'aetherproject/ueransim:rel-0.8.0' }}|" vars/main.yml
+        git diff vars/main.yml
+      install_commands: |
+        make aether-k8s-install
+        make aether-5gc-install
+        make aether-ueransim-install
+      inspect_commands: |
+        kubectl get pods -n aether-5gc -o custom-columns=NAME:.metadata.name,READY:.status.containerStatuses[*].ready,STATUS:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount,IMAGE:.spec.containers[*].image
+        docker ps -a
+      run_commands: |
+        make aether-ueransim-run
+        docker ps
+        ip -o -4 addr show uesimtun0
+      validate_commands: |
+        UE_IP=$(ip -o -4 addr show uesimtun0 | awk '{print $4}' | cut -d/ -f1)
+        test -n "$UE_IP"
+        docker exec ueransim nr-binder "$UE_IP" ping -c 5 192.168.250.1 > ueransim-ping.log
+        grep "0% packet loss" ueransim-ping.log
+      log_prefix: ueransim
+      artifact_name: ueransim-logs-${{ matrix.runner_label }}
+      extra_log_commands: |
+        docker logs ueransim > logs/ueransim.log 2>&1 || echo "Failed to get ueransim container logs"
+        ip addr > logs/ip-addr.log 2>&1 || echo "Failed to collect host interfaces"
+        cp ueransim-ping.log logs/ueransim-ping.log 2>/dev/null || echo "No ueransim-ping.log found"
+      cleanup_targets: aether-ueransim-uninstall aether-5gc-uninstall aether-k8s-uninstall
+    secrets: inherit
