@@ -70,6 +70,32 @@
   when: inventory_hostname in groups['master_nodes'] and UBUNTU_VERSION is version_compare('24.04', '>=')
   become: true
 
+# Short-circuit the rest of the role in airgap mode. The downstream
+# tasks register a remote `helm_repository` and deploy
+# `rancher-monitoring-crd` plus `rancher-monitoring` from the
+# rancher chart repo with `update_repo_cache: true`. The bundle
+# does not vendor those charts today, so partial gating would
+# leave the role half-applied with confusing follow-on errors.
+# Surface the limitation explicitly and skip cleanly.
+- name: notice | amp/monitor has no airgap support yet
+  ansible.builtin.debug:
+    msg: |
+      amp/monitor is not supported in airgap mode today. The role
+      registers the rancher helm repo and deploys
+      rancher-monitoring-crd / rancher-monitoring from network
+      sources the bundle does not vendor. Skipping the rest of
+      this role on this host. Set `airgapped.enabled: false` to
+      deploy AMP monitoring online.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
+- name: end host | airgap mode short-circuits amp/monitor
+  ansible.builtin.meta: end_host
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
 - name: add rancher chart repo
   kubernetes.core.helm_repository:
     name: rancher

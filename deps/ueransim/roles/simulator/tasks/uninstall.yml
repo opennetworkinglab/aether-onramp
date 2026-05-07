@@ -15,6 +15,18 @@
   become: true
   when: inventory_hostname in groups['ueransim_nodes']
 
+- name: notice | preserve {{ ueransim.docker.container.image }} in airgap mode
+  debug:
+    msg: |
+      Skipping image purge of '{{ ueransim.docker.container.image }}' to
+      preserve the airgap install cache. Reinstalling without the
+      cached image would require network access. Re-run with
+      `-e airgapped.allow_purge=true` to remove the image as well.
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove {{ ueransim.docker.container.image }} image
   community.docker.docker_image:
     name: "{{ ueransim.docker.container.image }}"
@@ -22,7 +34,9 @@
     force_absent: true
   ignore_errors: yes
   become: true
-  when: inventory_hostname in groups['ueransim_nodes']
+  when:
+    - inventory_hostname in groups['ueransim_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
 
 - set_fact:
     subnet: "{{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }}"

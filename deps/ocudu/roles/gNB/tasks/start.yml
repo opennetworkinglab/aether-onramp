@@ -26,10 +26,14 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- name: pull {{ ocudu.docker.container.gnb_image }} image
+- name: ensure {{ ocudu.docker.container.gnb_image }} image is present
+  # In airgap mode the image is loaded into Docker by the bundle's
+  # dockerimages step; `source: local` reuses that without
+  # contacting a registry. Online installs keep the network pull
+  # so operators can refresh tags out-of-band.
   community.docker.docker_image:
     name: "{{ ocudu.docker.container.gnb_image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
