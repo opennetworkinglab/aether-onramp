@@ -81,10 +81,7 @@ jobs:
         run: |
           if command -v ansible-playbook >/dev/null 2>&1; then
             echo "Ansible is already installed"
-            exit 0
-          fi
-
-          if [ "${{ runner.os }}" = "Linux" ] && command -v apt-get >/dev/null 2>&1; then
+          elif [ "${{ runner.os }}" = "Linux" ] && command -v apt-get >/dev/null 2>&1; then
             if command -v sudo >/dev/null 2>&1; then
               sudo apt-get update
               sudo apt-get install -y ansible
@@ -97,6 +94,9 @@ jobs:
             echo "Use an Ubuntu/Debian runner or preinstall Ansible on the selected runner." >&2
             exit 1
           fi
+
+          ansible-galaxy collection install -r requirements.yml
+          ansible-galaxy collection list community.docker
 
       - name: Configure OnRamp
         run: |
