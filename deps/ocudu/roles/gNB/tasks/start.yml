@@ -65,6 +65,7 @@
     volumes:
       - /tmp/gnb_config.yaml:/opt/gnb_config.yaml
       - /dev/hugepages:/dev/hugepages
+      - /dev/bus/usb:/dev/bus/usb
     devices:
       - /dev/vfio:/dev/vfio
     privileged: true
