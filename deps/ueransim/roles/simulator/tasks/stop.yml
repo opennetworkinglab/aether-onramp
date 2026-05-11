@@ -1,12 +1,7 @@
 ---
-- name: force stop UE
-  command: pkill -9 -f nr-ue
+- name: delete {{ ueransim.docker.container.name }} container
+  community.docker.docker_container:
+    name: "{{ ueransim.docker.container.name }}"
+    state: absent
   when: inventory_hostname in groups['ueransim_nodes']
   become: true
-  ignore_errors: yes
-
-- name: force stop gNB
-  command: pkill -9 -f nr-gnb
-  when: inventory_hostname in groups['ueransim_nodes']
-  become: true
-  ignore_errors: yes

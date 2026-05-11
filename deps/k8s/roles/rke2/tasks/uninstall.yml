@@ -1,5 +1,24 @@
 ---
 
+- name: notice | preserve RKE2 + image cache in airgap mode
+  # rke2-uninstall.sh wipes /var/lib/rancher, which holds the
+  # bundled containerd image dir an airgap reinstall depends on.
+  # Default airgap behaviour is to leave rke2 in place; operators
+  # can force a full uninstall by setting `airgapped.allow_purge`.
+  debug:
+    msg: |
+      Skipping rke2 uninstall to preserve the airgap install cache
+      (containerd image dir, bundled binaries, /var/lib/rancher).
+      Re-running install would otherwise re-stage everything from
+      the bundle, but only the operator can decide whether the host
+      is being decommissioned. To proceed with a full uninstall,
+      re-run with `-e airgapped.allow_purge=true`.
+  when:
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
+# ~/.kube is just kubeconfig — small, easy to recreate, and gets
+# rewritten by the install role regardless. Always remove it.
 - name: delete {{ ansible_env.HOME }}/.kube
   file:
     path: "{{ ansible_env.HOME }}/.kube"
@@ -10,7 +29,9 @@
   file:
     path: "/usr/local/bin/kubectl"
     state: absent
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
 
 - set_fact:
@@ -18,6 +39,8 @@
 
 - name: uninstall rke2 masters/workers
   command: "/usr/local/bin/rke2-uninstall.sh"
+  when:
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
   ignore_errors: yes
 

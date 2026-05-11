@@ -16,10 +16,12 @@
     preflight_enabled: "{{ oai.docker.preflight.enabled }}"
   when: inventory_hostname in groups['oai_nodes']
 
-- name: pull {{ oai.docker.container.gnb_image }} image
+- name: ensure {{ oai.docker.container.gnb_image }} image is present
+  # `source: local` reuses the image staged into Docker by the
+  # bundle's dockerimages step. Online installs still pull.
   community.docker.docker_image:
     name: "{{ oai.docker.container.gnb_image }}"
-    source: pull
+    source: "{{ 'local' if airgapped.enabled | default(false) | bool else 'pull' }}"
   when: inventory_hostname in groups['oai_nodes']
   become: true
 

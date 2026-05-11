@@ -19,10 +19,28 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
+- name: notice | preserve {{ ocudu.docker.container.gnb_image }} in airgap mode
+  # Airgap installs depend on the image staying in Docker's store
+  # so a subsequent start can reuse it without network. The image
+  # is held back unless the operator opts in to a full purge with
+  # `-e airgapped.allow_purge=true`.
+  debug:
+    msg: |
+      Skipping image purge of '{{ ocudu.docker.container.gnb_image }}' to
+      preserve the airgap install cache. Reinstalling without the
+      cached image would require network access. Re-run with
+      `-e airgapped.allow_purge=true` to remove the image as well.
+  when:
+    - inventory_hostname in groups['ocudu_nodes']
+    - airgapped.enabled | default(false) | bool
+    - not (airgapped.allow_purge | default(false) | bool)
+
 - name: remove {{ ocudu.docker.container.gnb_image }} image
   community.docker.docker_image:
     name: "{{ ocudu.docker.container.gnb_image }}"
     state: absent
     force_absent: true
-  when: inventory_hostname in groups['ocudu_nodes']
+  when:
+    - inventory_hostname in groups['ocudu_nodes']
+    - not (airgapped.enabled | default(false) | bool) or (airgapped.allow_purge | default(false) | bool)
   become: true
