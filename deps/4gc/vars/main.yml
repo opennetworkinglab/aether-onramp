@@ -10,5 +10,5 @@ core:
   ran_subnet: "172.20.0.0/16" # set it to empty to get subnet from 'data_iface'
 
   helm:
-    chart_ref: aether/sd-core
+    chart_ref: oci://ghcr.io/omec-project/sd-core
     chart_version: 4.0.0
