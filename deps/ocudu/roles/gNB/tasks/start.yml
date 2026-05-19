@@ -26,6 +26,15 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
+- name: set net.core.rmem_max to 24912805
+  ansible.posix.sysctl:
+    name: net.core.rmem_max
+    value: '24912805'
+    sysctl_set: true
+    reload: true
+  when: inventory_hostname in groups['ocudu_nodes']
+  become: true
+
 - name: ensure {{ ocudu.docker.container.gnb_image }} image is present
   # In airgap mode the image is loaded into Docker by the bundle's
   # dockerimages step; `source: local` reuses that without
