@@ -113,8 +113,8 @@ omec-control-plane:
             # staticIpInfo:
             #   - dnn: internet
             #     imsiIpInfo:
-            #       imsi-001010123456864: "172.250.0.100"
-            #       imsi-001010123456865: "172.250.0.101"
+            #       imsi-001010100007500: "172.250.0.100"
+            #       imsi-001010100007501: "172.250.0.101"
 
     #pcf:
     #  cfgFiles:
@@ -165,8 +165,8 @@ omec-sub-provision:
             # You can have any number of subscriber ranges
             # This block is always necessary to establish range(s) of valid IMSIs
             subscribers:
-            - ueId-start: "001010123456864"
-              ueId-end: "001010123456868"
+            - ueId-start: "001010100007500"
+              ueId-end: "001010100007509"
               plmnId: "00101"
               opc: "00000000000000000000000000000000"
               op: ""
@@ -177,11 +177,27 @@ omec-sub-provision:
             device-groups:
             - name:  "user-group1"
               imsis:
-                - "001010123456864"
-                - "001010123456865"
+                - "001010100007500"
+                - "001010100007501"
+                - "001010100007502"
+                - "001010100007503"
+                - "001010100007504"
+                - "001010100007505"
+                - "001010100007506"
+                - "001010100007507"
+                - "001010100007508"
+                - "001010100007509"
               msisdns:
                 - "msisdn-9000000001"
                 - "msisdn-9000000002"
+                - "msisdn-9000000003"
+                - "msisdn-9000000004"
+                - "msisdn-9000000005"
+                - "msisdn-9000000006"
+                - "msisdn-9000000007"
+                - "msisdn-9000000008"
+                - "msisdn-9000000009"
+                - "msisdn-9000000010"
               ip-domain-name: "pool1"
               ip-domains:
                 - dnn: internet
