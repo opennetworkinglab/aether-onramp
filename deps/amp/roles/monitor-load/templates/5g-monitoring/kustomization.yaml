@@ -7,10 +7,11 @@ resources:
   - ./upf-monitor.yaml
 
 configMapGenerator:
-  - name: grafana-ops-dashboards
+  - name: grafana-aether-dashboards
     namespace: cattle-dashboards
     files:
       - ./5g-dashboard.json
 generatorOptions:
+  disableNameSuffixHash: true
   labels:
     grafana_dashboard: "1"
