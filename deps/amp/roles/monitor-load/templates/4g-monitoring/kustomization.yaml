@@ -9,7 +9,7 @@ resources:
   - ./upf-monitor.yaml
 
 configMapGenerator:
-  - name: grafana-aether-dashboards
+  - name: grafana-omec-dashboards
     namespace: cattle-dashboards
     files:
       - ./4g-dashboard.json
