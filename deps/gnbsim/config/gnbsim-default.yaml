@@ -99,7 +99,7 @@ configuration:
       profileName: profile1
       enable: false
       gnbName: gnb1
-      execInParallel: true
+      execInParallel: false
       startImsi: 208930100007500
       ueCount: 5
       defaultAs: "{{ ping_target }}"
@@ -115,7 +115,7 @@ configuration:
       profileName: profile2
       enable: true
       gnbName: gnb1
-      execInParallel: true
+      execInParallel: false
       startImsi: 208930100007510
       ueCount: 5
       defaultAs: "{{ ping_target }}"
@@ -135,7 +135,7 @@ configuration:
     - profileType: anrelease          # AN Release
       profileName: profile3
       enable: false
-      execInParallel: true
+      execInParallel: false
       gnbName: gnb1
       startImsi: 208930100007520
       ueCount: 5
@@ -156,7 +156,7 @@ configuration:
       profileName: profile4
       enable: false
       gnbName: gnb1
-      execInParallel: true
+      execInParallel: false
       startImsi: 208930100007530
       ueCount: 5
       plmnId:
@@ -177,7 +177,7 @@ configuration:
       profileName: profile5
       enable: false
       gnbName: gnb1
-      execInParallel: true
+      execInParallel: false
       startImsi: 208930100007540
       ueCount: 5
       defaultAs: "{{ ping_target }}"
@@ -217,7 +217,7 @@ configuration:
       profileName: profile7
       enable: false
       gnbName: gnb1
-      execInParallel: true
+      execInParallel: false
       startImsi: 208930100007560
       ueCount: 5
       plmnId:
