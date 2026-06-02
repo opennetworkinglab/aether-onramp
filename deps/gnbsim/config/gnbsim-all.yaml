@@ -60,7 +60,7 @@ configuration:
       execInParallel: true      # Run all subscribers in parallel
       stepTrigger: false      # Wait for trigger to move to next step
       gnbName: gnb1        # gNB used for this profile
-      startImsi: "208930100007487"    # First IMSI (used in sequence for each UE)
+      startImsi: "208930100007500"    # First IMSI (used in sequence for each UE)
       ueCount: 3        # Number of UEs
       perUserTimeout: 10
       defaultAs: "{{ ping_target }}"    # Default ICMP destination (for UPF traffic)
