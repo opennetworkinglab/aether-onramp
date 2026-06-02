@@ -76,7 +76,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "w5yLd7d4z"
+            "uid": "prometheus"
           },
           "editorMode": "builder",
           "exemplar": true,
@@ -162,7 +162,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "w5yLd7d4z"
+            "uid": "prometheus"
           },
           "editorMode": "builder",
           "exemplar": true,
@@ -339,7 +339,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "w5yLd7d4z"
+            "uid": "prometheus"
           },
           "editorMode": "builder",
           "exemplar": true,
