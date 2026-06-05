@@ -46,7 +46,7 @@ core:
 srsran:
   docker:
     container:
-      # rel-0.7.0 does not establish the simulated ZMQ UE link in CI.
+      # rel-0.7.0 does not establish the simulated ZMQ UE link.
       gnb_image: aetherproject/srsran-gnb:rel-0.4.0
       ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
