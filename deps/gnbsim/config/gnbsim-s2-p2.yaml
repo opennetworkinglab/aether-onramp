@@ -57,7 +57,7 @@ configuration:
       execInParallel: true #run all subscribers in parallel
       stepTrigger: false #wait for trigger to move to next step
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007500" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       perUserTimeout: 10
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
@@ -111,7 +111,7 @@ configuration:
       profileName: profile1 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007500" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       opc: "981d464c7c52eb6e5036234984ad0bcf"
@@ -129,7 +129,7 @@ configuration:
       profileName: profile2 # uniqely identifies a profile within application
       enable: true # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007510" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       opc: "981d464c7c52eb6e5036234984ad0bcf"
@@ -148,7 +148,7 @@ configuration:
       profileName: profile3 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007520" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       opc: "981d464c7c52eb6e5036234984ad0bcf"
@@ -166,7 +166,7 @@ configuration:
       profileName: profile4 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007530" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       opc: "981d464c7c52eb6e5036234984ad0bcf"
@@ -184,7 +184,7 @@ configuration:
       profileName: profile5 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007540" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       opc: "981d464c7c52eb6e5036234984ad0bcf"
@@ -202,7 +202,7 @@ configuration:
       profileName: profile6 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007550" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       defaultAs: "{{ ping_target }}" #default icmp pkt destination
       perUserTimeout: 10 #if no expected event received in this time then treat it as failure
@@ -221,7 +221,7 @@ configuration:
       profileName: profile7 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007560" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       opc: "981d464c7c52eb6e5036234984ad0bcf"
       key: "5122250214c33e723a5dd523fc145fc0"
@@ -239,7 +239,7 @@ configuration:
       profileName: profile8 # uniqely identifies a profile within application
       enable: false # Set true to execute the profile, false otherwise.
       gnbName: gnb1 # gNB to be used for this profile
-      startImsi: "208930100007497" # First IMSI. Subsequent values will be used if ueCount is more than 1
+      startImsi: "208930100007570" # First IMSI. Subsequent values will be used if ueCount is more than 1
       ueCount: 3 # Number of UEs for for which the profile will be executed
       opc: "981d464c7c52eb6e5036234984ad0bcf"
       key: "5122250214c33e723a5dd523fc145fc0"

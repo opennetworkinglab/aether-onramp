@@ -29,7 +29,7 @@ core:
   helm:
     local_charts: false      # set chart_ref to local path name if true
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 3.5.0
+    chart_version: 4.1.0
   upf:
     access_subnet: "192.168.252.1/24"  # access subnet & gateway
     core_subnet: "192.168.250.1/24"  # core subnet & gateway
@@ -46,8 +46,9 @@ core:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:rel-0.7.0
-      ue_image: aetherproject/srsran-ue:rel-0.7.0
+      # rel-0.7.0 does not establish the simulated ZMQ UE link.
+      gnb_image: aetherproject/srsran-gnb:rel-0.4.0
+      ue_image: aetherproject/srsran-ue:rel-0.4.0
     network:
       name: host
   simulation: true

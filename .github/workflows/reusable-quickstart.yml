@@ -135,6 +135,7 @@ jobs:
         if: always()
         run: |
           mkdir -p logs
+          cp vars/main.yml "logs/${{ inputs.log_prefix }}_vars_main.yml" 2>/dev/null || echo "No vars/main.yml found"
           ${{ inputs.extra_log_commands }}
           bash .github/scripts/collect-core-logs.sh logs "${{ inputs.log_prefix }}"
 
@@ -143,7 +144,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_name }}
-          path: logs/*.log
+          path: |
+            logs/*.log
+            logs/*.yml
           if-no-files-found: ignore
 
       - name: Cleanup

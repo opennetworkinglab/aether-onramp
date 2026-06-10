@@ -19,7 +19,7 @@ and share repeated shell logic through helper scripts under
 1. **Inspect Installed Components**: Captures pod and container status before starting traffic generation
 1. **Run gNBsim**: Executes the gNBsim test with retry logic (2 attempts)
 1. **Validate Results**: Checks that tests passed using the same validation pattern as Jenkins
-1. **Retrieve Logs**: Collects workload output and shared 5GC logs using the helper scripts in ``.github/scripts``
+1. **Retrieve Logs**: Collects workload output, the effective ``vars/main.yml`` used for the deployment, and shared 5GC logs using the helper scripts in ``.github/scripts``
 1. **Archive Artifacts**: Uploads logs as workflow artifacts
 1. **Cleanup**: Uninstalls all components (always runs, even on failure), using a shared helper for repeated make cleanup targets
 1. **Notify on Failure**: Logs failure information (can be extended with Slack notifications)

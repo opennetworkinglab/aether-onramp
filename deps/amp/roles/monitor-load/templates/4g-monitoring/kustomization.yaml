@@ -9,10 +9,11 @@ resources:
   - ./upf-monitor.yaml
 
 configMapGenerator:
-  - name: grafana-ops-dashboards
+  - name: grafana-omec-dashboards
     namespace: cattle-dashboards
     files:
       - ./4g-dashboard.json
 generatorOptions:
+  disableNameSuffixHash: true
   labels:
     grafana_dashboard: "1"

@@ -60,7 +60,7 @@ configuration:
       execInParallel: true      # Run all subscribers in parallel
       stepTrigger: false      # Wait for trigger to move to next step
       gnbName: gnb1        # gNB used for this profile
-      startImsi: "208930100007487"    # First IMSI (used in sequence for each UE)
+      startImsi: "208930100007500"    # First IMSI (used in sequence for each UE)
       ueCount: 3        # Number of UEs
       perUserTimeout: 10
       defaultAs: "{{ ping_target }}"    # Default ICMP destination (for UPF traffic)
@@ -100,7 +100,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007487
+      startImsi: 208930100007500
       ueCount: 5
       defaultAs: "{{ ping_target }}"
       perUserTimeout: 100
@@ -116,7 +116,7 @@ configuration:
       enable: true
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007487
+      startImsi: 208930100007510
       ueCount: 5
       defaultAs: "{{ ping_target }}"
       perUserTimeout: 100
@@ -137,7 +137,7 @@ configuration:
       enable: false
       execInParallel: false
       gnbName: gnb1
-      startImsi: 208930100007497
+      startImsi: 208930100007520
       ueCount: 5
       defaultAs: "{{ ping_target }}"
       perUserTimeout: 100
@@ -157,7 +157,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007497
+      startImsi: 208930100007530
       ueCount: 5
       plmnId:
         mcc: 208
@@ -178,7 +178,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007497
+      startImsi: 208930100007540
       ueCount: 5
       defaultAs: "{{ ping_target }}"
       perUserTimeout: 100
@@ -198,7 +198,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007497
+      startImsi: 208930100007550
       ueCount: 5
       defaultAs: "{{ ping_target }}"
       perUserTimeout: 100
@@ -218,7 +218,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007497
+      startImsi: 208930100007560
       ueCount: 5
       plmnId:
         mcc: 208
@@ -238,7 +238,7 @@ configuration:
       enable: false
       gnbName: gnb1
       execInParallel: false
-      startImsi: 208930100007497
+      startImsi: 208930100007570
       ueCount: 1
       plmnId:
         mcc: 208

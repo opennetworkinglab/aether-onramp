@@ -41,25 +41,6 @@ capture_namespace_state() {
     kubectl get deployment -n "$namespace" -o wide
 }
 
-collect_component_logs() {
-  local component pod_name pod_listing
-
-  if ! pod_listing="$(kubectl get pods -n "$namespace" 2>&1)"; then
-    log_error "Warning: failed to list pods in namespace ${namespace}: ${pod_listing}"
-    return
-  fi
-
-  for component in amf webui udr udm ausf smf; do
-    pod_name="$(printf '%s\n' "$pod_listing" | awk -v pattern="$component" '$0 ~ pattern { print $1; exit }')"
-    if [[ -n "$pod_name" ]]; then
-      echo "Retrieving ${component} logs from: ${pod_name}"
-      if ! kubectl logs "$pod_name" -n "$namespace" > "$output_dir/${file_prefix}_${component}.log" 2>&1; then
-        log_error "Warning: failed to retrieve logs for ${component} from ${pod_name}"
-      fi
-    fi
-  done
-}
-
 collect_pod_diagnostics() {
   local pod_name pod_names
 
@@ -85,7 +66,6 @@ collect_pod_diagnostics() {
 }
 
 capture_namespace_state
-collect_component_logs
 collect_pod_diagnostics
 
 if [[ ! -s "$error_log" ]]; then
