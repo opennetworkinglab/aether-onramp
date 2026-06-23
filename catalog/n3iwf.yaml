@@ -14,9 +14,11 @@ actions:
   - name: install
     description: Deploy N3IWF
     target: aether-n3iwf-install
+    lifecycle: install
   - name: uninstall
     description: Remove N3IWF
     target: aether-n3iwf-uninstall
+    lifecycle: uninstall
 dependencies:
   requires: [5gc]
   required_by: []
@@ -60,4 +62,13 @@ schema:
           nwu_ip:
             type: string
             description: NWu interface address in CIDR notation (used as ipSecAddress)
+
+defaults:
+  docker:
+    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.1.1
+    network:
+      name: host
+  servers:
+    "0":
+      conf_file: deps/n3iwf/roles/n3iwf/templates/n3iwf-default.yaml
 

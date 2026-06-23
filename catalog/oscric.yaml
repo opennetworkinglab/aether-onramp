@@ -13,9 +13,11 @@ actions:
   - name: ric-install
     description: Deploy OSC near-RT RIC
     target: aether-oscric-ric-install
+    lifecycle: install
   - name: ric-uninstall
     description: Remove OSC near-RT RIC
     target: aether-oscric-ric-uninstall
+    lifecycle: uninstall
 dependencies:
   requires: []
   required_by: []
@@ -42,4 +44,9 @@ schema:
         rc:
           type: boolean
           description: Enable the RC xApp
+
+defaults:
+  import:
+    kpimon: true
+    rc: false
 
