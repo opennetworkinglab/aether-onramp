@@ -11,4 +11,4 @@ core:
 
   helm:
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 4.1.0
+    chart_version: 4.1.2
