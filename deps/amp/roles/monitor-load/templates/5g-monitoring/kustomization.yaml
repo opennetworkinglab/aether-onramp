@@ -1,10 +1,18 @@
-# SPDX-FileCopyrightText: 2022-present Intel Corporation
-#
+# Copyright (C) 2022-present Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 resources:
+  - ./amf-monitor.yaml
+  - ./ausf-monitor.yaml
   - ./metricfunc-monitor.yaml
+  - ./nrf-monitor.yaml
+  - ./nssf-monitor.yaml
+  - ./pcf-monitor.yaml
+  - ./smf-monitor.yaml
+  - ./udm-monitor.yaml
+  - ./udr-monitor.yaml
   - ./upf-monitor.yaml
+  - ./webui-monitor.yaml
 
 configMapGenerator:
   - name: grafana-aether-dashboards
