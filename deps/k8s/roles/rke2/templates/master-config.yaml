@@ -2,7 +2,7 @@
 {% set node_host = ansible_host | default('', true) %}
 token: {{ k8s.rke2.config.token }}
 node-name: {{ inventory_hostname }}
-node-ip: {{ (((ansible_default_ipv4 | default({})).get('address') | mandatory('ansible_default_ipv4.address is required to set node-ip when ansible_host is empty/localhost')) if node_host in local_hosts else node_host) | quote }}
+node-ip: {{ ((((ansible_default_ipv4 | default({}))['address']) | mandatory('ansible_default_ipv4.address is required to set node-ip when ansible_host is empty/localhost')) if node_host in local_hosts else node_host) | quote }}
 cni: multus,canal
 cluster-cidr: 10.42.0.0/16
 service-cidr: 10.43.0.0/16
