@@ -4,7 +4,7 @@
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
     gnbsim_router_state_dir: /var/lib/gnbsim-router
-    gnbsim_default_uplink_forwarding_state_file: /var/lib/gnbsim-router/default-uplink-forwarding
+    gnbsim_default_uplink_forwarding_state_file: "{{ gnbsim_router_state_dir }}/default-uplink-forwarding"
 
 - name: stop gnbsim-macvlan.service
   systemd:
@@ -55,7 +55,7 @@
       - "{{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', item) }}.0/24"
       - via
       - "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
-  loop: "{{ play_hosts | intersect(groups['gnbsim_nodes']) | difference(groups['master_nodes']) }}"
+  loop: "{{ play_hosts | intersect(groups['gnbsim_nodes']) | difference(groups['master_nodes']) | list }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   failed_when: false
@@ -187,10 +187,7 @@
   stat:
     path: "{{ gnbsim_default_uplink_forwarding_state_file }}"
   register: default_uplink_forwarding_state_file
-  when:
-    - inventory_hostname in groups['gnbsim_nodes']
-    - ansible_default_ipv4.interface is defined
-    - ansible_default_ipv4.interface != gnbsim.router.data_iface
+  when: inventory_hostname in groups['gnbsim_nodes']
   become: true
   ignore_errors: yes
 
@@ -200,26 +197,34 @@
   register: default_uplink_forwarding_state
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - ansible_default_ipv4.interface is defined
-    - ansible_default_ipv4.interface != gnbsim.router.data_iface
     - (default_uplink_forwarding_state_file.stat.exists | default(false))
   become: true
   ignore_errors: yes
 
+- name: parse saved default uplink forwarding state
+  set_fact:
+    default_uplink_forwarding_state_data: "{{ default_uplink_forwarding_state.content | b64decode | from_yaml }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (default_uplink_forwarding_state_file.stat.exists | default(false))
+    - default_uplink_forwarding_state is succeeded
+    - default_uplink_forwarding_state.content is defined
+  ignore_errors: yes
+
 - name: restore saved default uplink forwarding state when default uplink differs
   ansible.posix.sysctl:
-    name: net.ipv4.conf.{{ ansible_default_ipv4.interface }}.forwarding
-    value: "{{ default_uplink_forwarding_state.content | b64decode | trim }}"
+    name: net.ipv4.conf.{{ default_uplink_forwarding_state_data.interface }}.forwarding
+    value: "{{ default_uplink_forwarding_state_data.forwarding }}"
     sysctl_set: true
     reload: true
   register: restore_default_uplink_forwarding_result
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - ansible_default_ipv4.interface is defined
-    - ansible_default_ipv4.interface != gnbsim.router.data_iface
     - (default_uplink_forwarding_state_file.stat.exists | default(false))
-    - default_uplink_forwarding_state is succeeded
-    - default_uplink_forwarding_state.content is defined
+    - default_uplink_forwarding_state_data is defined
+    - default_uplink_forwarding_state_data.interface is defined
+    - (default_uplink_forwarding_state_data.interface | trim) != ''
+    - default_uplink_forwarding_state_data.forwarding is defined
   become: true
   ignore_errors: yes
 
@@ -229,14 +234,27 @@
     state: absent
   when:
     - inventory_hostname in groups['gnbsim_nodes']
-    - ansible_default_ipv4.interface is defined
-    - ansible_default_ipv4.interface != gnbsim.router.data_iface
     - (default_uplink_forwarding_state_file.stat.exists | default(false))
-    - default_uplink_forwarding_state is succeeded
-    - default_uplink_forwarding_state.content is defined
+    - restore_default_uplink_forwarding_result is defined
+    - not (restore_default_uplink_forwarding_result.skipped | default(false))
     - restore_default_uplink_forwarding_result is succeeded
   become: true
   ignore_errors: yes
+
+- name: delete gnbsim router state directory if empty
+  command:
+    argv:
+      - rmdir
+      - "{{ gnbsim_router_state_dir }}"
+  register: gnbsim_router_state_dir_removal
+  changed_when: gnbsim_router_state_dir_removal.rc == 0
+  failed_when: false
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - restore_default_uplink_forwarding_result is defined
+    - not (restore_default_uplink_forwarding_result.skipped | default(false))
+    - restore_default_uplink_forwarding_result is succeeded
+  become: true
 
 - name: delete persistent gnbsim iptables rules file
   file:

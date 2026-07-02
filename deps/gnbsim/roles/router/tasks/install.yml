@@ -4,7 +4,7 @@
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
     gnbsim_router_state_dir: /var/lib/gnbsim-router
-    gnbsim_default_uplink_forwarding_state_file: /var/lib/gnbsim-router/default-uplink-forwarding
+    gnbsim_default_uplink_forwarding_state_file: "{{ gnbsim_router_state_dir }}/default-uplink-forwarding"
 
 - name: set net.ipv4.conf.all.arp_filter to 1
   ansible.posix.sysctl:
@@ -98,7 +98,9 @@
 - name: persist original default uplink forwarding state
   copy:
     dest: "{{ gnbsim_default_uplink_forwarding_state_file }}"
-    content: "{{ (default_uplink_forwarding_value.stdout | trim) ~ '\n' }}"
+    content: |
+      interface: "{{ ansible_default_ipv4.interface }}"
+      forwarding: "{{ default_uplink_forwarding_value.stdout | trim }}"
     mode: '0644'
   when:
     - inventory_hostname in groups['gnbsim_nodes']
