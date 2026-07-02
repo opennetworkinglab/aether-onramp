@@ -114,5 +114,5 @@
 
 - name: resolve VF 0 identifiers for subsequent tasks
   ansible.builtin.set_fact:
-    ocudu_dpdk_vf_bdf: "{{ ocudu_dpdk_vf_identity.stdout_lines[0] }}"
+    ocudu_dpdk_vf_bdf: "{{ server_dpdk.vf_bdf | default(ocudu_dpdk_vf_identity.stdout_lines[0], true) }}"
     ocudu_dpdk_du_mac_addr: "{{ server_dpdk.du_mac_addr | default(ocudu_dpdk_vf_identity.stdout_lines[1], true) }}"

@@ -181,7 +181,7 @@
 
 - name: refresh VF 0 BDF after persistent bootstrap
   ansible.builtin.set_fact:
-    ocudu_dpdk_vf_bdf: "{{ vf_identity_after_bootstrap.stdout | trim }}"
+    ocudu_dpdk_vf_bdf: "{{ server_dpdk.vf_bdf | default(vf_identity_after_bootstrap.stdout | trim, true) }}"
 
 - name: install pf-tuning dependencies and linuxptp
   ansible.builtin.apt:
@@ -331,7 +331,7 @@
       fi
     done
 
-    phc_index=$(ethtool -T "$PF_IFACE" 2>/dev/null | awk -F': ' '/PTP Hardware Clock:/ { print $2; exit }')
+    phc_index=$(ethtool -T "$PF_IFACE" 2>/dev/null | awk -F': ' '/PTP Hardware Clock:/ { print $2; exit }' || true)
     if [[ -n "${phc_index:-}" && "$phc_index" =~ ^[0-9]+$ ]]; then
       printf 'ptp%s\n' "$phc_index"
       exit 0
