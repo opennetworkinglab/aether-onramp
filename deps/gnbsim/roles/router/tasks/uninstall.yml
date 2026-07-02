@@ -1,12 +1,59 @@
 ---
 
+- name: declare paths shared with install.yml
+  ansible.builtin.set_fact:
+    router_sysctl_backup_file: /var/lib/gnbsim-router-sysctl-backup.conf
+
+- name: read router sysctl backup file
+  ansible.builtin.slurp:
+    src: "{{ router_sysctl_backup_file }}"
+  register: router_sysctl_backup_content
+  failed_when: false
+  changed_when: false
+  become: true
+  when: inventory_hostname in groups['gnbsim_nodes']
+
+- name: recover gnbsim.router.data_iface from sysctl backup file
+  ansible.builtin.set_fact:
+    gnbsim: "{{ gnbsim | combine({'router': {'data_iface': (
+        ((router_sysctl_backup_content.content | b64decode) | regex_findall('(?m)^net\\.ipv4\\.conf\\.(.+)\\.forwarding='))
+        + ((router_sysctl_backup_content.content | b64decode) | regex_findall('(?m)^net/ipv4/conf/(.+)/forwarding='))
+      ) | last | default('', true)}}, recursive=true) }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - gnbsim.router.data_iface is not defined or gnbsim.router.data_iface == ''
+    - router_sysctl_backup_content.content is defined
+    - (router_sysctl_backup_content.content | b64decode) is regex('(?m)^(net\\.ipv4\\.conf\\..+\\.forwarding=|net/ipv4/conf/.+/forwarding=)')
+
+- name: derive gnbsim.router.data_iface from default-route interface when unset
+  ansible.builtin.set_fact:
+    gnbsim: "{{ gnbsim | combine({'router': {'data_iface': ansible_default_ipv4.interface}}, recursive=true) }}"
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - gnbsim.router.data_iface is not defined or gnbsim.router.data_iface == ''
+
+- name: warn when gnbsim.router.data_iface cannot be resolved on this host
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: gnbsim.router.data_iface (={{ gnbsim.router.data_iface | default('<unset>') | to_json }})
+      is not a valid network interface on this host. Interface-specific cleanup
+      steps may be skipped; re-run with `gnbsim.router.data_iface` set explicitly
+      to fully clean up.
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface is not defined)
+      or (gnbsim.router.data_iface == '')
+      or (gnbsim.router.data_iface not in (ansible_interfaces | default([])))
+
 - set_fact:
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
     gnbsim_router_state_dir: /var/lib/gnbsim-router
-
-- set_fact:
-    gnbsim_default_uplink_forwarding_state_file: "{{ gnbsim_router_state_dir }}/default-uplink-forwarding"
+    gnbsim_default_uplink_forwarding_state_file: /var/lib/gnbsim-router/default-uplink-forwarding
+    router_data_iface_forwarding_sysctl: "net.ipv4.conf.{{ gnbsim.router.data_iface }}.forwarding"
+    router_data_iface_forwarding_backup_regexp: >-
+      ^(net\.ipv4\.conf\.{{ gnbsim.router.data_iface | regex_escape }}\.forwarding|net/ipv4/conf/{{ gnbsim.router.data_iface | regex_escape }}/forwarding)=(.+)$
 
 - name: stop gnbsim-macvlan.service
   systemd:
@@ -172,8 +219,11 @@
     out_interface: "gnbaccess"
     jump: ACCEPT
     state: absent
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
   become: true
+  ignore_errors: yes
 
 - name: "delete iptable rule: forward from gnbaccess to {{ gnbsim.router.data_iface }}"
   iptables:
@@ -182,8 +232,11 @@
     out_interface: "{{ gnbsim.router.data_iface }}"
     jump: ACCEPT
     state: absent
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
   become: true
+  ignore_errors: yes
 
 - name: check for saved default uplink forwarding state
   stat:
@@ -277,6 +330,7 @@
   failed_when: false
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
   become: true
   ignore_errors: yes
 
@@ -312,6 +366,7 @@
   failed_when: false
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
     - (data_iface_network_file_networkctl | default('') | trim) == ''
   become: true
   ignore_errors: yes
@@ -444,23 +499,124 @@
   when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
   become: true
 
-- name: set net.ipv4.conf.{{ gnbsim.router.data_iface }}.forwarding to 0
+- name: warn when sysctl backup file is missing and sysctl values cannot be restored
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: the sysctl backup file ({{ router_sysctl_backup_file }}) is
+      missing or unreadable. net.ipv4.ip_forward and per-interface forwarding
+      settings cannot be restored to their pre-install values. If IP forwarding
+      was disabled before gnbsim was installed, manual cleanup may be required.
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is not defined
+
+- name: extract saved router sysctl values
+  set_fact:
+    saved_net_ipv4_ip_forward: >-
+      {{
+        (router_sysctl_backup_content.content | default('') | b64decode)
+        | regex_findall('(?m)^net\\.ipv4\\.ip_forward=(.+)$')
+        | first
+        | default('', true)
+      }}
+    saved_net_ipv4_conf_iface_forwarding: >-
+      {{
+        (router_sysctl_backup_content.content | default('') | b64decode)
+        | regex_findall(router_data_iface_forwarding_backup_regexp, multiline=true)
+        | first
+        | default(['', ''], true)
+        | last
+      }}
+  when: inventory_hostname in groups['gnbsim_nodes']
+  ignore_errors: yes
+
+- name: restore {{ router_data_iface_forwarding_sysctl }}
   ansible.posix.sysctl:
-    name: net.ipv4.conf.{{ gnbsim.router.data_iface }}.forwarding
+    name: "{{ router_data_iface_forwarding_sysctl }}"
+    value: '{{ saved_net_ipv4_conf_iface_forwarding }}'
+    sysctl_set: true
+    reload: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (saved_net_ipv4_conf_iface_forwarding | default('')) != ''
+  become: true
+  ignore_errors: yes
+
+- name: reset {{ router_data_iface_forwarding_sysctl }} to 0 (no saved value)
+  ansible.posix.sysctl:
+    name: "{{ router_data_iface_forwarding_sysctl }}"
     value: '0'
     sysctl_set: true
     reload: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is defined
+    - (gnbsim.router.data_iface | default('') | trim) != ''
+    - (saved_net_ipv4_conf_iface_forwarding | default('')) == ''
   become: true
+  ignore_errors: yes
 
-- name: set net.ipv4.ip_forward to 0
+- name: remove {{ router_data_iface_forwarding_sysctl }} sysctl configuration
+  ansible.posix.sysctl:
+    name: "{{ router_data_iface_forwarding_sysctl }}"
+    state: absent
+    sysctl_set: false
+    reload: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is defined
+    - (gnbsim.router.data_iface | default('') | trim) != ''
+    - (saved_net_ipv4_conf_iface_forwarding | default('')) == ''
+  become: true
+  ignore_errors: yes
+
+- name: restore net.ipv4.ip_forward
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '{{ saved_net_ipv4_ip_forward }}'
+    sysctl_set: true
+    reload: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - (saved_net_ipv4_ip_forward | default('')) != ''
+  become: true
+  ignore_errors: yes
+
+- name: reset net.ipv4.ip_forward to 0 (no saved value)
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
     value: '0'
     sysctl_set: true
     reload: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is defined
+    - (saved_net_ipv4_ip_forward | default('')) == ''
   become: true
+  ignore_errors: yes
+
+- name: remove net.ipv4.ip_forward sysctl configuration
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    state: absent
+    sysctl_set: false
+    reload: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is defined
+    - (saved_net_ipv4_ip_forward | default('')) == ''
+  become: true
+  ignore_errors: yes
+
+- name: delete router sysctl backup file
+  file:
+    path: "{{ router_sysctl_backup_file }}"
+    state: absent
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - router_sysctl_backup_content.content is defined
+  become: true
+  ignore_errors: yes
 
 - name: force systemd to reread configs
   systemd:

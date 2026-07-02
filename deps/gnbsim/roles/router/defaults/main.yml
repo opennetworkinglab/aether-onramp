@@ -1,6 +1,9 @@
 gnbsim:
   router:
-    data_iface: data
+    # Name of the data-plane interface on the managed node (e.g. eth0,
+    # enp5s0). Leave empty to auto-derive from the default-route
+    # interface.
+    data_iface: ""
     macvlan:
       subnet_prefix: "172.20"
 
