@@ -4,6 +4,8 @@
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
     gnbsim_router_state_dir: /var/lib/gnbsim-router
+
+- set_fact:
     gnbsim_default_uplink_forwarding_state_file: "{{ gnbsim_router_state_dir }}/default-uplink-forwarding"
 
 - name: stop gnbsim-macvlan.service
