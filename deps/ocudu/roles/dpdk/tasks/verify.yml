@@ -1,0 +1,40 @@
+---
+
+- name: check if servers and config server length are equal
+  ansible.builtin.fail:
+    msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+  when: ocudu.servers|length != groups['ocudu_nodes']|length
+
+- name: determine whether DPDK is enabled for this OCUDU node
+  ansible.builtin.set_fact:
+    ocudu_dpdk_enabled: >-
+      {{
+        ((ocudu.servers[server_index | int].dpdk | default({})).enabled |
+        default((ocudu.dpdk | default({})).enabled | default(false))) | bool
+      }}
+    ocudu_dpdk_pf_iface: >-
+      {{
+        (ocudu.servers[server_index | int].dpdk | default({})).pf_iface |
+        default(((ocudu.dpdk | default({})).pf_iface | default('')), true)
+      }}
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+
+- name: skip verifier on hosts where DPDK is disabled
+  ansible.builtin.debug:
+    msg: dpdk-not-enabled
+  when: not ocudu_dpdk_enabled
+
+- name: run DPDK verification script on remote host
+  ansible.builtin.script: >-
+    {{ role_path }}/files/verify-dpdk-services.sh
+    --pf {{ ocudu_dpdk_pf_iface | quote }}
+  register: ocudu_dpdk_verify
+  changed_when: false
+  become: true
+  when: ocudu_dpdk_enabled
+
+- name: print DPDK verification output
+  ansible.builtin.debug:
+    msg: "{{ ocudu_dpdk_verify.stdout_lines | default([]) }}"
+  when: ocudu_dpdk_enabled

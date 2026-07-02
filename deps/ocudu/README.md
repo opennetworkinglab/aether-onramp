@@ -19,6 +19,7 @@ cd aether-ocudu
 - `vars/main.yml`: default runtime variables used by the playbooks
 - `docker.yml`: installs Docker on hosts in the `ocudu_nodes` group
 - `router.yml`: applies or removes routing and sysctl changes on OCUDU nodes
+- `dpdk.yml`: prepares DPDK prerequisites on OCUDU nodes when `ocudu.servers[n].dpdk.enabled` is true for that node
 - `gNB.yml`: starts and stops the OCUDU gNB container
 - `uEsimulator.yml`: starts and stops the UE simulator container
 
@@ -59,8 +60,8 @@ Example defaults:
 ocudu:
    docker:
       container:
-         gnb_image: aetherproject/ocudu:rel-0.7.0
-         ue_image: aetherproject/srsran-ue:rel-0.7.0
+         gnb_image: aetherproject/ocudu:rel-0.8.2
+         ue_image: aetherproject/srsran-ue:rel-0.8.2
       network:
          name: host
    simulation: true
@@ -69,14 +70,24 @@ ocudu:
          gnb_ip: "10.76.28.115"
          gnb_conf: gnb_zmq.yaml
          ue_conf: ue_zmq.conf
+         dpdk:
+            enabled: false
+            hugepages: 2
+            pf_iface: "ens6f0"
+            vf_bdf: "0000:18:00.1"
+            du_mac_addr: "d0:8e:79:f1:d1:39"
+            ru_mac_addr: "70:b3:d5:e1:5e:7e"
 
 core:
    upf:
       access_subnet: "192.168.252.1/24"
       multihop_gnb: false
    amf:
-      ip: "172.16.248.6"
+      ip: "10.76.28.113"
 ```
+
+Override `core.amf.ip` to the actual SD-Core AMF address in your environment when
+you are not using the checked-in OCUDU blueprint values.
 
 Key variables:
 
@@ -87,6 +98,12 @@ Key variables:
 - `ocudu.servers[n].gnb_ip`: bind address used by the gNB for NGAP traffic
 - `ocudu.servers[n].gnb_conf`: gNB template name or path resolvable by Ansible's template lookup for that OCUDU node. The checked-in default uses the role's `templates/` directory.
 - `ocudu.servers[n].ue_conf`: UE simulator template name or path resolvable by Ansible's template lookup for that OCUDU node. The checked-in default uses the role's `templates/` directory.
+- `ocudu.servers[n].dpdk.enabled`: enables the DPDK prerequisite playbook for that OCUDU node
+- `ocudu.servers[n].dpdk.hugepages`: number of 1 GB hugepages allocated on that host before starting a DPDK gNB
+- `ocudu.servers[n].dpdk.pf_iface`: fronthaul PF interface used to create VF 0 for that OCUDU node
+- `ocudu.servers[n].dpdk.vf_bdf`: optional VF PCI BDF override; when omitted the role discovers VF 0's PCI address from sysfs
+- `ocudu.servers[n].dpdk.du_mac_addr`: optional VF MAC override used in the DPDK gNB config; when omitted the role discovers VF 0's current MAC after SR-IOV creation
+- `ocudu.servers[n].dpdk.ru_mac_addr`: RU fronthaul MAC address rendered into the DPDK gNB config; defaults to the checked-in Benetel example value
 - `core.amf.ip`: AMF address used by the gNB and routing playbooks
 - `core.upf.access_subnet`: subnet used to install the OCUDU-side route toward the UPF
 - `core.upf.multihop_gnb`: disables the static route task when set to `true`
@@ -105,8 +122,7 @@ The repository includes templates for both simulated and hardware-backed deploym
 - `roles/gNB/templates/gnb_zmq.yaml`: ZMQ-based simulated radio path
 - `roles/gNB/templates/gnb_uhd_b210.yaml`: UHD configuration for B210
 - `roles/gNB/templates/gnb_uhd_x310.yaml`: UHD configuration for X310
-
-TODO: add a DPDK-based gNB template to document and support DPDK deployments explicitly.
+- `roles/gNB/templates/gnb_dpdk_benetel.yaml`: DPDK plus Open Fronthaul configuration for Benetel RU deployments
 
 ## Common Commands
 
@@ -136,11 +152,64 @@ Remove the routing changes:
 make ocudu-router-uninstall
 ```
 
+### Prepare DPDK Prerequisites
+
+```bash
+make ocudu-dpdk-install
+```
+
+This target is only effective for OCUDU nodes where `ocudu.servers[n].dpdk.enabled` is `true`.
+Run this as a separate step before `make ocudu-gnb-start` or `make ocudu-gnb-install` when DPDK is enabled. The first run may reboot the host to activate the realtime kernel and CPU isolation settings.
+
+Use the quick readiness check when you only need to know whether each OCUDU node can proceed to DPDK gNB startup:
+
+```bash
+make ocudu-dpdk-status
+```
+
+This reports one status per OCUDU host:
+
+- `dpdk-ready`: DPDK is enabled for that host and `/var/lib/ocudu/dpdk-ready` exists
+- `dpdk-not-ready`: DPDK is enabled for that host but the readiness marker is still absent
+- `dpdk-not-enabled`: DPDK is not enabled for that host
+
+This is a lightweight gate only. It does not inspect the live systemd, hugepage, VF binding, or NIC/PTP runtime state.
+
+Use the full validation pass when you want to confirm that the DPDK host preparation actually landed correctly on each DPDK-enabled OCUDU node:
+
+```bash
+make ocudu-dpdk-verify
+```
+
+The verifier checks:
+
+- `/var/lib/ocudu/dpdk-ready`
+- `pf-tuning.service`, `ocudu-ptp4l.service`, and `ocudu-phc2sys.service` are enabled and active
+- conflicting time synchronization services are disabled
+- 1G hugepages are present
+- a VF is bound to `vfio-pci`
+- the PF interface tuning from `pf-tuning.service` is visible on the live interface
+
+Use this when `ocudu-dpdk-status` says `dpdk-ready` but you still need confidence that the runtime host state is correct, or when you are debugging a DPDK bring-up issue.
+
+The playbook fans out to each DPDK-enabled OCUDU host through role-backed task files under `roles/dpdk/tasks/`, uploads `roles/dpdk/files/verify-dpdk-services.sh` transiently via Ansible, and runs it there with the PF interface derived from `vars/main.yml`.
+
+If you want to run the same checks directly on a single OCUDU host for debugging, use the script locally:
+
+```bash
+./roles/dpdk/files/verify-dpdk-services.sh --pf <pf_iface>
+```
+
 ### Start the gNB
 
 ```bash
 make ocudu-gnb-start
 ```
+
+When DPDK is enabled for an OCUDU host, this target now runs the same readiness
+gate as `make ocudu-dpdk-status` before continuing. If the host is still
+`dpdk-not-ready`, the playbook stops there with a message telling you to run
+`make ocudu-dpdk-install` first.
 
 Stop the gNB:
 
@@ -163,6 +232,8 @@ make ocudu-uesim-stop
 ### One-Step gNB Bring-Up
 
 This target installs Docker, applies the router changes, and starts the gNB:
+
+When `ocudu.servers[n].dpdk.enabled` is `true`, run `make ocudu-dpdk-install` first as a separate step. The gNB start path now refuses to continue until that prerequisite has been applied.
 
 ```bash
 make ocudu-gnb-install

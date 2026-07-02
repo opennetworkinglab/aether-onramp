@@ -1,0 +1,16 @@
+---
+
+- name: report DPDK readiness status
+  hosts: ocudu_nodes
+  gather_facts: false
+
+  vars_files:
+    - "vars/main.yml"
+
+  environment: "{{ proxy_env }}"
+
+  tasks:
+    - name: report DPDK readiness through role task
+      ansible.builtin.include_role:
+        name: dpdk
+        tasks_from: status

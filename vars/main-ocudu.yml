@@ -53,9 +53,17 @@ ocudu:
   simulation: true
   servers:
     0:
-      gnb_ip: "10.76.28.115"            # Host interface used for the gNB
-      gnb_conf: gnb_zmq.yaml            # deps/ocudu/roles/gNB/templates/
-      ue_conf: ue_zmq.conf              # deps/ocudu/roles/uEsimulator/templates/
+      gnb_ip: "10.76.28.115"             # Host interface used for the gNB
+      gnb_conf: gnb_zmq.yaml             # deps/ocudu/roles/gNB/templates/; use gnb_dpdk_benetel.yaml for DPDK+OFH
+      ue_conf: ue_zmq.conf               # deps/ocudu/roles/uEsimulator/templates/
+      dpdk:
+        enabled: false                   # set true to enable DPDK fronthaul (Benetel O-RU) on this OCUDU node
+        hugepages: 2                     # number of 1 GB hugepages to pre-allocate on this host
+        pf_iface: "enp81s0f3np3"         # Fronthaul PF interface used to create VF 0 on the OCUDU host
+        vf_bdf: "0000:51:19.0"
+        du_mac_addr: "00:33:22:33:00:11"
+        ru_mac_addr: "70:b3:d5:e1:5e:7e" # Benetel RU fronthaul port MAC
+        isolated_cpus: "3-15"            # CPU range to isolate for DPDK
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"

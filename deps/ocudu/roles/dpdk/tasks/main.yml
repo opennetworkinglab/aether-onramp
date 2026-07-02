@@ -1,0 +1,388 @@
+---
+
+- name: check if servers and config server length are equal
+  ansible.builtin.fail:
+    msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+  when: ocudu.servers|length != groups['ocudu_nodes']|length
+
+- name: resolve per-host DPDK settings
+  ansible.builtin.set_fact:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+    server_dpdk: "{{ ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname) | int].dpdk | default({}) }}"
+
+- name: fail when requested 1G hugepages count is invalid for DPDK mode
+  ansible.builtin.fail:
+    msg: >-
+      DPDK requires at least one 1G hugepage on {{ inventory_hostname }}, but
+      hugepages resolved to {{ desired_hugepages }}. Set
+      ocudu.servers[{{ server_index }}].dpdk.hugepages or ocudu.dpdk.hugepages
+      to a value greater than 0 before running ocudu-dpdk-install.
+  when: desired_hugepages | int <= 0
+  vars:
+    desired_hugepages: "{{ server_dpdk.hugepages | default(((ocudu.dpdk | default({})).hugepages | default(2)), true) }}"
+
+- name: check if running kernel is PREEMPT_RT
+  ansible.builtin.shell: |
+    grep -q "^CONFIG_PREEMPT_RT=y" /boot/config-$(uname -r) 2>/dev/null && echo rt || echo not_rt
+  args:
+    executable: /bin/bash
+  register: kernel_rt_check
+  changed_when: false
+  become: true
+
+- name: install realtime kernel
+  ansible.builtin.apt:
+    name: "{{ (ocudu.dpdk | default({})).rt_kernel_pkg | default('linux-realtime', true) }}"
+    state: present
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
+  become: true
+  when: kernel_rt_check.stdout | trim == "not_rt"
+  register: rt_kernel_installed
+
+- name: configure GRUB CPU isolation parameters
+  ansible.builtin.shell: |
+    set -eu
+    GRUB_FILE=/etc/default/grub
+    DESIRED_PAGES="{{ desired_hugepages | default(2, true) | int }}"
+    CURRENT=$(grep '^GRUB_CMDLINE_LINUX_DEFAULT=' "$GRUB_FILE" | sed 's/GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/\1/')
+    CURRENT_NORMALIZED=$(printf '%s\n' "$CURRENT" | awk '{$1=$1; print}')
+    FILTERED=$(printf '%s\n' "$CURRENT_NORMALIZED" | tr ' ' '\n' | awk 'NF && $0 !~ /^(isolcpus|rcu_nocbs|nohz_full|default_hugepagesz|hugepagesz|hugepages)=/')
+    PARAMS=(
+      "isolcpus={{ cpu_range }}"
+      "rcu_nocbs={{ cpu_range }}"
+      "nohz_full={{ cpu_range }}"
+    )
+    if [ "$DESIRED_PAGES" -gt 0 ]; then
+      PARAMS+=(
+        "default_hugepagesz=1G"
+        "hugepagesz=1G"
+        "hugepages=${DESIRED_PAGES}"
+      )
+    fi
+    UPDATED=$(printf '%s\n' "$FILTERED" "${PARAMS[@]}" | awk 'NF' | paste -sd' ' -)
+    if [ "$UPDATED" != "$CURRENT_NORMALIZED" ]; then
+      if grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' "$GRUB_FILE"; then
+        sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"${UPDATED}\"|" "$GRUB_FILE"
+      else
+        printf '\nGRUB_CMDLINE_LINUX_DEFAULT="%s"\n' "$UPDATED" >> "$GRUB_FILE"
+      fi
+      echo changed
+    else
+      echo unchanged
+    fi
+  args:
+    executable: /bin/bash
+  register: grub_cmdline_result
+  changed_when: grub_cmdline_result.stdout | trim == "changed"
+  become: true
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+    server_dpdk: "{{ ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname)].dpdk | default({}) }}"
+    cpu_range: "{{ server_dpdk.isolated_cpus | default(((ocudu.dpdk | default({})).isolated_cpus | default('3-23')), true) }}"
+    desired_hugepages: "{{ server_dpdk.hugepages | default(((ocudu.dpdk | default({})).hugepages | default(2)), true) }}"
+
+- name: update GRUB after cmdline change
+  ansible.builtin.command: update-grub
+  become: true
+  when: grub_cmdline_result.changed
+
+- name: reboot early to apply realtime kernel and boot-time DPDK settings
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  become: true
+  when: (rt_kernel_installed is defined and rt_kernel_installed is changed) or grub_cmdline_result.changed
+
+- name: re-check running kernel after reboot-sensitive DPDK changes
+  ansible.builtin.shell: |
+    grep -q "^CONFIG_PREEMPT_RT=y" /boot/config-$(uname -r) 2>/dev/null && echo rt || echo not_rt
+  args:
+    executable: /bin/bash
+  register: kernel_rt_check_after_reboot
+  changed_when: false
+  become: true
+
+- name: fail when host is not running a PREEMPT_RT kernel after DPDK prep
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} is not running a PREEMPT_RT kernel after DPDK
+      preparation. Ensure the realtime kernel is installed and selected as the
+      active boot entry before marking this host DPDK-ready.
+  when: kernel_rt_check_after_reboot.stdout | trim != 'rt'
+
+- name: load vfio_pci kernel module
+  ansible.builtin.command: modprobe vfio_pci
+  become: true
+  changed_when: false
+
+- name: persist vfio_pci in /etc/modules-load.d (survives reboot)
+  ansible.builtin.lineinfile:
+    path: /etc/modules-load.d/vfio-pci.conf
+    create: true
+    line: vfio_pci
+    state: present
+  become: true
+
+- name: discover VF identifiers for DPDK tasks
+  ansible.builtin.include_tasks: resolve_dpdk_vf.yml
+
+- name: install persistent VF bootstrap helper
+  ansible.builtin.template:
+    src: vf-bootstrap.sh.j2
+    dest: /usr/local/bin/ocudu-vf-bootstrap.sh
+    mode: '0755'
+  become: true
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+    server_dpdk: "{{ ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname)].dpdk | default({}) }}"
+    pf_iface: "{{ ocudu_dpdk_pf_iface }}"
+  notify: restart vf-bootstrap
+
+- name: deploy persistent VF bootstrap systemd service
+  ansible.builtin.template:
+    src: vf-bootstrap.service.j2
+    dest: /etc/systemd/system/vf-bootstrap.service
+    mode: '0644'
+  become: true
+  notify: restart vf-bootstrap
+
+- name: enable and start persistent VF bootstrap
+  ansible.builtin.systemd:
+    name: vf-bootstrap.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: capture VF bootstrap service state
+  ansible.builtin.command: systemctl show vf-bootstrap.service --property=Result --value
+  register: vf_bootstrap_result
+  changed_when: false
+  become: true
+
+- name: fail when persistent VF bootstrap did not converge
+  ansible.builtin.fail:
+    msg: "vf-bootstrap.service did not complete successfully (Result={{ vf_bootstrap_result.stdout | trim | default('unknown') }})"
+  when:
+    - (vf_bootstrap_result.stdout | trim) not in ['success', '']
+
+- name: re-discover VF 0 PCI BDF after persistent bootstrap
+  ansible.builtin.shell: |
+    set -eu
+    PF_IFACE="{{ ocudu_dpdk_pf_iface }}"
+    VF_SYSFS=$(readlink -f "/sys/class/net/${PF_IFACE}/device/virtfn0")
+    basename "$VF_SYSFS"
+  args:
+    executable: /bin/bash
+  register: vf_identity_after_bootstrap
+  changed_when: false
+  become: true
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+
+- name: refresh VF 0 BDF after persistent bootstrap
+  ansible.builtin.set_fact:
+    ocudu_dpdk_vf_bdf: "{{ vf_identity_after_bootstrap.stdout | trim }}"
+
+- name: install pf-tuning dependencies and linuxptp
+  ansible.builtin.apt:
+    name:
+      - ethtool
+      - iproute2
+      - linuxptp
+    state: present
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
+  become: true
+
+- name: deploy pf-tuning systemd service
+  ansible.builtin.template:
+    src: pf-tuning.service.j2
+    dest: /etc/systemd/system/pf-tuning.service
+    mode: '0644'
+  become: true
+  vars:
+    pf_iface: "{{ ocudu_dpdk_pf_iface }}"
+  notify: restart pf-tuning
+
+- name: enable and start pf-tuning
+  ansible.builtin.systemd:
+    name: pf-tuning.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: disable NTP in timedatectl
+  ansible.builtin.shell: |
+    set -eu
+    if [ "$(timedatectl show -p NTP --value)" = "no" ]; then
+      echo unchanged
+    else
+      timedatectl set-ntp false
+      echo changed
+    fi
+  args:
+    executable: /bin/bash
+  register: timedatectl_ntp
+  changed_when: timedatectl_ntp.stdout | trim == "changed"
+  become: true
+
+- name: gather service facts for time synchronization services
+  ansible.builtin.service_facts:
+
+- name: disable and stop systemd-timesyncd
+  ansible.builtin.systemd:
+    name: systemd-timesyncd.service
+    enabled: false
+    state: stopped
+  become: true
+  when: "'systemd-timesyncd.service' in ansible_facts.services"
+
+- name: disable and stop ntpsec
+  ansible.builtin.systemd:
+    name: ntpsec.service
+    enabled: false
+    state: stopped
+  become: true
+  when: "'ntpsec.service' in ansible_facts.services"
+
+
+- name: set kernel.sched_rt_runtime_us to -1 (unlimited RT scheduling)
+  ansible.posix.sysctl:
+    name: kernel.sched_rt_runtime_us
+    value: '-1'
+    sysctl_set: true
+    reload: true
+  become: true
+
+- name: disable DRM KMS helper polling
+  ansible.builtin.shell: |
+    set -eu
+    POLL_PATH=/sys/module/drm_kms_helper/parameters/poll
+    if [ ! -e "$POLL_PATH" ]; then
+      echo unchanged
+    elif [ "$(cat "$POLL_PATH")" = "N" ]; then
+      echo unchanged
+    else
+      echo N | tee "$POLL_PATH" >/dev/null
+      echo changed
+    fi
+  args:
+    executable: /bin/bash
+  register: drm_poll_result
+  changed_when: drm_poll_result.stdout | trim == "changed"
+  become: true
+
+- name: set CPU scaling governor to performance
+  ansible.builtin.shell: |
+    set -eu
+    CHANGED=false
+    for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+      [ -f "$f" ] || continue
+      if [ "$(cat "$f")" != "performance" ]; then
+        echo performance | tee "$f" >/dev/null
+        CHANGED=true
+      fi
+    done
+    $CHANGED && echo changed || echo unchanged
+  args:
+    executable: /bin/bash
+  register: cpu_governor_result
+  changed_when: cpu_governor_result.stdout | trim == "changed"
+  become: true
+
+- name: create /etc/linuxptp directory
+  ansible.builtin.file:
+    path: /etc/linuxptp
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: copy ptp_gm.conf to /etc/linuxptp/ptp_gm.conf
+  ansible.builtin.template:
+    src: ptp_gm.conf
+    dest: /etc/linuxptp/ptp_gm.conf
+    mode: '0644'
+  become: true
+  notify: restart ptp4l
+
+- name: deploy ptp4l systemd service
+  ansible.builtin.template:
+    src: ptp4l.service.j2
+    dest: /etc/systemd/system/ocudu-ptp4l.service
+    mode: '0644'
+  become: true
+  vars:
+    pf_iface: "{{ ocudu_dpdk_pf_iface }}"
+  notify: restart ptp4l
+
+- name: discover PHC device for pf_iface
+  ansible.builtin.shell: |
+    set -euo pipefail
+    PF_IFACE="{{ ocudu_dpdk_pf_iface }}"
+
+    shopt -s nullglob
+    for candidate in \
+      "/sys/class/net/${PF_IFACE}/device/ptp/"* \
+      "/sys/class/net/${PF_IFACE}/device/physfn/ptp/"* \
+      "/sys/class/net/${PF_IFACE}/device/"*.ptp_aux_dev_*/ptp/*; do
+      if [[ -e "$candidate" ]]; then
+        basename "$candidate"
+        exit 0
+      fi
+    done
+
+    phc_index=$(ethtool -T "$PF_IFACE" 2>/dev/null | awk -F': ' '/PTP Hardware Clock:/ { print $2; exit }')
+    if [[ -n "${phc_index:-}" && "$phc_index" =~ ^[0-9]+$ ]]; then
+      printf 'ptp%s\n' "$phc_index"
+      exit 0
+    fi
+
+    echo "Unable to discover PHC device for interface ${PF_IFACE} from sysfs or ethtool" >&2
+    exit 1
+  args:
+    executable: /bin/bash
+  register: pf_phc_device
+  changed_when: false
+  become: true
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+
+- name: deploy phc2sys systemd service
+  ansible.builtin.template:
+    src: phc2sys.service.j2
+    dest: /etc/systemd/system/ocudu-phc2sys.service
+    mode: '0644'
+  become: true
+  vars:
+    phc_device: "{{ pf_phc_device.stdout | trim }}"
+  notify: restart phc2sys
+
+- name: enable and start ptp4l
+  ansible.builtin.systemd:
+    name: ocudu-ptp4l.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: enable and start phc2sys
+  ansible.builtin.systemd:
+    name: ocudu-phc2sys.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+- name: create OCUDU state directory
+  ansible.builtin.file:
+    path: /var/lib/ocudu
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: mark DPDK prerequisites as applied
+  ansible.builtin.copy:
+    dest: /var/lib/ocudu/dpdk-ready
+    content: "ready\n"
+    mode: '0644'
+  become: true

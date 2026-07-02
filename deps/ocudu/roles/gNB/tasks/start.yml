@@ -16,7 +16,14 @@
     preflight_enabled: "{{ ocudu.docker.preflight.enabled }}"
   when: inventory_hostname in groups['ocudu_nodes']
 
-# prep Ubuntu to support OCUDU gNB in DPDK-mode
+- name: enforce DPDK readiness before gNB start
+  ansible.builtin.include_role:
+    name: dpdk
+    tasks_from: status
+  vars:
+    ocudu_dpdk_enforce_ready: true
+  when: inventory_hostname in groups['ocudu_nodes']
+
 - name: set net.core.wmem_max to 24912805
   ansible.posix.sysctl:
     name: net.core.wmem_max
@@ -53,12 +60,33 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
+- name: resolve per-host OCUDU gNB settings
+  ansible.builtin.set_fact:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+    server_dpdk: "{{ ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname) | int].dpdk | default({}) }}"
+  when: inventory_hostname in groups['ocudu_nodes']
+
+- name: resolve derived DPDK startup settings
+  ansible.builtin.set_fact:
+    server_dpdk_enabled: "{{ (server_dpdk.enabled | default((ocudu.dpdk | default({})).enabled | default(false))) | bool }}"
+    isolated_cpus: "{{ server_dpdk.isolated_cpus | default(((ocudu.dpdk | default({})).isolated_cpus | default('3-23')), true) }}"
+  when: inventory_hostname in groups['ocudu_nodes']
+
+- name: discover VF identifiers for DPDK gNB start
+  ansible.builtin.include_role:
+    name: dpdk
+    tasks_from: resolve_dpdk_vf
+  vars:
+    ocudu_dpdk_caller: ocudu-gnb-start
+  when:
+    - inventory_hostname in groups['ocudu_nodes']
+    - server_dpdk_enabled
+
 - name : copy gnb config file to /tmp/gnb_config.yaml
   template:
     src: "{{ ocudu.servers[server_index | int].gnb_conf }}"
     dest: /tmp/gnb_config.yaml
   vars:
-    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
     gnb_ip: "{{ ocudu.servers[server_index | int].gnb_ip }}"
     gnb_id: "{{ (groups['ocudu_nodes'].index(inventory_hostname) | int) + 1000 }}"
     enable_e2_agent: "{{ (ocudu.servers[server_index | int].e2_agent.enable | default(false)) | bool | string | lower }}"
@@ -77,12 +105,16 @@
       - /dev/bus/usb:/dev/bus/usb
     devices:
       - /dev/vfio:/dev/vfio
+    cpuset_cpus: "{{ isolated_cpus if server_dpdk_enabled else omit }}"
+    capabilities:
+      - SYS_NICE
+      - IPC_LOCK
     privileged: true
     restart_policy: unless-stopped
     state: started
     detach: true
-    interactive: true
-    tty: true
-    command: "gnb -c /opt/gnb_config.yaml"
+    interactive: false
+    tty: false
+    command: "{{ 'chrt -f 90 gnb -c /opt/gnb_config.yaml' if server_dpdk_enabled else 'gnb -c /opt/gnb_config.yaml' }}"
   when: inventory_hostname in groups['ocudu_nodes']
   become: true

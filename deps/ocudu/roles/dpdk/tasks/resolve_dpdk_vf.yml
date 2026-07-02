@@ -1,0 +1,118 @@
+- name: resolve per-host DPDK settings
+  ansible.builtin.set_fact:
+    ocudu_dpdk_pf_iface: >-
+      {{
+        server_dpdk.pf_iface |
+        default(((ocudu.dpdk | default({})).pf_iface | default('')), true)
+      }}
+
+- name: fail when DPDK fronthaul PF interface is missing
+  ansible.builtin.fail:
+    msg: >-
+      DPDK is enabled for {{ inventory_hostname }}, but no fronthaul PF
+      interface is configured. Set ocudu.servers[{{ server_index }}].dpdk.pf_iface
+      in vars/main.yml before running {{ ocudu_dpdk_caller | default('ocudu-dpdk-install') }}.
+  when: ocudu_dpdk_pf_iface | trim == ''
+
+- name: check whether the configured fronthaul PF exists
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ ocudu_dpdk_pf_iface }}"
+  register: ocudu_dpdk_pf_stat
+  changed_when: false
+
+- name: fail when the configured fronthaul PF does not exist
+  ansible.builtin.fail:
+    msg: >-
+      DPDK is enabled for {{ inventory_hostname }}, but fronthaul PF interface
+      {{ ocudu_dpdk_pf_iface }} was not found on this host. Update
+      ocudu.servers[{{ server_index }}].dpdk.pf_iface in vars/main.yml before
+      running {{ ocudu_dpdk_caller | default('ocudu-dpdk-install') }}.
+  when: not ocudu_dpdk_pf_stat.stat.exists
+
+- name: check whether the fronthaul PF exposes SR-IOV control
+  ansible.builtin.stat:
+    path: "/sys/class/net/{{ ocudu_dpdk_pf_iface }}/device/sriov_numvfs"
+  register: ocudu_dpdk_numvfs_stat
+  changed_when: false
+
+- name: fail when the fronthaul PF does not support SR-IOV VF provisioning
+  ansible.builtin.fail:
+    msg: >-
+      DPDK is enabled for {{ inventory_hostname }}, but fronthaul PF interface
+      {{ ocudu_dpdk_pf_iface }} does not expose /device/sriov_numvfs. Ensure
+      this NIC and driver support SR-IOV and that SR-IOV is enabled in firmware
+      before running {{ ocudu_dpdk_caller | default('ocudu-dpdk-install') }}.
+  when: not ocudu_dpdk_numvfs_stat.stat.exists
+
+- name: query current SR-IOV VF count on fronthaul PF
+  ansible.builtin.command: >
+    cat /sys/class/net/{{ ocudu_dpdk_pf_iface }}/device/sriov_numvfs
+  register: current_numvfs
+  changed_when: false
+  become: true
+
+- name: create one SR-IOV VF on fronthaul PF (if needed)
+  ansible.builtin.shell: |
+    echo 1 | tee /sys/class/net/{{ ocudu_dpdk_pf_iface }}/device/sriov_numvfs
+  when:
+    - current_numvfs.stdout | default('0') | int == 0
+  become: true
+
+- name: discover VF 0 PCI BDF and MAC on fronthaul PF
+  ansible.builtin.shell: |
+    set -eu
+    PF_IFACE="{{ ocudu_dpdk_pf_iface }}"
+    VF_SYSFS=""
+    for _ in $(seq 1 30); do
+      VF_SYSFS=$(readlink -f "/sys/class/net/${PF_IFACE}/device/virtfn0" 2>/dev/null || true)
+      if [ -n "$VF_SYSFS" ] && [ -e "$VF_SYSFS" ]; then
+        break
+      fi
+      sleep 1
+    done
+
+    if [ -z "$VF_SYSFS" ] || [ ! -e "$VF_SYSFS" ]; then
+      echo "Timed out waiting for SR-IOV VF 0 sysfs entry on PF ${PF_IFACE}" >&2
+      exit 1
+    fi
+
+    VF_BDF=$(basename "$VF_SYSFS")
+
+    VF_MAC=""
+
+    if [ -d "$VF_SYSFS/net" ]; then
+      VF_NETDEV=$(find "$VF_SYSFS/net" -mindepth 1 -maxdepth 1 -printf '%f\n' | head -n 1)
+      if [ -n "$VF_NETDEV" ] && [ -r "$VF_SYSFS/net/$VF_NETDEV/address" ]; then
+        VF_MAC=$(cat "$VF_SYSFS/net/$VF_NETDEV/address")
+      fi
+    fi
+
+    if [ -z "$VF_MAC" ]; then
+      VF_MAC=$(ip link show "$PF_IFACE" | awk '/vf 0 / { for (i = 1; i <= NF; i++) if ($i == "MAC") { gsub(/,$/, "", $(i + 1)); print $(i + 1); exit } }')
+    fi
+
+    if [ -z "$VF_MAC" ]; then
+      VF_MAC="{{ server_dpdk.du_mac_addr | default('', true) }}"
+    fi
+
+    if [ -z "$VF_MAC" ]; then
+      VF_BDF_COMPACT=$(printf '%s' "$VF_BDF" | tr -d ':.')
+      VF_MAC=$(printf '02:%s:%s:%s:%s:0%s\n' \
+        "${VF_BDF_COMPACT:0:2}" \
+        "${VF_BDF_COMPACT:2:2}" \
+        "${VF_BDF_COMPACT:4:2}" \
+        "${VF_BDF_COMPACT:6:2}" \
+        "${VF_BDF_COMPACT:8:1}")
+    fi
+
+    printf '%s\n%s\n' "$VF_BDF" "$VF_MAC"
+  args:
+    executable: /bin/bash
+  register: ocudu_dpdk_vf_identity
+  changed_when: false
+  become: true
+
+- name: resolve VF 0 identifiers for subsequent tasks
+  ansible.builtin.set_fact:
+    ocudu_dpdk_vf_bdf: "{{ ocudu_dpdk_vf_identity.stdout_lines[0] }}"
+    ocudu_dpdk_du_mac_addr: "{{ server_dpdk.du_mac_addr | default(ocudu_dpdk_vf_identity.stdout_lines[1], true) }}"
