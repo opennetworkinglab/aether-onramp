@@ -1,0 +1,16 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=GNBSim static routes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/gnbsim-routes.sh start
+ExecStop=/usr/local/sbin/gnbsim-routes.sh stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,8 @@
 - set_fact:
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
+    gnbsim_router_state_dir: /var/lib/gnbsim-router
+    gnbsim_default_uplink_forwarding_state_file: /var/lib/gnbsim-router/default-uplink-forwarding
 
 - name: set net.ipv4.conf.all.arp_filter to 1
   ansible.posix.sysctl:
@@ -56,6 +58,65 @@
     sysctl_set: true
     reload: true
   when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: ensure gnbsim router state directory exists
+  file:
+    path: "{{ gnbsim_router_state_dir }}"
+    state: directory
+    mode: '0755'
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - ansible_default_ipv4.interface != gnbsim.router.data_iface
+  become: true
+
+- name: check for saved default uplink forwarding state
+  stat:
+    path: "{{ gnbsim_default_uplink_forwarding_state_file }}"
+  register: default_uplink_forwarding_state_file
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - ansible_default_ipv4.interface != gnbsim.router.data_iface
+  become: true
+
+- name: read current default uplink forwarding state before changing it
+  command:
+    argv:
+      - cat
+      - "/proc/sys/net/ipv4/conf/{{ ansible_default_ipv4.interface }}/forwarding"
+  register: default_uplink_forwarding_value
+  changed_when: false
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - ansible_default_ipv4.interface != gnbsim.router.data_iface
+    - not (default_uplink_forwarding_state_file.stat.exists | default(false))
+  become: true
+
+- name: persist original default uplink forwarding state
+  copy:
+    dest: "{{ gnbsim_default_uplink_forwarding_state_file }}"
+    content: "{{ (default_uplink_forwarding_value.stdout | trim) ~ '\n' }}"
+    mode: '0644'
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - ansible_default_ipv4.interface != gnbsim.router.data_iface
+    - not (default_uplink_forwarding_state_file.stat.exists | default(false))
+  become: true
+
+- name: set net.ipv4.conf.{{ ansible_default_ipv4.interface }}.forwarding to 1 when default uplink differs
+  ansible.posix.sysctl:
+    name: net.ipv4.conf.{{ ansible_default_ipv4.interface }}.forwarding
+    value: '1'
+    sysctl_set: true
+    reload: true
+  when:
+    - inventory_hostname in groups['gnbsim_nodes']
+    - ansible_default_ipv4.interface is defined
+    - ansible_default_ipv4.interface != gnbsim.router.data_iface
   become: true
 
 - name: copy 10-gnbsim-access.netdev to {{ systemd_network_dir }}/10-gnbsim-access.netdev
@@ -254,35 +315,6 @@
     - data_iface_networkd_managed
   become: true
 
-- set_fact:
-    subnet: "{{ core.upf.access_subnet | regex_replace('[0-9]+/24', '0/24') }}"
-  when: inventory_hostname in groups['gnbsim_nodes']
-
-- name: configure static route for upf traffic on gnbsim node
-  command:
-    argv:
-      - ip
-      - route
-      - replace
-      - "{{ subnet }}"
-      - via
-      - "{{ core.amf.ip }}"
-  when: (inventory_hostname in groups['gnbsim_nodes']) and (inventory_hostname not in groups['master_nodes'])
-  become: true
-
-- name: configure static route for gnbsim traffic on aether node
-  command:
-    argv:
-      - ip
-      - route
-      - replace
-      - "{{ gnbsim.router.macvlan.subnet_prefix }}.{{ lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', item) }}.0/24"
-      - via
-      - "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
-  with_items: "{{ play_hosts | intersect(groups['gnbsim_nodes']) | difference(groups['master_nodes']) }}"
-  when: (inventory_hostname in groups['master_nodes'])
-  become: true
-
 - name: install iptables package
   apt:
     name: iptables
@@ -313,10 +345,25 @@
   when: inventory_hostname in groups['gnbsim_nodes']
   become: true
 
-- name: force systemd to reread configs
+- name: copy gnbsim-routes.sh to /usr/local/sbin/gnbsim-routes.sh
+  template:
+    src: roles/router/templates/gnbsim-routes.sh
+    dest: /usr/local/sbin/gnbsim-routes.sh
+    mode: '0755'
+  when: (inventory_hostname in groups['gnbsim_nodes']) or (inventory_hostname in groups['master_nodes'])
+  become: true
+
+- name: copy gnbsim-routes.service to {{ systemd_system_dir }}/gnbsim-routes.service
+  template:
+    src: roles/router/templates/gnbsim-routes.service
+    dest: "{{ systemd_system_dir }}/gnbsim-routes.service"
+  when: (inventory_hostname in groups['gnbsim_nodes']) or (inventory_hostname in groups['master_nodes'])
+  become: true
+
+- name: force systemd to reread configs after installing persistent gnbsim services
   systemd:
     daemon_reload: true
-  when: inventory_hostname in groups['gnbsim_nodes']
+  when: (inventory_hostname in groups['gnbsim_nodes']) or (inventory_hostname in groups['master_nodes'])
   become: true
 
 - name: enable gnbsim-iptables.service
@@ -331,4 +378,18 @@
     name: gnbsim-iptables.service
     state: started
   when: inventory_hostname in groups['gnbsim_nodes']
+  become: true
+
+- name: enable gnbsim-routes.service
+  systemd:
+    name: gnbsim-routes.service
+    enabled: true
+  when: (inventory_hostname in groups['gnbsim_nodes']) or (inventory_hostname in groups['master_nodes'])
+  become: true
+
+- name: start gnbsim-routes.service
+  systemd:
+    name: gnbsim-routes.service
+    state: started
+  when: (inventory_hostname in groups['gnbsim_nodes']) or (inventory_hostname in groups['master_nodes'])
   become: true
