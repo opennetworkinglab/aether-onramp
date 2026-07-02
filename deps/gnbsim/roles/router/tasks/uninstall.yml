@@ -330,6 +330,7 @@
   failed_when: false
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
   become: true
   ignore_errors: yes
 
@@ -365,6 +366,7 @@
   failed_when: false
   when:
     - inventory_hostname in groups['gnbsim_nodes']
+    - (gnbsim.router.data_iface | default('') | trim) != ''
     - (data_iface_network_file_networkctl | default('') | trim) == ''
   become: true
   ignore_errors: yes
