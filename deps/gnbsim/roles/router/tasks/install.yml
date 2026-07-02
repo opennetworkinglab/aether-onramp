@@ -384,7 +384,7 @@
         and (
           (data_iface_network_filename | default('') | trim) is match('(?:[0-9]+-)?{{ gnbsim.router.data_iface | regex_escape }}\\.network$')
           or (
-            (data_iface_network_file_content.content | default('') | b64decode)
+            (((data_iface_network_file_content | default({})).content | default('')) | b64decode)
             is regex('(?ms)^\\[Match\\][^[]*^Name\\s*=\\s*{{ gnbsim.router.data_iface | regex_escape }}\\s*$')
           )
         )
