@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PF_IFACE="{{ pf_iface }}"
+VF_BDF_OVERRIDE="{{ server_dpdk.vf_bdf | default('', true) }}"
+VF_MAC="{{ ocudu_dpdk_du_mac_addr }}"
+DRIVER="vfio-pci"
+
+driver_path="/sys/bus/pci/drivers/${DRIVER}"
+
+NUMVFS_PATH="/sys/class/net/${PF_IFACE}/device/sriov_numvfs"
+if [[ ! -w "$NUMVFS_PATH" ]]; then
+  echo "PF interface ${PF_IFACE} does not expose writable sriov_numvfs" >&2
+  exit 1
+fi
+
+current_numvfs=$(<"$NUMVFS_PATH")
+current_numvfs=${current_numvfs//[[:space:]]/}
+if [[ "$current_numvfs" == "0" ]]; then
+  printf '1\n' >"$NUMVFS_PATH"
+fi
+
+if [[ -n "$VF_BDF_OVERRIDE" ]]; then
+  VF_BDF="$VF_BDF_OVERRIDE"
+else
+  VF_SYSFS=$(readlink -f "/sys/class/net/${PF_IFACE}/device/virtfn0")
+  VF_BDF=$(basename "$VF_SYSFS")
+fi
+
+VF_DEVICE_PATH="/sys/bus/pci/devices/${VF_BDF}"
+if [[ ! -d "$VF_DEVICE_PATH" ]]; then
+  echo "VF PCI device ${VF_BDF} not found at ${VF_DEVICE_PATH}" >&2
+  exit 1
+fi
+
+ip link set dev "$PF_IFACE" mtu 9000
+ip link set "$PF_IFACE" vf 0 mac "$VF_MAC" spoofchk off
+
+if [[ ! -d "$driver_path" ]]; then
+  echo "PCI driver ${DRIVER} is not available at ${driver_path}" >&2
+  exit 1
+fi
+
+current_driver=$(basename "$(readlink -f "/sys/bus/pci/devices/${VF_BDF}/driver" 2>/dev/null || true)")
+if [[ "$current_driver" != "$DRIVER" ]]; then
+  if [[ -n "$current_driver" ]]; then
+    printf '%s\n' "$VF_BDF" >"/sys/bus/pci/devices/${VF_BDF}/driver/unbind"
+  fi
+
+  printf '%s\n' "$DRIVER" >"/sys/bus/pci/devices/${VF_BDF}/driver_override"
+  printf '%s\n' "$VF_BDF" > /sys/bus/pci/drivers_probe
+  printf '\n' >"/sys/bus/pci/devices/${VF_BDF}/driver_override"
+fi
+
+current_driver=$(basename "$(readlink -f "/sys/bus/pci/devices/${VF_BDF}/driver" 2>/dev/null || true)")
+if [[ "$current_driver" != "$DRIVER" ]]; then
+  echo "VF ${VF_BDF} is bound to ${current_driver:-none}, expected ${DRIVER}" >&2
+  exit 1
+fi

@@ -1,7 +1,7 @@
 ocudu:
   docker:
     container:
-      ue_image: aetherproject/srsran-ue:rel-0.7.0
+      ue_image: aetherproject/srsran-ue:rel-0.8.2
     network:
       name: host
 

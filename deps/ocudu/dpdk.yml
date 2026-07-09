@@ -1,0 +1,25 @@
+---
+
+- name: provision DPDK prerequisites
+  hosts: all
+  gather_facts: true
+
+  vars_files:
+    - "vars/main.yml"
+
+  environment: "{{ proxy_env }}"
+
+  pre_tasks:
+    - name: check if servers and config server length are equal
+      ansible.builtin.fail:
+        msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+      when:
+        - inventory_hostname in groups['ocudu_nodes']
+        - ocudu.servers|length != groups['ocudu_nodes']|length
+
+  roles:
+    - role: dpdk
+      tags: install
+      when:
+        - inventory_hostname in groups['ocudu_nodes']
+        - ((ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname) | int].dpdk | default({})).enabled | default((ocudu.dpdk | default({})).enabled | default(false))) | bool

@@ -1,0 +1,49 @@
+---
+
+- name: check if servers and config server length are equal
+  ansible.builtin.fail:
+    msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
+  when: ocudu.servers|length != groups['ocudu_nodes']|length
+
+- name: determine whether DPDK is enabled for this OCUDU node
+  ansible.builtin.set_fact:
+    ocudu_dpdk_enabled: >-
+      {{
+        ((ocudu.servers[server_index | int].dpdk | default({})).enabled |
+        default((ocudu.dpdk | default({})).enabled | default(false))) | bool
+      }}
+    ocudu_dpdk_pf_iface: >-
+      {{
+        (ocudu.servers[server_index | int].dpdk | default({})).pf_iface |
+        default(((ocudu.dpdk | default({})).pf_iface | default('')), true)
+      }}
+  vars:
+    server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
+
+- name: check DPDK readiness marker
+  ansible.builtin.stat:
+    path: /var/lib/ocudu/dpdk-ready
+  register: ocudu_dpdk_ready_marker
+  become: true
+  when: ocudu_dpdk_enabled
+
+- name: report per-host DPDK readiness
+  ansible.builtin.debug:
+    msg: >-
+      {{
+        'dpdk-not-enabled'
+        if not ocudu_dpdk_enabled else
+        ('dpdk-ready' if (ocudu_dpdk_ready_marker.stat.exists | default(false)) else 'dpdk-not-ready')
+      }}
+
+- name: fail when enforced DPDK readiness gate is not satisfied
+  ansible.builtin.fail:
+    msg: >-
+      DPDK is enabled for {{ inventory_hostname }}, but OCUDU DPDK prerequisites
+      have not been applied yet. Run `make ocudu-dpdk-install` first and wait for
+      it to complete, including any reboot it triggers, before running gNB start
+      or install targets.
+  when:
+    - ocudu_dpdk_enabled
+    - ocudu_dpdk_enforce_ready | default(false) | bool
+    - not (ocudu_dpdk_ready_marker.stat.exists | default(false))

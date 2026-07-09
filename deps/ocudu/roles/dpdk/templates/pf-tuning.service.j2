@@ -1,0 +1,19 @@
+[Unit]
+Description=Fronthaul PF interface tuning
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=ethtool -A {{ pf_iface }} rx on tx on
+ExecStart=tc qdisc replace dev {{ pf_iface }} root fq flow_limit 100000 quantum 1514 buckets 4096 orphan_mask 1023
+ExecStart=ip link set dev {{ pf_iface }} txqueuelen 10000
+ExecStart=ethtool -K {{ pf_iface }} tso on gso on gro on lro off rxvlan on txvlan on
+ExecStart=ethtool -G {{ pf_iface }} rx 8160 tx 2048
+ExecStart=ethtool -C {{ pf_iface }} adaptive-rx off adaptive-tx off rx-usecs 16 tx-usecs 16
+
+[Install]
+WantedBy=multi-user.target

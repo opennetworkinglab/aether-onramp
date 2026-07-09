@@ -23,6 +23,18 @@ ocudu-router-uninstall:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(OCUDU_ROOT_DIR)/router.yml --tags uninstall \
 		--extra-vars $(EXTRA_VARS)
 
+ocudu-dpdk-install:
+	ansible-playbook -i $(HOSTS_INI_FILE) $(OCUDU_ROOT_DIR)/dpdk.yml --tags install \
+		--extra-vars $(EXTRA_VARS)
+
+ocudu-dpdk-status:
+	ansible-playbook -i $(HOSTS_INI_FILE) $(OCUDU_ROOT_DIR)/dpdk-status.yml \
+		--extra-vars $(EXTRA_VARS)
+
+ocudu-dpdk-verify:
+	ansible-playbook -i $(HOSTS_INI_FILE) $(OCUDU_ROOT_DIR)/dpdk-verify.yml \
+		--extra-vars $(EXTRA_VARS)
+
 ocudu-gnb-start:
 	ansible-playbook -i $(HOSTS_INI_FILE) $(OCUDU_ROOT_DIR)/gNB.yml --tags start \
 		--extra-vars $(EXTRA_VARS)

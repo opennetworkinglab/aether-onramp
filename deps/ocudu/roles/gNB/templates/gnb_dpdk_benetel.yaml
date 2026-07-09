@@ -1,0 +1,105 @@
+gnb_id: "{{ gnb_id }}"                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
+
+cu_cp:
+  amf:
+    addr: "{{ core.amf.ip }}"                 # The address or hostname of the AMF.
+    port: 38412
+    bind_addr: "{{ gnb_ip }}"            # A local IP that the gNB binds to for traffic from the AMF.
+    supported_tracking_areas:
+      - tac: 1
+        plmn_list:
+          - plmn: "00101"
+            tai_slice_support_list:
+              - sst: 1
+
+ru_ofh:
+  t1a_max_cp_dl: 535
+  t1a_min_cp_dl: 286
+  t1a_max_cp_ul: 535
+  t1a_min_cp_ul: 286
+  t1a_max_up: 390
+  t1a_min_up: 80
+  ta4_max: 500
+  ta4_min: 25
+  is_prach_cp_enabled: true
+  compr_method_ul: bfp
+  compr_bitwidth_ul: 9
+  compr_method_dl: bfp
+  compr_bitwidth_dl: 9
+  compr_method_prach: bfp
+  compr_bitwidth_prach: 9
+  enable_ul_static_compr_hdr: false
+  enable_dl_static_compr_hdr: false
+  iq_scaling: 20
+  cells:
+    - network_interface: "{{ ocudu_dpdk_vf_bdf | default((ocudu.servers[server_index | int].dpdk | default({})).get('vf_bdf'), true) | default((ocudu.dpdk | default({})).get('vf_bdf'), true) }}"       # PCI BDF of VF bound to vfio-pci
+      ru_mac_addr: "{{ (ocudu.servers[server_index | int].dpdk | default({})).get('ru_mac_addr') | default((ocudu.dpdk | default({})).get('ru_mac_addr'), true) | default('70:b3:d5:e1:5e:7e', true) }}"
+      du_mac_addr: "{{ ocudu_dpdk_du_mac_addr | default((ocudu.servers[server_index | int].dpdk | default({})).get('du_mac_addr'), true) | default((ocudu.dpdk | default({})).get('du_mac_addr'), true) }}"
+      vlan_tag_cp: 3
+      vlan_tag_up: 3
+      prach_port_id: [4, 5]
+      dl_port_id: [0, 1, 2, 3]
+      ul_port_id: [0, 1]
+
+cell_cfg:
+  dl_arfcn: 720000                  # ARFCN of the downlink carrier (center frequency).
+  band: 79                          # The NR band.
+  channel_bandwidth_MHz: 100        # Bandwidth in MHz. Number of PRBs will be automatically derived.
+  common_scs: 30                    # Subcarrier spacing in kHz used for data.
+  plmn: "00101"                     # PLMN broadcasted by the gNB.
+  tac: 1                            # Tracking area code (needs to match the core configuration).
+  pci: 1
+  nof_antennas_dl: 4
+  nof_antennas_ul: 2
+  prach:
+    prach_config_index: 159
+    prach_root_sequence_index: 1
+    zero_correlation_zone: 0
+  ssb:
+    ssb_block_power_dbm: -11
+  tdd_ul_dl_cfg:
+    dl_ul_tx_period: 10
+    nof_dl_slots: 7
+    nof_dl_symbols: 6
+    nof_ul_slots: 2
+    nof_ul_symbols: 4
+  pusch:
+    p0_nominal_with_grant: -80
+
+hal:
+  eal_args: "--lcores (0-1)@({{ isolated_cpus }})"
+
+log:
+  filename: stdout                  # Path of the log file.
+  all_level: warning                # Logging level applied to all layers.
+  mac_level: warning                # Logging level applied to MAC layer.
+  du_level: info                    # Logging level applied to DU entity.
+  rrc_level: info                   # Logging level applied to RRC layer.
+
+pcap:
+  mac_enable: false                 # Set to true to enable MAC-layer PCAPs.
+  mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
+  ngap_enable: false                # Set to true to enable NGAP PCAPs.
+  ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
+  f1ap_enable: false                # Set to true to enable F1AP PCAPs.
+  f1ap_filename: /tmp/gnb_f1ap.pcap # Path where the F1AP PCAP is stored.
+
+remote_control:
+  enabled: true
+  port: 8001
+  bind_addr: 127.0.0.1
+
+metrics:
+  enable_json: true
+  enable_log: false
+  periodicity:
+    du_report_period: 1000
+    cu_up_report_period: 1000
+    cu_cp_report_period: 1000
+  layers:
+    enable_ru: true
+    enable_sched: true
+    enable_rlc: true
+    enable_mac: true
+    enable_pdcp: true
+    enable_du_low: true

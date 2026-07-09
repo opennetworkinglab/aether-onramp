@@ -1,0 +1,29 @@
+---
+
+- name: restart ptp4l
+  ansible.builtin.systemd:
+    name: ocudu-ptp4l.service
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: restart phc2sys
+  ansible.builtin.systemd:
+    name: ocudu-phc2sys.service
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: restart pf-tuning
+  ansible.builtin.systemd:
+    name: pf-tuning.service
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: restart vf-bootstrap
+  ansible.builtin.systemd:
+    name: vf-bootstrap.service
+    state: restarted
+    daemon_reload: true
+  become: true

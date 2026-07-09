@@ -27,6 +27,15 @@ actions:
     description: Stop O-CU-DU UE simulator
     target: aether-ocudu-uesim-stop
     lifecycle: stop
+  - name: dpdk-install
+    description: Prepare O-CU-DU DPDK host prerequisites
+    target: ocudu-dpdk-install
+  - name: dpdk-status
+    description: Report O-CU-DU DPDK readiness state
+    target: ocudu-dpdk-status
+  - name: dpdk-verify
+    description: Verify live O-CU-DU DPDK host state
+    target: ocudu-dpdk-verify
 dependencies:
   requires: [5gc]
   required_by: []
@@ -49,6 +58,19 @@ schema:
             ue_image:
               type: string
               description: UE simulator container image
+        preflight:
+          type: object
+          description: Docker preflight checks performed before gNB startup
+          properties:
+            enabled:
+              type: boolean
+              description: Enable the Docker CPU availability preflight check
+            min_cpus:
+              type: integer
+              description: Minimum CPUs required by the OCUDU gNB container preflight
+            probe_image:
+              type: string
+              description: Helper image used to probe CPU availability inside Docker
         network:
           type: object
           properties:
@@ -73,12 +95,41 @@ schema:
           ue_conf:
             type: string
             description: Path to the UE config file
+          dpdk:
+            type: object
+            description: Per-server DPDK fronthaul configuration
+            properties:
+              enabled:
+                type: boolean
+                description: Enable DPDK fronthaul preparation for this OCUDU node
+              hugepages:
+                type: integer
+                description: Number of 1 GB hugepages to allocate on this host
+              pf_iface:
+                type: string
+                description: Fronthaul PF interface used to create VF 0 on this host
+              vf_bdf:
+                type: string
+                description: Optional VF PCI BDF override for the DPDK gNB config
+              du_mac_addr:
+                type: string
+                description: Optional VF 0 MAC override for the DPDK gNB config
+              ru_mac_addr:
+                type: string
+                description: RU fronthaul MAC address rendered into the DPDK gNB config
+              isolated_cpus:
+                type: string
+                description: CPU range reserved for DPDK and gNB execution on this host
 
 defaults:
   docker:
     container:
-      gnb_image: aetherproject/ocudu:rel-0.8.0
-      ue_image: aetherproject/srsran-ue:rel-0.8.0
+      gnb_image: aetherproject/ocudu:rel-0.8.2
+      ue_image: aetherproject/srsran-ue:rel-0.8.2
+    preflight:
+      enabled: true
+      min_cpus: 4
+      probe_image: ghcr.io/omec-project/pod-init:rel-1.2.2
     network:
       name: host
   simulation: true
@@ -86,3 +137,8 @@ defaults:
     "0":
       gnb_conf: gnb_zmq.yaml
       ue_conf: ue_zmq.conf
+      dpdk:
+        enabled: false
+        hugepages: 2
+        ru_mac_addr: 70:b3:d5:e1:5e:7e
+        isolated_cpus: 3-23

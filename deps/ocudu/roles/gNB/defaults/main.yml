@@ -1,7 +1,7 @@
 ocudu:
   docker:
     container:
-      gnb_image: aetherproject/ocudu:rel-0.7.0
+      gnb_image: aetherproject/ocudu:rel-0.8.2
     network:
       name: host
     preflight:
@@ -15,4 +15,4 @@ ocudu:
 
 core:
   amf:
-    ip: "172.16.248.6"
+    ip: "10.76.28.113"

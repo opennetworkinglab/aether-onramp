@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore OCUDU SR-IOV VF bootstrap
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ocudu-vf-bootstrap.sh
+
+[Install]
+WantedBy=multi-user.target

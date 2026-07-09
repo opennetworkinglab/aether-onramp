@@ -1,0 +1,12 @@
+[Unit]
+Description=PHC to system clock synchronization
+After=ocudu-ptp4l.service
+Requires=ocudu-ptp4l.service
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/sbin/phc2sys -s /dev/{{ phc_device }} -c CLOCK_REALTIME -w -m -u 1 -f /etc/linuxptp/ptp_gm.conf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
