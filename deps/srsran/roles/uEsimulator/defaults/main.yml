@@ -1,7 +1,7 @@
 srsran:
   docker:
     container:
-      ue_image: aetherproject/srsran-ue:rel-0.7.0
+      ue_image: aetherproject/srsran-ue:rel-1.0.0
     network:
       name: public_net
 

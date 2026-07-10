@@ -28,7 +28,7 @@ argument_specs:
           component's container is started.
       preflight_probe_image:
         type: str
-        default: "ghcr.io/omec-project/pod-init:rel-1.2.2"
+        default: "ghcr.io/omec-project/pod-init:rel-1.2.3"
         description: >-
           Image used to read `nproc` inside Docker. Any small image with
           `nproc` available will do; override to point at an image already
