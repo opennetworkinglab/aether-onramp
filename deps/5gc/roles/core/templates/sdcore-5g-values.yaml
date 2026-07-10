@@ -501,7 +501,6 @@ omec-user-plane:
           # "https://www.intel.com/content/www/us/en/download/19660/intel-ethernet-800-series-dynamic-device-personalization-ddp-for-telecommunication-comms-package.html"
           ddp: false                     # this parameter is only used/relevant when deploying the UPF in 'dpdk' mode
           cpiface:
-            dnn: "internet"              # Must match Slice dnn
             hostname: "upf"
             #http_port: "8080"
             enable_ue_ip_alloc: true    # If true, UPF allocates address from following pool
