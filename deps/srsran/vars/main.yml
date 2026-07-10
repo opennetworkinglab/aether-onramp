@@ -6,8 +6,8 @@ airgapped:
 srsran:
   docker:
     container:
-      gnb_image: aetherproject/srsran-gnb:rel-0.7.0
-      ue_image: aetherproject/srsran-ue:rel-0.7.0
+      gnb_image: aetherproject/srsran-gnb:rel-1.0.0
+      ue_image: aetherproject/srsran-ue:rel-1.0.0
     network:
       name: host
   simulation: true

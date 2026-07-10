@@ -16,7 +16,7 @@ preflight_min_cpus: 4
 # Image used to read `nproc` inside Docker. The OnRamp airgap bundle tool
 # packages this dependency automatically. Override only if you want to point
 # at an image already present on the host.
-preflight_probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.2"
+preflight_probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.3"
 
 # Kill switch. Setting this to false skips the entire preflight block, which
 # is useful in dev/test environments where the threshold is intentionally

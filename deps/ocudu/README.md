@@ -60,8 +60,8 @@ Example defaults:
 ocudu:
    docker:
       container:
-         gnb_image: aetherproject/ocudu:rel-0.8.2
-         ue_image: aetherproject/srsran-ue:rel-0.8.2
+         gnb_image: aetherproject/ocudu:rel-1.0.0
+         ue_image: aetherproject/srsran-ue:rel-1.0.0
       network:
          name: host
    simulation: true
