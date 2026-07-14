@@ -1,6 +1,7 @@
 gnb_id: "{{ gnb_id }}"                         # Optional UINT (411). Sets the numerical ID associated with the gNB.
 
 cu_cp:
+  inactivity_timer: 900             # Sets the UE/PDU Session/DRB inactivity timer in seconds. Supported: [1 - 7200].
   amf:
     addr: "{{ core.amf.ip }}"                 # The address or hostname of the AMF.
     port: 38412
