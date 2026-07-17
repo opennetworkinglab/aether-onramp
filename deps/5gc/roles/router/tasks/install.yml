@@ -530,6 +530,6 @@
       - "{{ core.upf.default_upf.ip.core }}"
       - dev
       - core
-  when: (inventory_hostname in groups['master_nodes']) and core.ims is defined and core.ims.ue_ip_pool_ims is defined
+  when: (inventory_hostname in groups['master_nodes']) and core.ims.ue_ip_pool_ims is defined and core.upf.default_upf.ip.core is defined
   become: true
-  ignore_errors: yes
+  ignore_errors: false

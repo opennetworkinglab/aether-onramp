@@ -24,7 +24,7 @@ k8s:
 core:
   standalone: true      # set to false to place under control of ROC
   data_iface: ens18
-  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  values_file: "deps/5gc/roles/core/templates/radio-5g-values-ims.yaml"
   ran_subnet: "172.20.0.0/16"    # set to empty string to get subnet from 'data_iface'
   helm:
     local_charts: false      # set chart_ref to local path name if true

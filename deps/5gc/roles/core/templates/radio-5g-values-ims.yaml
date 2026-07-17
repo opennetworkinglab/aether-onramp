@@ -84,7 +84,7 @@ omec-control-plane:
             userAppApiServer:
               addr: "upf"
 
-    # Change AMF config here if rquired
+    # Change AMF config here if required
     # Most of the AMF config comes from Slice APIs but some of the config is
     # directly provided through Helm Charts
     amf:
@@ -211,7 +211,7 @@ omec-sub-provision:
           configuration:
             provision-network-slice: {{ core.standalone | string }} # if enabled, Device Groups & Slices configure by simapp
             sub-provision-endpt:
-              addr: webui  # subscriber configuation endpoint.
+              addr: webui  # subscriber configuration endpoint.
             # sub-proxy-endpt: # used if subscriber proxy is enabled in the ROC.
             #   addr: subscriber-proxy.aether-roc.svc.cluster.local
             #   port: 5000
@@ -295,7 +295,7 @@ omec-sub-provision:
                 sst: 1
               site-device-group:
               - "user-group1"   # All UEs in this device-group are assigned to this slice
-              # Applicaiton filters control what each user can access.
+              # Application filters control what each user can access.
               # Default, allow access to all applications
               application-filtering-rules:
               - rule-name: "ALLOW-ALL"
