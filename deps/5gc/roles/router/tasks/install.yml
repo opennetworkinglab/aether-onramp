@@ -518,3 +518,18 @@
     state: started
   when: inventory_hostname in groups['master_nodes']
   become: true
+
+- name: configure static route for UE subnet in IMS dnn on master node
+  command:
+    argv:
+      - ip
+      - route
+      - replace
+      - "{{ core.ims.ue_ip_pool_ims | regex_replace('[0-9]+/24', '0/24') }}"
+      - via
+      - "{{ core.upf.default_upf.ip.core }}"
+      - dev
+      - core
+  when: (inventory_hostname in groups['master_nodes']) and core.ims is defined and core.ims.ue_ip_pool_ims is defined
+  become: true
+  ignore_errors: yes

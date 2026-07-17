@@ -1,0 +1,100 @@
+proxy:
+  enabled: false
+  http_proxy: ""
+  https_proxy: ""
+  no_proxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,10.42.0.0/16,10.43.0.0/16,.svc,.svc.cluster.local,.cluster.local"
+
+airgapped:
+  enabled: false
+  allow_purge: false
+
+k8s:
+  rke2:
+    version: v1.35.3+rke2r3
+    config:
+      token: aether-k8s-rke2
+      port: 9345
+      params_file:
+        master: "deps/k8s/roles/rke2/templates/master-config.yaml"
+        worker: "deps/k8s/roles/rke2/templates/worker-config.yaml"
+
+  helm:
+    version: v3.20.0
+
+core:
+  standalone: true      # set to false to place under control of ROC
+  data_iface: ens18
+  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  ran_subnet: "172.20.0.0/16"    # set to empty string to get subnet from 'data_iface'
+  helm:
+    local_charts: false      # set chart_ref to local path name if true
+    chart_ref: oci://ghcr.io/omec-project/sd-core
+    chart_version: 4.1.3
+  upf:
+    access_subnet: "192.168.252.1/24"  # access subnet & gateway
+    core_subnet: "192.168.250.1/24"  # core subnet & gateway
+    mode: af_packet      # Options: af_packet or dpdk
+    multihop_gnb: false      # set to true to override default N3 subnet
+    default_upf:
+      ip:
+        access: "192.168.252.3"
+        core:   "192.168.250.3"
+      ue_ip_pool: "192.168.100.0/24"
+  amf:
+    ip: "10.76.28.113"
+  ims:
+    pcscf_ip: "10.76.28.113"
+    ue_ip_pool_ims: "192.168.200.0/24"
+
+gnbsim:
+  docker:
+    container:
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.1.0
+      prefix: gnbsim
+      count: 1
+    network:
+      macvlan:
+        name: gnbnet
+
+  router:
+    data_iface: ens18
+    macvlan:
+      subnet_prefix: "172.20"
+
+  servers:
+    0:
+      - "deps/gnbsim/config/gnbsim-default.yaml"
+
+amp:
+  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
+  monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
+
+  aether_roc:
+    helm:
+      local_charts: false
+      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
+      chart_version: 2.1.40
+
+  atomix:
+    helm:
+      chart_ref: atomix/atomix
+      chart_version: 1.1.2
+
+  onosproject:
+    helm:
+      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
+      chart_version: 0.5.6
+
+  store:
+    lpp:
+      version: v0.0.24
+
+  monitor:
+    helm:
+      chart_ref: rancher/rancher-monitoring
+      chart_version: 108.0.4+up77.9.1-rancher.14
+
+  monitor_crd:
+    helm:
+      chart_ref: rancher/rancher-monitoring-crd
+      chart_version: 108.0.4+up77.9.1-rancher.14
