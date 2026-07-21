@@ -13,6 +13,8 @@ omec-control-plane:
 
 # Override values for 5g-control-plane Helm Chart
 # https://github.com/omec-project/sdcore-helm-charts/blob/main/5g-control-plane/values.yaml
+# NOTE: Currently the IMS N5 module supports only http communication, so in this configuration file
+# we use http for the SBI
 5g-control-plane:
   enable5G: true
   nodeSelectors:
