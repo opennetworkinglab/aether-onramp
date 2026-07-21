@@ -1,0 +1,396 @@
+# SPDX-FileCopyrightText: 2022-present Intel Corporation
+# Copyright 2019-present Open Networking Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Disable 4G Control Plane
+omec-control-plane:
+  enable4G: false
+
+# Disable 5G RAN Simulator
+5g-ran-sim:
+  enable: false
+
+# Override values for 5g-control-plane Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/5g-control-plane/values.yaml
+# NOTE: Currently the IMS N5 module supports only http communication, so in this configuration file
+# we use http for the SBI. This file added temporarily as a reference config for IMS,
+# once https support enabled in IMS N5 component, it will be removed
+5g-control-plane:
+  enable5G: true
+  nodeSelectors:
+    enabled: false
+  # refer to above Helm Chart to add other NF images
+  # images:
+  #   repository: ""
+  #   tags:
+  #     amf: <amf image tag>
+
+  kafka:
+    deploy: true
+    # Enable nodeSelector if needed to control where to deploy the kafka instance(s)
+    # controller:
+    #   nodeSelector:
+    #     node-role.aetherproject.org/5gc: "true"
+
+  mongodb:
+    usePassword: false
+    persistence:
+      enabled: false
+    architecture: replicaset
+    replicaCount: 2
+    # Enable nodeSelector if needed to control where to deploy the mongodb instances
+    # nodeSelector:
+    #   node-role.aetherproject.org/5gc: "true"
+    # arbiter:
+    #   nodeSelector:
+    #     node-role.aetherproject.org/5gc: "true"
+
+  resources:
+    enabled: false
+
+  config:
+    # logger:
+    #   Util:
+    #     debugLevel: warn
+    #   AMF:
+    #     debugLevel: debug
+    #   SMF:
+    #     debugLevel: debug
+
+    mongodb:
+      name: aether
+      url: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
+      authKeysDbName: authentication
+      authUrl: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
+
+    managedByConfigPod:
+      enabled: true
+
+    sctplb:
+      deploy: false # If enabled then deploy sctp pod
+      ngapp:
+        externalIp: {{ core.amf.ip }}
+        port: 38412
+
+    upfadapter:
+      deploy: false # If enabled then deploy upf adapter pod
+
+    metricfunc:
+      deploy: true
+      sbi:
+        scheme: http
+      cfgFiles:
+        metricscfg.yaml:
+          configuration:
+            controllerFlag: {{ core.closed_loop | default('false') }}
+            userAppApiServer:
+              addr: "upf"
+
+    # Change AMF config here if required
+    # Most of the AMF config comes from Slice APIs but some of the config is
+    # directly provided through Helm Charts
+    amf:
+      ngapp:
+        externalIp: {{ core.amf.ip }}
+      cfgFiles:
+        amfcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            enableDBStore: true # Store AMF subscribers in the datastore
+            networkFeatureSupport5GS: # 5gs Network Feature Support IE, refer to TS 24.501 sec. 9.11.3.5
+              imsVoPS: 1 # IMS voice over PS session indicator (uinteger, range: 0~1)
+            sbi:
+              scheme: http
+            # security:
+            #   integrityOrder:
+            #     - NIA3
+            #     - NIA2
+            #     - NIA0
+            #   cipheringOrder:
+            #     - NEA3
+            #     - NEA2
+            #     - NEA0
+
+    # SMF config override. Refer to Helm Charts values for more options
+    smf:
+      cfgFiles:
+        smfcfg.yaml:
+          configuration:
+            enableDBStore: true  # Store SMF subscribers in the datastore
+            pcscfInfos:       # For IMS CALL
+              ipv4: {{ core.ims.pcscf_ip }}
+              ipv6: fe80::543b:8dff:fef6:54c
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+            # staticIpInfo:
+            #   - dnn: internet
+            #     imsiIpInfo:
+            #       imsi-001010100007500: "172.250.0.100"
+            #       imsi-001010100007501: "172.250.0.101"
+
+    pcf:
+      externalIp: {{ core.amf.ip }}
+      cfgFiles:
+        pcfcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+    ausf:
+      cfgFiles:
+        ausfcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+    udm:
+      cfgFiles:
+        udmcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+    udr:
+      cfgFiles:
+        udrcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+    nssf:
+      cfgFiles:
+        nssfcfg.yaml:
+          configuration:
+            nrfUri: http://nrf:29510
+            sbi:
+              scheme: http
+            nsiList:
+            - snssai:
+                sst: 1
+                sd: "010203"
+              nsiInformationList:
+                - nrfId: http://nrf:29510/nnrf-nfm/v1/nf-instances
+                  nsiId: 22
+
+    nrf:
+      externalIp: {{ core.amf.ip }}
+      cfgFiles:
+        nrfcfg.yaml:
+          configuration:
+            mongoDBStreamEnable: false    # enable/disable MongoDB stream in NRF
+            nfProfileExpiryEnable: true   # If enabled, remove NF profile if no keepalive received
+            nfKeepAliveTime: 60           # default timeout for NF profiles
+            sbi:
+              scheme: http
+
+    webui:
+      cfgFiles:
+        webuicfg.yaml:
+          configuration:
+            managedByConfigPod:
+              enabled: {{ not core.standalone }}
+              syncUrl: http://roc-sdcore-adapter-v2-1.aether-roc.svc:8080/synchronize
+            sbi:
+              scheme: http
+
+# Override values for omec-sub-provision (subscriber) Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/omec-sub-provision/values.yaml
+# ***Note: Most of these values can (and should) be set via ROC API***
+omec-sub-provision:
+  enable: true
+  nodeSelectors:
+    enabled: false
+  # images:
+  #   repository: ""
+  #   tags:
+  #     simapp: #add simapp override image
+
+  config:
+    simapp:
+      cfgFiles:
+        simapp.yaml:
+          configuration:
+            provision-network-slice: {{ core.standalone | string }} # if enabled, Device Groups & Slices configure by simapp
+            sub-provision-endpt:
+              addr: webui  # subscriber configuration endpoint.
+            # sub-proxy-endpt: # used if subscriber proxy is enabled in the ROC.
+            #   addr: subscriber-proxy.aether-roc.svc.cluster.local
+            #   port: 5000
+
+            # Configure Subscriber IMSIs and their security details.
+            # You can have any number of subscriber ranges
+            # This block is always necessary to establish range(s) of valid IMSIs
+            subscribers:
+            - ueId-start: "001010100007500"
+              ueId-end: "001010100007509"
+              plmnId: "00101"
+              opc: "00000000000000000000000000000000"
+              op: ""
+              key: "ffffffffffffffffffffffffffffffff"
+              sequenceNumber: "16f3b3f70fc2"
+
+            # Configure Device Groups (ignored if provision-network-slice is disabled)
+            device-groups:
+            - name:  "user-group1"
+              imsis:
+                - "001010100007500"
+                - "001010100007501"
+                - "001010100007502"
+                - "001010100007503"
+                - "001010100007504"
+                - "001010100007505"
+                - "001010100007506"
+                - "001010100007507"
+                - "001010100007508"
+                - "001010100007509"
+              msisdns:
+                - "msisdn-9000000001"
+                - "msisdn-9000000002"
+                - "msisdn-9000000003"
+                - "msisdn-9000000004"
+                - "msisdn-9000000005"
+                - "msisdn-9000000006"
+                - "msisdn-9000000007"
+                - "msisdn-9000000008"
+                - "msisdn-9000000009"
+                - "msisdn-9000000010"
+              ip-domain-name: "pool1"
+              ip-domains:
+                - dnn: ims
+                  dns-primary: "8.8.8.8"
+                  mtu: 1400
+                  ue-ip-pool: {{ core.ims.ue_ip_pool_ims }}  # IP address pool for IMS dnn
+                  ue-dnn-qos:
+                    dnn-mbr-downlink: 3850
+                    dnn-mbr-uplink: 1530
+                    bitrate-unit: kbps
+                    traffic-class:
+                      name: "platinum"
+                      qci: 5
+                      arp: 1
+                      pdb: 100
+                      pelr: 6
+                - dnn: internet
+                  dns-primary: "8.8.8.8"        # Value is sent to UE
+                  mtu: 1460                     # Value is sent to UE when PDU Session Established
+                  ue-ip-pool: {{ core.upf.default_upf.ue_ip_pool }}  # IP address pool for subscribers
+                  ue-dnn-qos:
+                    dnn-mbr-downlink: 1000      # UE level downlink QoS (Maximum bit rate per UE)
+                    dnn-mbr-uplink:   1000      # UE level uplink QoS (Maximum bit rate per UE)
+                    bitrate-unit: Mbps          # Unit for above QoS rates
+                    traffic-class:              # Default bearer QCI/ARP (not used in 5G)
+                      name: "platinum"
+                      qci: 9
+                      arp: 6
+                      pdb: 300
+                      pelr: 6
+              site-info: "enterprise"
+            # UPF allocates IP address if there is only 1 device-group
+            # SMF allocates IP address if there is >1 device-group
+
+            # Configure Network Slices (ignored if provision-network-slice is disabled)
+            network-slices:
+            - name: "default"      # can be any unique slice name
+              slice-id:            # must match with slice configured in gNB, UE
+                sd: "010203"
+                sst: 1
+              site-device-group:
+              - "user-group1"   # All UEs in this device-group are assigned to this slice
+              # Application filters control what each user can access.
+              # Default, allow access to all applications
+              application-filtering-rules:
+              - rule-name: "ALLOW-ALL"
+                priority: 250
+                action: "permit"
+                endpoint: "0.0.0.0/0"
+                traffic-class:
+                  qci: 5
+                  arp: 1
+              site-info:
+                # Provide gNBs and UPF details and also PLMN for the site
+                gNodeBs:
+                - name: "gnb1"
+                  tac: 1
+                - name: "gnb2"
+                  tac: 2
+                plmn:
+                  mcc: "001"
+                  mnc: "01"
+                site-name: "enterprise"
+                upf:
+                  upf-name: "upf"  # associated UPF for this slice. One UPF per Slice.
+                  upf-port: 8805
+
+# Override values for omec-user-plane Helm Chart
+# https://github.com/omec-project/sdcore-helm-charts/blob/main/bess-upf/values.yaml
+omec-user-plane:
+  enable: true
+  nodeSelectors:
+    enabled: true
+  resources:
+    enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+  # images:
+  #   repository: ""
+  #   tags:
+  #     bess: <bess image tag>
+  #     pfcpiface: <pfcp image tag>
+  #     tools: <aether-pod-init image tag>
+  config:
+    upf:
+      name: "aether-upf"
+      privileged: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+      sriov:
+        enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+      hugepage:
+        enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+      routes:
+        - to: {{ ansible_default_ipv4.address }}
+          via: 169.254.1.1
+      enb:
+        subnet: {{ ran_subnet }} # Subnet for the gNB network
+      access:
+        ipam: static
+        cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
+        iface: {{ core.data_iface }}
+{% if core.upf.mode == 'dpdk' %}
+        resourceName: "intel.com/intel_sriov_vfio_access"
+{% endif %}
+        gateway: {{ access_gw }}
+        ip: {{ access_ip }}
+      core:
+        ipam: static
+        cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
+        iface: {{ core.data_iface }}
+{% if core.upf.mode == 'dpdk' %}
+        resourceName: "intel.com/intel_sriov_vfio_core"
+{% endif %}
+        gateway: {{ core_gw }}
+        ip: {{ core_ip }}
+      closedLoop: {{ core.closed_loop | default('false') | lower }}
+      cfgFiles:
+        upf.jsonc:
+          mode: {{ core.upf.mode }}
+          hwcksum: true
+          log_level: "info"
+          measure_upf: true
+          measure_flow: true
+          gtppsc: true                   # Extension header enabled in 5G.
+          # DDP is INTEL NIC's specific feature (supported in E810 series)
+          # which helps to improve UPF packet processing performance.
+          # For more details on DDP feature and its usage please refer
+          # "https://www.intel.com/content/www/us/en/download/19660/intel-ethernet-800-series-dynamic-device-personalization-ddp-for-telecommunication-comms-package.html"
+          ddp: false                     # this parameter is only used/relevant when deploying the UPF in 'dpdk' mode
+          cpiface:
+            hostname: "upf"
+            #http_port: "8080"
+            enable_ue_ip_alloc: false    # If true, UPF allocates address from following pool
+            ue_ip_pool: {{ core.upf.default_upf.ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
+          slice_rate_limit_config:       # Slice-level rate limiting (also controlled by ROC)
+            # Uplink
+            n6_bps: 10000000000          # 10Gbps
+            n6_burst_bytes: 12500000     # 10ms * 10Gbps
+            # Downlink
+            n3_bps: 10000000000          # 10Gbps
+            n3_burst_bytes: 12500000     # 10ms * 10Gbps

@@ -24,7 +24,7 @@ k8s:
 core:
   standalone: true      # set to false to place under control of ROC
   data_iface: ens18
-  values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
+  values_file: "deps/5gc/roles/core/templates/radio-5g-values-ims.yaml"
   ran_subnet: "172.20.0.0/16"    # set to empty string to get subnet from 'data_iface'
   helm:
     local_charts: false      # set chart_ref to local path name if true
@@ -42,24 +42,28 @@ core:
       ue_ip_pool: "192.168.100.0/24"
   amf:
     ip: "10.76.28.113"
+  ims:
+    pcscf_ip: "10.76.28.113"
+    ue_ip_pool_ims: "192.168.200.0/24"
 
-oai:
+gnbsim:
   docker:
     container:
-      gnb_image: oaisoftwarealliance/oai-gnb:2026.w10
-      ue_image: oaisoftwarealliance/oai-nr-ue:2026.w10
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.1.0
+      prefix: gnbsim
+      count: 1
     network:
-      data_iface: ens18
-      name: public_net      # Set to `host` when connecting RU/USRP (i.e., simulation: false)
-      subnet: "172.20.0.0/16"        # Set to data_iface's subnet when `name: host`
-      bridge:
-        name: rfsim5g-public
-  simulation: true
+      macvlan:
+        name: gnbnet
+
+  router:
+    data_iface: ens18
+    macvlan:
+      subnet_prefix: "172.20"
+
   servers:
     0:
-      gnb_conf: deps/oai/roles/gNb/templates/gnb.sa.band78.fr1.106PRB.usrpb210.conf
-      gnb_ip: "172.20.0.2"        # Host interface used for the gNB
-      ue_conf: deps/oai/roles/uEsimulator/templates/ue.conf
+      - "deps/gnbsim/config/gnbsim-default.yaml"
 
 amp:
   roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
