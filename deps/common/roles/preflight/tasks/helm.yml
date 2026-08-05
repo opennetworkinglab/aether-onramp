@@ -1,0 +1,27 @@
+---
+
+- name: verify helm is available on master node
+  ansible.builtin.command:
+    argv:
+      - helm
+      - version
+      - --short
+  register: helm_version
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  tags:
+    - always
+
+- name: fail when helm is unavailable on master node
+  ansible.builtin.fail:
+    msg: >-
+      Helm is required on {{ inventory_hostname }} before running 5GC
+      tasks that manage charts or releases. Install helm on the master node
+      and rerun this playbook. stderr: {{ helm_version.stderr | default('')
+      | trim }} stdout: {{ helm_version.stdout | default('') | trim }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - helm_version.rc != 0
+  tags:
+    - always

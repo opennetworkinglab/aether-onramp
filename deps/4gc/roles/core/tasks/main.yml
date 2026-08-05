@@ -1,5 +1,20 @@
 ---
 
+- name: verify helm prerequisites for 4gc/core
+  import_role:
+    name: preflight
+    tasks_from: helm.yml
+
+- name: verify kubeconfig prerequisites for 4gc/core
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: 4GC core
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
+
 - name: install 4gc/core
   import_tasks: roles/core/tasks/install.yml
   tags: install

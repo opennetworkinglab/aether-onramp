@@ -1,0 +1,9 @@
+---
+
+- name: install kubernetes.core python prerequisite (python3-kubernetes)
+  ansible.builtin.apt:
+    name: python3-kubernetes
+    state: present
+    update_cache: "{{ not (airgapped.enabled | default(false) | bool) }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true

@@ -14,6 +14,16 @@
   become: true
   ignore_errors: yes
 
+- name: verify kubeconfig prerequisites for 5gc/upf uninstall
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: 5GC UPF
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or install 5GC core with a valid
+      kubeconfig_source so the cluster context is bootstrapped.
+
 - name: remove aether upfs
   kubernetes.core.helm:
     name: bess-upf

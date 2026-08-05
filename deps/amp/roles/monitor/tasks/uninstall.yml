@@ -1,5 +1,15 @@
 ---
 
+- name: verify kubeconfig prerequisites for amp/monitor uninstall
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: AMP monitor
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
+
 - name: remove rancher-monitoring from cattle-monitoring-system
   kubernetes.core.helm:
     name: rancher-monitoring

@@ -1,5 +1,10 @@
 ---
 
+- name: verify helm prerequisites for 5gc/core
+  import_role:
+    name: preflight
+    tasks_from: helm.yml
+
 - name: install 5gc/core
   import_tasks: roles/core/tasks/install.yml
   tags: install

@@ -1,6 +1,16 @@
 ---
 
-#TODO uninstall local sotre
+#TODO uninstall local store
+
+- name: verify kubeconfig prerequisites for amp/roc uninstall
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: AMP ROC
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
 
 - name: remove atomix chart repo
   kubernetes.core.helm_repository:

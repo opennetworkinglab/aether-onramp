@@ -1,5 +1,20 @@
 ---
 
+- name: verify helm prerequisites for amp/roc
+  import_role:
+    name: preflight
+    tasks_from: helm.yml
+
+- name: verify kubeconfig prerequisites for amp/roc
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: AMP ROC
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
+
 - name: install amp/roc
   import_tasks: roles/roc/tasks/install.yml
   tags: install

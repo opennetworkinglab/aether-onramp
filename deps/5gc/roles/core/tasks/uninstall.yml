@@ -1,5 +1,15 @@
 ---
 
+- name: verify kubeconfig prerequisites for 5gc/core uninstall
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: 5GC core
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
+
 - name: delete local charts from /tmp/sdcore-helm-charts/
   file:
     path: /tmp/sdcore-helm-charts/
