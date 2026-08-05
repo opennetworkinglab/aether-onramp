@@ -525,7 +525,7 @@
       - ip
       - route
       - replace
-      - "{{ core.ims.ue_ip_pool_ims | regex_replace('[0-9]+/24', '0/24') }}"
+      - "{{ core.ims.ue_ip_pool_ims | regex_replace('[0-9]+(/[0-9]+)$', '0\\1') }}"
       - via
       - "{{ core.upf.default_upf.ip.core }}"
       - dev

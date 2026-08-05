@@ -218,10 +218,10 @@
           | default('')
         ) if (core.ran_subnet == '') else core.ran_subnet
       }}
-    access_gw: "{{ core.upf.access_subnet[:-3] }}"
-    access_ip: "{{ core.upf.default_upf.ip.access + '/24' }}"
-    core_gw: "{{ core.upf.core_subnet[:-3] }}"
-    core_ip: "{{ core.upf.default_upf.ip.core + '/24' }}"
+    access_gw: "{{ core.upf.access_subnet | split('/') | first }}"
+    access_ip: "{{ core.upf.default_upf.ip.access + '/' + (core.upf.access_subnet | split('/') | last) }}"
+    core_gw: "{{ core.upf.core_subnet | split('/') | first }}"
+    core_ip: "{{ core.upf.default_upf.ip.core + '/' + (core.upf.core_subnet | split('/') | last) }}"
   when: inventory_hostname in groups['master_nodes']
 
 - name: validate ran_subnet is in valid CIDR format

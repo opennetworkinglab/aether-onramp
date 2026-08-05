@@ -19,7 +19,7 @@ ExecStart=/bin/bash -c '/usr/sbin/ip link show core >/dev/null 2>&1 || /usr/sbin
 ExecStart=/usr/sbin/ip addr replace {{ core.upf.core_subnet }} dev core
 ExecStart=/usr/sbin/ip link set core up
 ExecStart=-/usr/sbin/sysctl -w net.ipv4.conf.core.forwarding=1
-ExecStart=/usr/sbin/ip route replace {{ core.upf.default_upf.ue_ip_pool }} via {{ core.upf.default_upf.ip.core }} dev core
+ExecStart=/usr/sbin/ip route replace {{ core.upf.default_upf.ue_ip_pool }} via {{ core.upf.default_upf.ip.core }} dev core onlink
 {% if not core.upf.multihop_gnb %}
 ExecStop=-/usr/sbin/ip link del access
 {% endif %}
