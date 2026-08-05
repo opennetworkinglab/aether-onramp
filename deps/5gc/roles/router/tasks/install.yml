@@ -525,7 +525,7 @@
       - ip
       - route
       - replace
-      - "{{ core.ims.ue_ip_pool_ims | regex_replace('[0-9]+(/[0-9]+)$', '0\\1') }}"
+      - "{{ core.ims.ue_ip_pool_ims | ansible.utils.ipaddr('network/prefix') }}"
       - via
       - "{{ core.upf.default_upf.ip.core }}"
       - dev

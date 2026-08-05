@@ -22,7 +22,7 @@ case "$action" in
   :
 {% endif %}
 {% elif inventory_hostname in groups['gnbsim_nodes'] %}
-    /usr/sbin/ip route replace {{ core.upf.access_subnet | regex_replace('[0-9]+(/[0-9]+)$', '0\1') }} via {{ core.amf.ip }}
+    /usr/sbin/ip route replace {{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }} via {{ core.amf.ip }}
 {% endif %}
     ;;
   stop)
@@ -35,7 +35,7 @@ case "$action" in
   :
 {% endif %}
 {% elif inventory_hostname in groups['gnbsim_nodes'] %}
-    /usr/sbin/ip route del {{ core.upf.access_subnet | regex_replace('[0-9]+(/[0-9]+)$', '0\1') }} via {{ core.amf.ip }} || true
+    /usr/sbin/ip route del {{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }} via {{ core.amf.ip }} || true
 {% endif %}
     ;;
   *)
