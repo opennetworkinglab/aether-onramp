@@ -16,9 +16,9 @@
 - name: fail when helm is unavailable on master node
   ansible.builtin.fail:
     msg: >-
-      Helm is required on {{ inventory_hostname }} before running 5GC
-      tasks that manage charts or releases. Install helm on the master node
-      and rerun this playbook. stderr: {{ helm_version.stderr | default('')
+      Helm is required on {{ inventory_hostname }} before running tasks that
+      manage charts or releases. Install helm on the master node and rerun
+      this playbook. stderr: {{ helm_version.stderr | default('')
       | trim }} stdout: {{ helm_version.stdout | default('') | trim }}
   when:
     - inventory_hostname in groups['master_nodes']

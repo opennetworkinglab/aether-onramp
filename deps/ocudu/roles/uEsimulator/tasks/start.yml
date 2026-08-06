@@ -64,6 +64,7 @@
   retries: 60
   delay: 2
   until: ocudu_ue_tunnel.rc == 0
+  changed_when: false
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
@@ -86,6 +87,7 @@
     container: rfsim5g-nr-ue
     command: "ip netns exec ue1 ping -c 5 {{ ping_target }}"
   register: uEsimPingOutput
+  changed_when: false
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 

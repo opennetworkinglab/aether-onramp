@@ -5,6 +5,16 @@
     name: preflight
     tasks_from: python_kubernetes.yml
 
+- name: verify kubeconfig prerequisites for amp/monitor-load
+  import_role:
+    name: preflight
+    tasks_from: kubeconfig.yml
+  vars:
+    kubeconfig_component_name: AMP monitor-load
+    kubeconfig_help_text: >-
+      Run the k8s provisioning flow first, or set kubeconfig_source and rerun
+      the install path that bootstraps it.
+
 - name: Create a k8s "aether-5gc" namespace
   kubernetes.core.k8s:
     name: aether-5gc

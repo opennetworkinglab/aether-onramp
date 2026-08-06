@@ -2,6 +2,11 @@
 
 #TODO uninstall local store
 
+- name: verify helm prerequisites for amp/roc uninstall
+  import_role:
+    name: preflight
+    tasks_from: helm.yml
+
 - name: verify kubeconfig prerequisites for amp/roc uninstall
   import_role:
     name: preflight
