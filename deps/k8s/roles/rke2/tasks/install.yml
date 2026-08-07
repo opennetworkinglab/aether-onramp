@@ -453,6 +453,7 @@
     - inventory_hostname in groups['master_nodes']
     - hostvars[groups['master_nodes'][0]]['ansible_host'] is defined
     - hostvars[groups['master_nodes'][0]]['ansible_host'] != '127.0.0.1'
+  become: true
 
 - name: change {{ ansible_env.HOME }}/.kube ownership
   file:
