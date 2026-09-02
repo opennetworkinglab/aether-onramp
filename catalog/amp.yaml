@@ -128,9 +128,9 @@ defaults:
   monitor:
     helm:
       chart_ref: rancher/rancher-monitoring
-      chart_version: 108.0.4+up77.9.1-rancher.14
+      chart_version: 110.0.1+up80.9.1-rancher.19
   monitor_crd:
     helm:
       chart_ref: rancher/rancher-monitoring-crd
-      chart_version: 108.0.4+up77.9.1-rancher.14
+      chart_version: 110.0.1+up80.9.1-rancher.19
 
