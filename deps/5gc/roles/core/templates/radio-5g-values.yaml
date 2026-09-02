@@ -35,7 +35,19 @@ omec-control-plane:
     persistence:
       enabled: false
     architecture: replicaset
-    replicaCount: 2
+    # Override core.mongodb.replicaCount/resources (e.g., from CI) to shrink the
+    # footprint on constrained runners; unset falls back to upstream chart sizing.
+    replicaCount: {{ core.mongodb.replicaCount | default(2) }}
+{% if core.mongodb.resources is defined %}
+    resourcesPreset: "none"
+    resources:
+      requests:
+        cpu: {{ core.mongodb.resources.requests.cpu }}
+        memory: {{ core.mongodb.resources.requests.memory }}
+      limits:
+        cpu: {{ core.mongodb.resources.limits.cpu }}
+        memory: {{ core.mongodb.resources.limits.memory }}
+{% endif %}
     # Enable nodeSelector if needed to control where to deploy the mongodb instances
     # nodeSelector:
     #   node-role.aetherproject.org/5gc: "true"

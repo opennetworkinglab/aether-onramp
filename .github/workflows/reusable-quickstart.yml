@@ -108,6 +108,28 @@ jobs:
           bash .github/scripts/generate-local-hosts.sh "${{ inputs.target_group }}"
 
           cp "${{ inputs.vars_template }}" vars/main.yml
+
+          # CI-only: shrink MongoDB to a single, lightly-sized instance so the
+          # 5gc control plane fits within a standard 4 vCPU Actions runner.
+          # This does not affect the blueprint files real deployments use.
+          python3 - <<'PY'
+          import yaml
+
+          with open("vars/main.yml") as f:
+              main_vars = yaml.safe_load(f) or {}
+
+          main_vars.setdefault("core", {})["mongodb"] = {
+              "replicaCount": 1,
+              "resources": {
+                  "requests": {"cpu": "250m", "memory": "256Mi"},
+                  "limits": {"cpu": "500m", "memory": "512Mi"},
+              },
+          }
+
+          with open("vars/main.yml", "w") as f:
+              yaml.safe_dump(main_vars, f, sort_keys=False)
+          PY
+
           ${{ inputs.configure_commands }}
 
           make aether-pingall
