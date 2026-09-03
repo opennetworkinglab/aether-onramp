@@ -36,17 +36,19 @@ omec-control-plane:
       enabled: false
     architecture: replicaset
     # Override core.mongodb.replicaCount/resources (e.g., from CI) to shrink the
-    # footprint on constrained runners; unset falls back to upstream chart sizing.
-    replicaCount: {{ core.mongodb.replicaCount | default(2) }}
-{% if core.mongodb.resources is defined %}
+    # footprint on constrained runners; when unset this template falls back to 2.
+    replicaCount: {{ core.get('mongodb', {}).get('replicaCount', 2) }}
+{% set mdb_requests = core.get('mongodb', {}).get('resources', {}).get('requests', {}) %}
+{% set mdb_limits = core.get('mongodb', {}).get('resources', {}).get('limits', {}) %}
+{% if mdb_requests.get('cpu') and mdb_requests.get('memory') and mdb_limits.get('cpu') and mdb_limits.get('memory') %}
     resourcesPreset: "none"
     resources:
       requests:
-        cpu: {{ core.mongodb.resources.requests.cpu }}
-        memory: {{ core.mongodb.resources.requests.memory }}
+        cpu: {{ mdb_requests.cpu }}
+        memory: {{ mdb_requests.memory }}
       limits:
-        cpu: {{ core.mongodb.resources.limits.cpu }}
-        memory: {{ core.mongodb.resources.limits.memory }}
+        cpu: {{ mdb_limits.cpu }}
+        memory: {{ mdb_limits.memory }}
 {% endif %}
     # Enable nodeSelector if needed to control where to deploy the mongodb instances
     # nodeSelector:

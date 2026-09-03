@@ -112,19 +112,40 @@ jobs:
           # CI-only: shrink MongoDB to a single, lightly-sized instance so the
           # 5gc control plane fits within a standard 4 vCPU Actions runner.
           # This does not affect the blueprint files real deployments use.
+          # Ansible may be preinstalled via pip/venv on self-hosted runners, so
+          # system python3 is not guaranteed to have PyYAML; install it if missing.
+          if ! python3 -c "import yaml" >/dev/null 2>&1; then
+            if command -v apt-get >/dev/null 2>&1; then
+              if command -v sudo >/dev/null 2>&1; then
+                sudo apt-get update
+                sudo apt-get install -y python3-yaml
+              else
+                apt-get update
+                apt-get install -y python3-yaml
+              fi
+            else
+              python3 -m pip install --user PyYAML
+            fi
+          fi
+
           python3 - <<'PY'
           import yaml
 
           with open("vars/main.yml") as f:
               main_vars = yaml.safe_load(f) or {}
 
-          main_vars.setdefault("core", {})["mongodb"] = {
-              "replicaCount": 1,
-              "resources": {
-                  "requests": {"cpu": "250m", "memory": "256Mi"},
-                  "limits": {"cpu": "500m", "memory": "512Mi"},
-              },
-          }
+          # Merge per-key so any pre-existing core.mongodb keys from the vars
+          # template are preserved instead of being clobbered, even when only
+          # some of the nested requests/limits keys are already set.
+          mongodb = main_vars.setdefault("core", {}).setdefault("mongodb", {})
+          mongodb.setdefault("replicaCount", 1)
+          resources = mongodb.setdefault("resources", {})
+          requests = resources.setdefault("requests", {})
+          requests.setdefault("cpu", "250m")
+          requests.setdefault("memory", "256Mi")
+          limits = resources.setdefault("limits", {})
+          limits.setdefault("cpu", "500m")
+          limits.setdefault("memory", "512Mi")
 
           with open("vars/main.yml", "w") as f:
               yaml.safe_dump(main_vars, f, sort_keys=False)
