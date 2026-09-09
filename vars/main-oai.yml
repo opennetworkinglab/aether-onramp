@@ -22,7 +22,7 @@ k8s:
     version: v3.20.0
 
 core:
-  standalone: true      # set to false to place under control of ROC
+  standalone: true      # set to false to manage subscribers/slices manually via the SD-Core webconsole instead of simapp
   data_iface: ens18
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: "172.20.0.0/16"    # set to empty string to get subnet from 'data_iface'
@@ -62,28 +62,7 @@ oai:
       ue_conf: deps/oai/roles/uEsimulator/templates/ue.conf
 
 amp:
-  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
-
-  aether_roc:
-    helm:
-      local_charts: false
-      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
-      chart_version: 2.1.40
-
-  atomix:
-    helm:
-      chart_ref: atomix/atomix
-      chart_version: 1.1.2
-
-  onosproject:
-    helm:
-      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
-      chart_version: 0.5.6
-
-  store:
-    lpp:
-      version: v0.0.24
 
   monitor:
     helm:

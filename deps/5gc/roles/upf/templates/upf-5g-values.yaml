@@ -63,7 +63,7 @@ config:
           #http_port: "8080"
           enable_ue_ip_alloc: true    # If true, UPF allocates address from following pool
           ue_ip_pool: {{ upf_ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
-        slice_rate_limit_config:       # Slice-level rate limiting (also controlled by ROC)
+        slice_rate_limit_config:       # Slice-level rate limiting
           # Uplink
           n6_bps: 10000000000          # 10Gbps
           n6_burst_bytes: 12500000     # 10ms * 10Gbps

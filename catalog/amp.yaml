@@ -23,64 +23,13 @@ dependencies:
   required_by: []
 probe:
   type: helm_release
-  namespace: aether-roc
+  namespace: cattle-monitoring-system
 schema:
   type: object
   properties:
-    roc_models:
-      type: string
-      description: Path to ROC data models
     monitor_dashboard:
       type: string
       description: Path to the monitoring dashboard bundle
-    aether_roc:
-      type: object
-      properties:
-        helm:
-          type: object
-          properties:
-            local_charts:
-              type: boolean
-              description: Use local charts instead of fetching from a registry
-            chart_ref:
-              type: string
-              description: Chart registry reference or local chart path
-            chart_version:
-              type: string
-              description: Chart version constraint
-    atomix:
-      type: object
-      properties:
-        helm:
-          type: object
-          properties:
-            chart_ref:
-              type: string
-              description: Chart registry reference or local chart path
-            chart_version:
-              type: string
-              description: Chart version constraint
-    onosproject:
-      type: object
-      properties:
-        helm:
-          type: object
-          properties:
-            chart_ref:
-              type: string
-              description: Chart registry reference or local chart path
-            chart_version:
-              type: string
-              description: Chart version constraint
-    store:
-      type: object
-      properties:
-        lpp:
-          type: object
-          properties:
-            version:
-              type: string
-              description: Local persistent provisioner version
     monitor:
       type: object
       properties:
@@ -107,24 +56,7 @@ schema:
               description: Chart version constraint
 
 defaults:
-  roc_models: "deps/amp/roles/roc-load/templates/roc-5g-models.json"
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
-  aether_roc:
-    helm:
-      local_charts: false
-      chart_ref: oci://ghcr.io/onosproject/charts/aether-roc-umbrella
-      chart_version: 2.1.40
-  atomix:
-    helm:
-      chart_ref: atomix/atomix
-      chart_version: 1.1.2
-  onosproject:
-    helm:
-      chart_ref: oci://ghcr.io/onosproject/charts/onos-operator
-      chart_version: 0.5.6
-  store:
-    lpp:
-      version: v0.0.24
   monitor:
     helm:
       chart_ref: rancher/rancher-monitoring

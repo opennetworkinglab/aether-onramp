@@ -96,7 +96,7 @@ omec-control-plane:
             userAppApiServer:
               addr: "upf"
 
-    # Change AMF config here if rquired
+    # Change AMF config here if required
     # Most of the AMF config comes from Slice APIs but some of the config is
     # directly provided through Helm Charts
     amf:
@@ -127,11 +127,11 @@ omec-control-plane:
             # staticIpInfo:
             #   - dnn: internet
             #     imsiIpInfo:
-            #       imsi-001010100007510: "172.250.0.100"
-            #       imsi-001010100007511: "172.250.0.101"
-            #       imsi-001010100007512: "172.250.0.102"
-            #       imsi-001010100007513: "172.250.0.103"
-            #       imsi-001010100007514: "172.250.0.104"
+            #       imsi-001010100007510: "192.168.100.100"
+            #       imsi-001010100007511: "192.168.100.101"
+            #       imsi-001010100007512: "192.168.100.102"
+            #       imsi-001010100007513: "192.168.100.103"
+            #       imsi-001010100007514: "192.168.100.104"
 
     #pcf:
     #  cfgFiles:
@@ -151,12 +151,11 @@ omec-control-plane:
         webuicfg.yaml:
           configuration:
             managedByConfigPod:
-              enabled: {{ not core.standalone }}
-              syncUrl: http://roc-sdcore-adapter-v2-1.aether-roc.svc:8080/synchronize
+              enabled: false
+              syncUrl: ""
 
 # Override values for omec-sub-provision (subscriber) Helm Chart
 # https://github.com/omec-project/sdcore-helm-charts/blob/main/omec-sub-provision/values.yaml
-# ***Note: Most of these values can (and should) be set via ROC API***
 omec-sub-provision:
   enable: true
   nodeSelectors:
@@ -173,11 +172,7 @@ omec-sub-provision:
           configuration:
             provision-network-slice: {{ core.standalone | string }} # if enabled, Device Groups & Slices configure by simapp
             sub-provision-endpt:
-              addr: webui  # subscriber configuation endpoint.
-            # sub-proxy-endpt: # used if subscriber proxy is enabled in the ROC.
-            #   addr: subscriber-proxy.aether-roc.svc.cluster.local
-            #   port: 5000
-
+              addr: webui  # subscriber configuration endpoint.
             # Configure Subscriber IMSIs and their security details.
             # You can have any number of subscriber ranges
             # This block is always necessary to establish range(s) of valid IMSIs
@@ -196,7 +191,6 @@ omec-sub-provision:
               op: ""
               key: "5122250214c33e723a5dd523fc145fc0"
               sequenceNumber: "16f3b3f70fc2"
-
             # Configure Device Groups (ignored if provision-network-slice is disabled)
             device-groups:
             - name:  "user-group1"
@@ -430,7 +424,7 @@ omec-sub-provision:
                 sst: 1
               site-device-group:
               - "user-group1"   # All UEs in this device-group are assigned to this slice
-              # Applicaiton filters control what each user can access.
+              # Application filters control what each user can access.
               # Default, allow access to all applications
               application-filtering-rules:
               - rule-name: "ALLOW-ALL"
@@ -519,7 +513,7 @@ omec-user-plane:
             #http_port: "8080"
             enable_ue_ip_alloc: true    # If true, UPF allocates address from following pool
             ue_ip_pool: {{ core.upf.default_upf.ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
-          slice_rate_limit_config:       # Slice-level rate limiting (also controlled by ROC)
+          slice_rate_limit_config:       # Slice-level rate limiting
             # Uplink
             n6_bps: 10000000000          # 10Gbps
             n6_burst_bytes: 12500000     # 10ms * 10Gbps

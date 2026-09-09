@@ -20,10 +20,9 @@ git clone https://github.com/omec-project/aether-k8s.git
 ### Step-by-Step Installation
 To install the 5g-core, follow these steps:
 1. Set the configuration variables in the `vars/main.yml` file.
-   - Set the "standalone" parameter to deploy the core independently from roc.
    - Specify the "data_iface" parameter as the network interface name of the machine.
    - Set the "values_file" parameter:
-      - Use "roles/core/templates/sdcore-5g-values.yaml" for a stateful 5g core (standard and radio-oriented profiles).
+      - Use "roles/core/templates/sdcore-5g-values.yaml" for a stateful 5g core.
       - Set `core.upf.mode` to `dpdk` when you want the built-in UPF rendered with SR-IOV, hugepages, and `vfioveth` networking.
    - If the `core.ran_subnet` parameter is left empty, the core will use the subnet of "data_iface" for UPF.
 2. Add the hosts to `hosts.ini`.

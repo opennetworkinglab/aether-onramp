@@ -16,8 +16,8 @@ omec-control-plane:
 
   config:
     managedByConfigPod:
-      enabled: true
-      syncUrl: http://roc-sdcore-adapter-v2-1.aether-roc.svc:8080/synchronize
+      enabled: false
+      syncUrl: ""
     config4g:
       deploy: true
     hss:
@@ -48,9 +48,6 @@ omec-sub-provision:
             provision-network-slice: {{ core.standalone | string }}
             sub-provision-endpt:
               addr: config4g.omec.svc.cluster.local
-            # sub-proxy-endpt:
-            #   addr: subscriber-proxy.aether-roc.svc.cluster.local
-            #   port: 5000
             subscribers:
             - ueId-start: 315010999912301
               ueId-end: 315010999912303

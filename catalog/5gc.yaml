@@ -33,7 +33,7 @@ schema:
   properties:
     standalone:
       type: boolean
-      description: Run SD-Core in standalone mode instead of under ROC control
+      description: Run SD-Core in standalone mode with simapp-managed subscribers/slices instead of manual webconsole configuration
     closed_loop:
       type: boolean
       description: Enable SD-Core closed-loop control plane behavior

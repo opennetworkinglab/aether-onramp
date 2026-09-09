@@ -78,8 +78,8 @@ aether-ueransim-run: ueransim-run
 aether-ueransim-stop: ueransim-stop
 
 # Rules:
-#	amp-install: amp-roc-install amp-roc-load amp-monitor-install amp-monitor-load
-#	amp-uninstall: amp-monitor-uninstall amp-roc-uninstall
+#	amp-install: amp-monitor-install amp-monitor-load
+#	amp-uninstall: amp-monitor-uninstall
 
 #	5gc-install: 5gc-router-install 5gc-core-install
 #	5gc-uninstall: 5gc-core-uninstall 5gc-router-uninstall
@@ -103,13 +103,8 @@ aether-ueransim-stop: ueransim-stop
 #	5gc-core-reset
 
 ### Provision  AMP ####
-# amp-install: k8s-install amp-roc-install amp-roc-load amp-monitor-install amp-monitor-load
-# amp-uninstall: amp-monitor-uninstall amp-roc-uninstall k8s-uninstall
-
-### Provision and load ROC ###
-# amp-roc-install
-# amp-roc-load
-# amp-roc-uninstall
+# amp-install: k8s-install amp-monitor-install amp-monitor-load
+# amp-uninstall: amp-monitor-uninstall k8s-uninstall
 
 ### Provision and load Monitoring ###
 # amp-monitor-install
