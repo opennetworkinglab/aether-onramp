@@ -98,18 +98,17 @@ running the test. You can access that file by typing:
 $ docker exec -it gnbsim-1 cat summary.log
 ```
 
-Finally, you can bring up the Aether Management Platform (AMP) to view
+Finally, you can bring up the Aether Monitoring Platform (AMP) to view
 dashboards showing different aspects of Aether's runtime behavior. Type:
 
 ```
 $ make aether-amp-install
 ```
 
-You can access the dashboards for Aether's Runtime Control system and
-Aether's Monitoring system at the following URLs:
+You can access the dashboards for Aether's Monitoring system at the
+following URL:
 
 ```
-http://<server_ip>:31194
 http://<server_ip>:30950
 ```
 
