@@ -22,6 +22,7 @@ on:
           - "all"
           - "ubuntu-22.04"
           - "ubuntu-24.04"
+          - "ubuntu-26.04"
   push:
     branches:
       - main
@@ -65,7 +66,7 @@ jobs:
           elif event_name == "workflow_dispatch" and ubuntu_version != "all":
               matrix = {"runner_label": [ubuntu_version]}
           else:
-              matrix = {"runner_label": ["ubuntu-22.04", "ubuntu-24.04"]}
+              matrix = {"runner_label": ["ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04"]}
 
           print(f"matrix={json.dumps(matrix)}")
           PY
