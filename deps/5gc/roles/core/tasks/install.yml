@@ -320,7 +320,7 @@
         values_files:
           - /tmp/sdcore-5g-values.yaml
         wait: true
-        wait_timeout: "2m30s"
+        wait_timeout: "5m0s" # Increase wait timeout to allow for longer deployment times in systems with limited compute resources
         force: true
       when: inventory_hostname in groups['master_nodes']
 
@@ -333,18 +333,24 @@
     # pod_status in both the "empty namespace" and "API unreachable"
     # cases; `pod_status.resources | default([])` below normalises
     # both to an empty list so the loud-fail fires.
+    # label_selectors excludes app=ue: the gnbsim/UE-simulator pods that
+    # can share this namespace are not part of the sd-core release and
+    # must not be restarted or block this rescue's readiness checks
+    # (see the same exclusion in roles/core/tasks/uninstall.yml).
     - name: Get Pods Status
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Pod
         namespace: aether-5gc
+        label_selectors:
+          - app!=ue
       register: pod_status
       changed_when: false
       failed_when: false
       when: inventory_hostname in groups['master_nodes']
 
     # The restart loop below can only recover from "pods were created but
-    # some are not Running". When pod_status.resources is empty the helm
+    # some are not Ready". When pod_status.resources is empty the helm
     # deploy never produced any pods (typical when chart_ref is
     # unreachable, the cluster API is down, or kubeconfig is missing),
     # so there is nothing for the rescue to fix. Re-raise with the
@@ -370,7 +376,10 @@
         - inventory_hostname in groups['master_nodes']
         - (pod_status.resources | default([])) | length == 0
 
-    - name: restart Pods if not running
+    # A pod is only Ready when it reports phase Running, has a Ready
+    # condition with status True, and is not being terminated — phase
+    # alone can stay Running with an unready/terminating container.
+    - name: restart Pods if not Ready
       kubernetes.core.k8s:
         api_version: v1
         kind: Pod
@@ -383,8 +392,77 @@
       register: pod_restart
       when:
         - inventory_hostname in groups['master_nodes']
-        - (item.status.phase | default('')) != 'Running'
+        - (item.metadata.deletionTimestamp is not defined)
+        - ((item.status.phase | default('')) != 'Running') or
+          ((item.status.conditions | default([]) | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) == 0)
       ignore_errors: yes
-  always:
-    - pause:
-        seconds: 60
+
+    # kubernetes.core.k8s_info's own wait/wait_condition retries the list
+    # query (until it is non-empty) and then waits per-pod for the Ready
+    # condition, up to wait_timeout — no need for a manual until/retries
+    # loop or an extra collection dependency to express the Ready check.
+    - name: wait for aether-5gc pods to be Ready after restart
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: aether-5gc
+        label_selectors:
+          - app!=ue
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: 300
+        wait_sleep: 10
+      register: pod_ready_status
+      ignore_errors: yes
+      when: inventory_hostname in groups['master_nodes']
+
+    # The wait task above raises (and, via ignore_errors, only warns) as
+    # soon as any single pod times out, without populating pod_ready_status
+    # for the rest — re-query (no wait) so the checks below reflect the
+    # actual current state of every pod for accurate diagnostics.
+    - name: re-check aether-5gc pod status after wait
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: aether-5gc
+        label_selectors:
+          - app!=ue
+      register: pod_final_status
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: fail loudly when no aether-5gc pods were found after restart
+      ansible.builtin.fail:
+        msg: |-
+          No pods were found in aether-5gc after the rescue block
+          restarted them — the namespace is empty, or k8s_info could
+          not query the cluster API.
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (pod_final_status.resources | default([])) | length == 0
+
+    - name: identify aether-5gc pods that are still not Ready
+      ansible.builtin.set_fact:
+        pod_still_not_ready_names: >-
+          {{ (pod_still_not_ready_names | default([])) + ([item.metadata.name]
+             if ((item.metadata.deletionTimestamp is defined) or
+                 ((item.status.phase | default('')) != 'Running') or
+                 ((item.status.conditions | default([]) | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) == 0))
+             else []) }}
+      loop: "{{ pod_final_status.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      when: inventory_hostname in groups['master_nodes']
+
+    - name: fail loudly when pods are still not Ready after restart
+      ansible.builtin.fail:
+        msg: >-
+          The following aether-5gc pods did not become Ready after being
+          restarted by the rescue block:
+          {{ pod_still_not_ready_names | default([]) | join(', ') }}.
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (pod_still_not_ready_names | default([]) | length) > 0
