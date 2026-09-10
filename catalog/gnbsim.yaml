@@ -82,7 +82,7 @@ schema:
 defaults:
   docker:
     container:
-      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.3.0
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.3.1
       prefix: gnbsim
       count: 1
     network:
