@@ -70,7 +70,15 @@
   ansible.builtin.set_fact:
     server_dpdk_enabled: "{{ (server_dpdk.enabled | default((ocudu.dpdk | default({})).enabled | default(false))) | bool }}"
     isolated_cpus: "{{ server_dpdk.isolated_cpus | default(((ocudu.dpdk | default({})).isolated_cpus | default('3-23')), true) }}"
+    cpu_pinning: "{{ server_dpdk.cpu_pinning | default((ocudu.dpdk | default({})).cpu_pinning | default(omit)) }}"
   when: inventory_hostname in groups['ocudu_nodes']
+
+- name: compute pinned cpuset when cpu_pinning is configured
+  ansible.builtin.set_fact:
+    pinned_cpuset: "{{ cpu_pinning.ofh_timing_cpu }}-{{ cpu_pinning.du_high_cpus.split('-')[-1] }}"
+  when:
+    - inventory_hostname in groups['ocudu_nodes']
+    - cpu_pinning is defined and cpu_pinning.ofh_timing_cpu is defined
 
 - name: discover VF identifiers for DPDK gNB start
   ansible.builtin.include_role:
@@ -105,7 +113,7 @@
       - /dev/bus/usb:/dev/bus/usb
     devices:
       - /dev/vfio:/dev/vfio
-    cpuset_cpus: "{{ isolated_cpus if server_dpdk_enabled else omit }}"
+    cpuset_cpus: "{{ pinned_cpuset if (pinned_cpuset is defined) else (isolated_cpus if server_dpdk_enabled else omit) }}"
     capabilities:
       - SYS_NICE
       - IPC_LOCK

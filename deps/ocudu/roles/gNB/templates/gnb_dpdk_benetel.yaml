@@ -68,7 +68,22 @@ cell_cfg:
     p0_nominal_with_grant: -80
 
 hal:
+{% if cpu_pinning is defined and cpu_pinning.ofh_timing_cpu is defined %}
+  eal_args: "--lcores 0@{{ cpu_pinning.ofh_timing_cpu }},1@{{ cpu_pinning.ofh_txrx_cpu | default(cpu_pinning.ofh_timing_cpu | int + 1) }}"
+
+expert_execution:
+  threads:
+    ofh:
+      enable_busy_waiting: {{ cpu_pinning.enable_busy_waiting | default(true) | bool | lower }}
+  affinities:
+    ofh:
+      timing_cpu: {{ cpu_pinning.ofh_timing_cpu }}
+      txrx_cpus: "{{ cpu_pinning.ofh_txrx_cpu | default(cpu_pinning.ofh_timing_cpu | int + 1) }}"
+    main_pool_cpus: "{{ cpu_pinning.du_high_cpus }}"
+    main_pool_pinning: {{ cpu_pinning.du_high_pinning | default('round-robin') }}
+{% else %}
   eal_args: "--lcores (0-1)@({{ isolated_cpus }})"
+{% endif %}
 
 log:
   filename: stdout                  # Path of the log file.

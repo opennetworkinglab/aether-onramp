@@ -63,6 +63,12 @@ ocudu:
         du_mac_addr: "00:33:22:33:00:11"
         ru_mac_addr: "70:b3:d5:e1:5e:7e" # Benetel RU fronthaul port MAC
         isolated_cpus: "3-15"            # CPU range to isolate for DPDK
+        # cpu_pinning:                   # Optional: pin OFH/DU-High threads to specific cores.
+        #   ofh_timing_cpu: 3            # Dedicated core for OFH timing (busy-wait, highest RT priority)
+        #   ofh_txrx_cpu: 4              # Dedicated core for OFH I/O (defaults to timing_cpu + 1)
+        #   du_high_cpus: "5-12"         # Core range for DU-High main_pool threads
+        #   enable_busy_waiting: true    # OFH busy-wait for sub-microsecond wake accuracy (default: true)
+        #   du_high_pinning: round-robin # DU-High thread-to-core assignment (default: round-robin)
 
 amp:
   monitor_dashboard: "deps/amp/roles/monitor-load/templates/5g-monitoring"
