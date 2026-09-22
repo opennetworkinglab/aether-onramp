@@ -15,19 +15,15 @@ blueprints include:
    [here](https://docs.aetherproject.org/onramp/gnbsim.html).
 
 * `main-gNB.yml`: Configures the Core to work with an external 5G radio (gNB), with
-   the Core running independent of AMP. (Change variable `standalone` to false to have
-   the Core running under AMP's control.) Details documented
+   the Core running independent of AMP. Details documented
    [here](https://docs.aetherproject.org/onramp/gnb.html).
 
 * `main-eNB.yml`: Configures the Core to work with an external 4G radio (eNB), with
-   the Core running independent of AMP. (Change variable `standalone` to false to have
-   the Core running under AMP's control.) Details documented
+   the Core running independent of AMP. Details documented
    [here](https://docs.aetherproject.org/onramp/gnb.html#support-for-enbs).
 
 * `main-upf.yml`: Configures the Core with two UPFs and programs AMP
-   with two slices, each associated with a distinct UPF. Depends on variable
-   `standalone` being set to false so the Core runs under AMP's control.
-   Details documented
+   with two slices, each associated with a distinct UPF. Details documented
    [here](https://docs.aetherproject.org/onramp/blueprints.html#multiple-upfs).
 
 * `main-sdran.yml`: Configures the Core and SD-RAN in tandem, with

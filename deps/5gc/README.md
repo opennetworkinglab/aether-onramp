@@ -20,7 +20,6 @@ git clone https://github.com/omec-project/aether-k8s.git
 ### Step-by-Step Installation
 To install the 5g-core, follow these steps:
 1. Set the configuration variables in the `vars/main.yml` file.
-   - Set the "standalone" parameter to run SD-Core in standalone mode with simapp-managed subscribers/slices; set to `false` to manage them manually via the SD-Core webconsole instead.
    - Specify the "data_iface" parameter as the network interface name of the machine.
    - Set the "values_file" parameter:
       - Use "roles/core/templates/sdcore-5g-values.yaml" for a stateful 5g core.
