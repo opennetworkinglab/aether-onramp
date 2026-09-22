@@ -72,6 +72,20 @@
     isolated_cpus: "{{ server_dpdk.isolated_cpus | default(((ocudu.dpdk | default({})).isolated_cpus | default('3-23')), true) }}"
   when: inventory_hostname in groups['ocudu_nodes']
 
+- name: compute OFH and DU-High CPU pinning from isolated range
+  ansible.builtin.set_fact:
+    ofh_timing_cpu: "{{ cpu_pin_override.ofh_timing_cpu | default(isolated_cpus.split('-')[0]) }}"
+    ofh_txrx_cpu: "{{ cpu_pin_override.ofh_txrx_cpu | default(isolated_cpus.split('-')[0] | int + 1) }}"
+    du_high_cpus: "{{ cpu_pin_override.du_high_cpus | default((isolated_cpus.split('-')[0] | int + 2) ~ '-' ~ isolated_cpus.split('-')[-1]) }}"
+    pinned_cpuset: "{{ isolated_cpus }}"
+  vars:
+    cpu_pin_override: "{{ server_dpdk.cpu_pinning | default((ocudu.dpdk | default({})).cpu_pinning | default({})) }}"
+  when:
+    - inventory_hostname in groups['ocudu_nodes']
+    - server_dpdk_enabled
+    - (isolated_cpus.split('-') | length) == 2
+    - (isolated_cpus.split('-')[-1] | int) - (isolated_cpus.split('-')[0] | int) >= 3
+
 - name: discover VF identifiers for DPDK gNB start
   ansible.builtin.include_role:
     name: dpdk
