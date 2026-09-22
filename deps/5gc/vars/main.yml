@@ -4,7 +4,6 @@ airgapped:
   enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
 
 core:
-  standalone: true
   # Name of the data-plane interface on the managed node (e.g. eth0,
   # enp5s0). Leave empty to auto-derive from the default-route
   # interface. Any explicit value is honoured as-is. The legacy
@@ -17,7 +16,7 @@ core:
   helm:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 4.2.4 # Ignored if using local charts (local_charts: true)
+    chart_version: 4.2.5 # Ignored if using local charts (local_charts: true)
 
   upf:
     access_subnet: "192.168.252.1/24"  # access subnet & gateway

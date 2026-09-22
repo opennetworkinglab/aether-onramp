@@ -31,9 +31,6 @@ probe:
 schema:
   type: object
   properties:
-    standalone:
-      type: boolean
-      description: Run SD-Core in standalone mode with simapp-managed subscribers/slices instead of manual webconsole configuration
     closed_loop:
       type: boolean
       description: Enable SD-Core closed-loop control plane behavior
@@ -135,13 +132,12 @@ schema:
           description: AMF N2 IP address
 
 defaults:
-  standalone: true
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
   ran_subnet: ""
   helm:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 4.2.4
+    chart_version: 4.2.5
   upf:
     access_subnet: "192.168.252.1/24"
     core_subnet: "192.168.250.1/24"

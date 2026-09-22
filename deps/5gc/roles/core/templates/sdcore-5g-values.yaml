@@ -146,14 +146,6 @@ omec-control-plane:
             nfProfileExpiryEnable: true   # If enabled, remove NF profile if no keepalive received
             nfKeepAliveTime: 60           # default timeout for NF profiles
 
-    webui:
-      cfgFiles:
-        webuicfg.yaml:
-          configuration:
-            managedByConfigPod:
-              enabled: false
-              syncUrl: ""
-
 # Override values for omec-sub-provision (subscriber) Helm Chart
 # https://github.com/omec-project/sdcore-helm-charts/blob/main/omec-sub-provision/values.yaml
 omec-sub-provision:
@@ -170,7 +162,6 @@ omec-sub-provision:
       cfgFiles:
         simapp.yaml:
           configuration:
-            provision-network-slice: {{ core.standalone | string }} # if enabled, Device Groups & Slices configure by simapp
             sub-provision-endpt:
               addr: webui  # subscriber configuration endpoint.
             # Configure Subscriber IMSIs and their security details.
@@ -191,7 +182,7 @@ omec-sub-provision:
               op: ""
               key: "5122250214c33e723a5dd523fc145fc0"
               sequenceNumber: "16f3b3f70fc2"
-            # Configure Device Groups (ignored if provision-network-slice is disabled)
+            # Configure Device Groups
             device-groups:
             - name:  "user-group1"
               imsis:
@@ -416,7 +407,7 @@ omec-sub-provision:
             # UPF allocates IP address if there is only 1 device-group
             # SMF allocates IP address if there is >1 device-group
 
-            # Configure Network Slices (ignored if provision-network-slice is disabled)
+            # Configure Network Slices
             network-slices:
             - name: "default"      # can be any unique slice name
               slice-id:            # must match with slice configured in gNB, UE
