@@ -25,3 +25,48 @@
     - helm_version.rc != 0
   tags:
     - always
+
+- name: check installed helm plugins
+  ansible.builtin.command:
+    argv:
+      - helm
+      - plugin
+      - list
+  register: helm_plugin_list
+  changed_when: false
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  tags:
+    - always
+
+- name: install helm-diff plugin for accurate idempotency checks
+  ansible.builtin.command:
+    argv:
+      - helm
+      - plugin
+      - install
+      - https://github.com/databus23/helm-diff
+      - --version
+      - "{{ preflight_helm_diff_plugin_version }}"
+  register: helm_diff_plugin_install
+  changed_when: "'Installed plugin' in helm_diff_plugin_install.stdout"
+  failed_when: false
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - "(helm_plugin_list.stdout | default('')) is not regex('(?m)^\\s*diff\\s')"
+  tags:
+    - always
+
+- name: warn when helm-diff plugin could not be installed
+  ansible.builtin.debug:
+    msg: >-
+      Could not install the helm-diff plugin; kubernetes.core.helm will fall
+      back to its default (less reliable) idempotency check. stderr:
+      {{ helm_diff_plugin_install.stderr | default('') | trim }}
+  when:
+    - helm_diff_plugin_install is defined
+    - helm_diff_plugin_install.rc is defined
+    - helm_diff_plugin_install.rc != 0
+  tags:
+    - always

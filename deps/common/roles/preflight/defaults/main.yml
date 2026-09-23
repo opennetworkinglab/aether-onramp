@@ -22,3 +22,8 @@ preflight_probe_image: "ghcr.io/omec-project/pod-init:rel-1.2.3"
 # is useful in dev/test environments where the threshold is intentionally
 # violated. Default-on so production deployments fail loudly by default.
 preflight_enabled: true
+
+# Pinned release tag of https://github.com/databus23/helm-diff to install on
+# master nodes. Pinning avoids silently pulling in whatever is on the
+# upstream default branch; bump deliberately after reviewing the release.
+preflight_helm_diff_plugin_version: "v3.15.13"
