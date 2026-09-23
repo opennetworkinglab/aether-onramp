@@ -46,13 +46,15 @@
       - plugin
       - install
       - https://github.com/databus23/helm-diff
+      - --version
+      - "{{ preflight_helm_diff_plugin_version }}"
   register: helm_diff_plugin_install
   changed_when: "'Installed plugin' in helm_diff_plugin_install.stdout"
   failed_when: false
   when:
     - inventory_hostname in groups['master_nodes']
     - not (airgapped.enabled | default(false) | bool)
-    - "'diff' not in (helm_plugin_list.stdout | default(''))"
+    - "(helm_plugin_list.stdout | default('')) is not regex('(?m)^\\s*diff\\s')"
   tags:
     - always
 
