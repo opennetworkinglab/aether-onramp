@@ -30,6 +30,20 @@
   changed_when: false
   become: true
 
+- name: check if DPDK boot parameters are already active
+  ansible.builtin.shell: |
+    grep -qE '(^| )isolcpus=[^[:space:]]' /proc/cmdline && \
+    grep -qE '(^| )rcu_nocbs=[^[:space:]]' /proc/cmdline && \
+    grep -qE '(^| )nohz_full=[^[:space:]]' /proc/cmdline && \
+    grep -qE '(^| )hugepagesz=1G( |$)' /proc/cmdline && \
+    grep -qE '(^| )hugepages=[1-9][0-9]*( |$)' /proc/cmdline && \
+    echo yes || echo no
+  args:
+    executable: /bin/bash
+  register: dpdk_boot_params_active
+  changed_when: false
+  become: true
+
 - name: install realtime kernel
   ansible.builtin.apt:
     name: "{{ (ocudu.dpdk | default({})).rt_kernel_pkg | default('linux-realtime', true) }}"
@@ -75,6 +89,7 @@
   register: grub_cmdline_result
   changed_when: grub_cmdline_result.stdout | trim == "changed"
   become: true
+  when: not (kernel_rt_check.stdout | trim == 'rt' and dpdk_boot_params_active.stdout | trim == 'yes')
   vars:
     server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
     server_dpdk: "{{ ocudu.servers[groups['ocudu_nodes'].index(inventory_hostname)].dpdk | default({}) }}"
@@ -84,13 +99,16 @@
 - name: update GRUB after cmdline change
   ansible.builtin.command: update-grub
   become: true
-  when: grub_cmdline_result.changed
+  when: grub_cmdline_result is defined and grub_cmdline_result.changed
 
 - name: reboot early to apply realtime kernel and boot-time DPDK settings
   ansible.builtin.reboot:
     reboot_timeout: "{{ dpdk_reboot_timeout | default(300) }}"
   become: true
-  when: (rt_kernel_installed is defined and rt_kernel_installed is changed) or grub_cmdline_result.changed
+  when: >-
+    not (kernel_rt_check.stdout | trim == 'rt' and dpdk_boot_params_active.stdout | trim == 'yes')
+    and ((rt_kernel_installed is defined and rt_kernel_installed is changed) or
+         (grub_cmdline_result is defined and grub_cmdline_result.changed))
 
 - name: re-check running kernel after reboot-sensitive DPDK changes
   ansible.builtin.shell: |
