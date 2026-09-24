@@ -68,7 +68,22 @@ cell_cfg:
     p0_nominal_with_grant: -80
 
 hal:
+{% if ofh_timing_cpu is defined %}
+  eal_args: "--lcores 0@{{ ofh_timing_cpu }},1@{{ ofh_txrx_cpu }}"
+
+expert_execution:
+  threads:
+    ofh:
+      enable_busy_waiting: true
+  affinities:
+    ofh:
+      timing_cpu: {{ ofh_timing_cpu }}
+      txrx_cpus: "{{ ofh_txrx_cpu }}"
+    main_pool_cpus: "{{ du_high_cpus }}"
+    main_pool_pinning: round-robin
+{% else %}
   eal_args: "--lcores (0-1)@({{ isolated_cpus }})"
+{% endif %}
 
 log:
   filename: stdout                  # Path of the log file.
