@@ -2,7 +2,7 @@
 gnbsim:
   docker:
     container:
-      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.3.1
+      image: ghcr.io/omec-project/5gc-gnbsim:rel-2.3.2
       prefix: gnbsim
       count: 2
     network:

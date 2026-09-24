@@ -65,7 +65,7 @@ schema:
 
 defaults:
   docker:
-    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.2.0
+    image: ghcr.io/omec-project/5gc-n3iwf:rel-1.3.2
     network:
       name: host
   servers:
