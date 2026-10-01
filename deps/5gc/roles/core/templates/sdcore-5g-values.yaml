@@ -156,7 +156,8 @@ omec-sub-provision:
   #   repository: ""
   #   tags:
   #     simapp: #add simapp override image
-
+  resources:
+    enabled: false
   config:
     simapp:
       cfgFiles:
@@ -465,7 +466,7 @@ omec-user-plane:
       routes:
         - to: {{ ansible_default_ipv4.address }}
           via: 169.254.1.1
-      enb:
+      ran:
         subnet: {{ ran_subnet }} # Subnet for the gNB network
       access:
         ipam: static
