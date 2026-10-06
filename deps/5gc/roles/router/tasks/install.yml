@@ -233,7 +233,7 @@
         data_iface_networkctl_status.stdout_lines
         | default([])
         | select('match', '^\s*Network File:\s+.*\.network\s*$')
-        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\\1')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
         | list
         | first
         | default('')
@@ -350,7 +350,7 @@
           (core.data_iface in (data_iface_network_filename | default('') | trim))
           or (
             (data_iface_network_file_content.content | default('') | b64decode)
-            is regex('(?ms)^\\[Match\\][^[]*^Name\\s*=\\s*{{ core.data_iface | regex_escape }}\\s*$')
+            is regex('(?ms)^\[Match\][^[]*^Name\s*=\s*' ~ (core.data_iface | regex_escape) ~ '\s*$')
           )
         )
       }}

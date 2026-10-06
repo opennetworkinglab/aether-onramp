@@ -257,7 +257,7 @@
         data_iface_networkctl_status.stdout_lines
         | default([])
         | select('match', '^\s*Network File:\s+.*\.network\s*$')
-        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\\1')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
         | list
         | first
         | default('')
@@ -450,7 +450,7 @@
     saved_net_ipv4_ip_forward: >-
       {{
         (router_sysctl_backup_content.content | default('') | b64decode)
-        | regex_findall('(?m)^net\\.ipv4\\.ip_forward=(.+)$')
+        | regex_findall('(?m)^net\.ipv4\.ip_forward=(.+)$')
         | first
         | default('', true)
       }}
