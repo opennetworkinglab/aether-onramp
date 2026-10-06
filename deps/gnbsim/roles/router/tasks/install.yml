@@ -267,7 +267,7 @@
         data_iface_networkctl_status.stdout_lines
         | default([])
         | select('match', '^\s*Network File:\s+.*\.network\s*$')
-        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\\1')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
         | list
         | first
         | default('')
@@ -380,12 +380,12 @@
     data_iface_networkd_managed: >-
       {{
         systemd_networkd_active
-        and (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
+        and (data_iface_network_filename | default('') | trim) is match('.*\.network$')
         and (
-          (data_iface_network_filename | default('') | trim) is match('(?:[0-9]+-)?{{ gnbsim.router.data_iface | regex_escape }}\\.network$')
+          (data_iface_network_filename | default('') | trim) is match('(?:[0-9]+-)?' ~ (gnbsim.router.data_iface | regex_escape) ~ '\.network$')
           or (
             (((data_iface_network_file_content | default({})).content | default('')) | b64decode)
-            is regex('(?ms)^\\[Match\\][^[]*^Name\\s*=\\s*{{ gnbsim.router.data_iface | regex_escape }}\\s*$')
+            is regex('(?ms)^\[Match\][^[]*^Name\s*=\s*' ~ (gnbsim.router.data_iface | regex_escape) ~ '\s*$')
           )
         )
       }}
