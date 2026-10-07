@@ -38,6 +38,13 @@ find the following.
    default version included with OnRamp is simplified to run
    everything on a single server (the one you've cloned the
    repo onto). Example multi-node inventories are commented out.
+   To keep connection passwords out of ``hosts.ini``, OnRamp also
+   ships an optional Ansible Vault example at
+   ``group_vars/all/vault.yml.example``; follow the instructions in
+   that file to supply credentials via encrypted ``vault_password``
+   and ``vault_sudo_password`` variables. This step is optional and
+   disabled by default, so the default single-node setup works
+   without it.
 
 OnRamp is officially supported on Ubuntu 22.04 and Ubuntu 24.04.
 Install the prerequisites, including Ansible, from the Ubuntu package

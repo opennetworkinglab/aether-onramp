@@ -1,0 +1,25 @@
+---
+# Example Ansible Vault file for connection credentials.
+#
+# These variables are referenced from hosts.ini (see the commented
+# "vault-based access" example). Ansible does NOT auto-load this file:
+# the ".example" suffix keeps it out of the group_vars/all/ variables that
+# Ansible loads automatically (only .yml/.yaml/.json files are loaded), so
+# it is safe to keep this plaintext template in the repository.
+#
+# To enable vault-based credentials:
+#
+#   1. Copy this file to group_vars/all/vault.yml:
+#        cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+#   2. Replace the placeholder values below with your real credentials.
+#   3. Encrypt the file with your own vault password:
+#        ansible-vault encrypt group_vars/all/vault.yml
+#   4. Tell Ansible where to find the matching vault password, either by
+#      uncommenting "vault_password_file" in ansible.cfg (and creating that
+#      file), or by passing --ask-vault-pass on the command line.
+#
+# group_vars/all/vault.yml is git-ignored so your encrypted secrets are
+# never committed.
+
+vault_password: "<ssh-password>"
+vault_sudo_password: "<sudo-password>"
