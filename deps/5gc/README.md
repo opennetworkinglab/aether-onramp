@@ -33,6 +33,8 @@ To install the 5g-core, follow these steps:
    - It creates networking interfaces for UPF, such as access/core, using `5gc-router-install`.
    - Finally, it installs the 5g core using the values specified in `5gc-core-install`.
    - When `core.upf.mode` is set to `dpdk`, the core and additional UPF install roles validate that `core.data_iface` has at least two VFs before deploying the UPF workload.
+      - If `core.upf.access_resource_name` and `core.upf.core_resource_name` are different, the current chart maps access/core to `vf 0` and `vf 1`, so those two VFs must have non-zero MAC addresses.
+      - If `core.upf.access_resource_name` and `core.upf.core_resource_name` are the same, access/core share one SR-IOV resource pool and any two VFs with non-zero MAC addresses are acceptable.
      - The installation process may take up to 3 minutes.
 
 #### One-Step Installation

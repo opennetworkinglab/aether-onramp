@@ -70,6 +70,12 @@ schema:
           type: string
           description: UPF operating mode
           enum: [af_packet, dpdk]
+        access_resource_name:
+          type: string
+          description: SR-IOV resource pool name for the access (N3) interface in DPDK mode
+        core_resource_name:
+          type: string
+          description: SR-IOV resource pool name for the core (N6) interface in DPDK mode
         multihop_gnb:
           type: boolean
           description: When true, the access subnet shares data_iface instead of using a separate RAN-facing interface
@@ -142,5 +148,7 @@ defaults:
     access_subnet: "192.168.252.1/24"
     core_subnet: "192.168.250.1/24"
     mode: af_packet
+    access_resource_name: "intel.com/intel_sriov_vfio_access"
+    core_resource_name: "intel.com/intel_sriov_vfio_core"
     multihop_gnb: false
 
