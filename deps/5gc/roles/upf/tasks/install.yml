@@ -48,54 +48,14 @@
       Run the k8s provisioning flow first, or install 5GC core with a valid
       kubeconfig_source so the cluster context is bootstrapped.
 
-- name: check configured VF resources for additional UPFs
-  block:
-    - name: Get number of configured VFs for interface {{ core.data_iface }}
-      command:
-        argv:
-          - ip
-          - -d
-          - link
-          - show
-          - "{{ core.data_iface }}"
-      register: vf_status
-      changed_when: false
-      failed_when: false
-
-    - debug:
-         var=vf_status.stdout
-
-    - name: verify the required VF resources are configured on {{ core.data_iface }}
-      ansible.builtin.assert:
-        that:
-          - (vf_status.stdout | regex_findall('(?m)^\s+vf\s+\d+') | length) >= 2
-          - (vf_status.stdout | regex_findall('(?mi)^\s*vf\s+\d+\s+link/ether\s+(?!00:00:00:00:00:00)[0-9a-f:]{17}') | length) >= 2
-          - >-
-            ((core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access'))
-            == (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')))
-            or
-            (
-              ((vf_status.stdout | regex_search('(?mi)^\s*vf\s+0\s+link/ether\s+(?!00:00:00:00:00:00)[0-9a-f:]{17}')) is not none)
-              and
-              ((vf_status.stdout | regex_search('(?mi)^\s*vf\s+1\s+link/ether\s+(?!00:00:00:00:00:00)[0-9a-f:]{17}')) is not none)
-            )
-        fail_msg: >-
-          DPDK mode requires at least two VFs on {{ core.data_iface | default('') }}, and at
-          least two of those VFs must have non-zero MAC addresses. {% if
-          (core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access')) !=
-          (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')) %}
-          Because access and core use different SR-IOV resource pools
-          ({{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') }}
-          and {{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') }}),
-          the current chart maps them to vf 0 and vf 1 specifically, so both of
-          those VFs must have non-zero MAC addresses. {% else %}Because access
-          and core share the same SR-IOV resource pool
-          ({{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') }}),
-          any two VFs with non-zero MAC addresses are acceptable. {% endif %}
-          Current VF state from 'ip -d link show {{ core.data_iface | default('') }}' does not
-          satisfy those requirements.
-
-  when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"
+# Validate SR-IOV UPF resource pools and VF MAC addresses for the additional
+# UPFs. Shared with the built-in UPF install path (5gc/core) via the
+# preflight role so both paths accept identical configuration and cannot
+# drift. The task file is internally gated on DPDK mode and master_nodes.
+- name: validate SR-IOV UPF resource pools for additional UPFs
+  import_role:
+    name: preflight
+    tasks_from: sriov_upf_pools.yml
 
 - name: find {{ core.data_iface }}'s subnet for RAN
   command:
