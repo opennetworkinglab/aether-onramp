@@ -70,6 +70,24 @@ schema:
           type: string
           description: UPF operating mode
           enum: [af_packet, dpdk]
+        access_resource_name:
+          type: string
+          description: SR-IOV resource pool name for the access (N3) interface in DPDK mode
+          # Fully-qualified Kubernetes extended resource name 'prefix/name':
+          # prefix is a DNS-1123 subdomain (1-244 chars, neither under
+          # kubernetes.io nor starting with the reserved 'requests.'), name
+          # is a qualified name (1-63 chars). The 244 bound is 253 (DNS-1123
+          # subdomain max) minus len('requests.'), which IsExtendedResourceName
+          # prepends before validating. The length bounds are encoded in the
+          # pattern so this matches the install-time preflight exactly; no
+          # separate maxLength is needed.
+          pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+        core_resource_name:
+          type: string
+          description: SR-IOV resource pool name for the core (N6) interface in DPDK mode
+          # See access_resource_name: same fully-qualified extended
+          # resource-name constraint, with length bounds encoded in the pattern.
+          pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
         multihop_gnb:
           type: boolean
           description: When true, the access subnet shares data_iface instead of using a separate RAN-facing interface
@@ -142,5 +160,7 @@ defaults:
     access_subnet: "192.168.252.1/24"
     core_subnet: "192.168.250.1/24"
     mode: af_packet
+    access_resource_name: "intel.com/intel_sriov_vfio_access"
+    core_resource_name: "intel.com/intel_sriov_vfio_core"
     multihop_gnb: false
 

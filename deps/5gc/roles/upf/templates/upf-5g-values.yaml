@@ -30,7 +30,7 @@ config:
       ipam: static
       cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
 {% if core.upf.mode == 'dpdk' %}
-      resourceName: "intel.com/intel_sriov_vfio_access"
+      resourceName: {{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') | to_json }}
 {% endif %}
       iface: {{ core.data_iface }}
       gateway: {{ access_gw }}
@@ -39,7 +39,7 @@ config:
       ipam: static
       cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
 {% if core.upf.mode == 'dpdk' %}
-      resourceName: "intel.com/intel_sriov_vfio_core"
+      resourceName: {{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') | to_json }}
 {% endif %}
       iface: {{ core.data_iface }}
       gateway: {{ core_gw }}

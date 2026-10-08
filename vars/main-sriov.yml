@@ -36,6 +36,8 @@ core:
     # If mode set to 'dpdk':
     #    - make sure at least two VF devices are created out of 'data_iface'
     #      and these devices are attached to vfio-pci driver.
+    # access_resource_name: "intel.com/intel_sriov_vfio_access"  # SR-IOV resource pool for the access (N3) interface; defaults to "intel.com/intel_sriov_vfio_access"
+    # core_resource_name: "intel.com/intel_sriov_vfio_core"      # SR-IOV resource pool for the core (N6) interface; defaults to "intel.com/intel_sriov_vfio_core"
     multihop_gnb: false      # set to true to override default N3 subnet
     default_upf:
       ip:

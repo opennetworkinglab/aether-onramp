@@ -1,0 +1,195 @@
+---
+
+# Shared SR-IOV UPF resource-pool preflight for DPDK mode. Imported by both
+# the 5gc/core (built-in UPF) and 5gc/upf (additional UPFs) roles so the
+# built-in and additional-UPF install paths validate identical configuration
+# and cannot drift. Operates on the `core.upf.*` and `core.data_iface` vars,
+# which both roles populate.
+- name: validate SR-IOV UPF resource pools and VFs
+  block:
+    # SR-IOV pool names are passed verbatim into the Helm values as
+    # Kubernetes extended-resource keys. The pinned chart splits each
+    # name on a single '/' into prefix/name, so an unqualified value
+    # (e.g. 'vfio'), an empty value, or one with extra '/' separators
+    # would render an invalid key or request a resource that is never
+    # registered, leaving the UPF pod unschedulable. Validate the
+    # fully-qualified extended-resource-name syntax here before render.
+    - name: validate configured SR-IOV resource pool names
+      ansible.builtin.assert:
+        that:
+          - (item.split('/') | length) == 2
+          - not (item is search('kubernetes\.io/'))
+          - not (item is match('^requests\.'))
+          - (item.split('/') | first | length) >= 1
+          # Kubernetes IsExtendedResourceName validates 'requests.' + name, so
+          # the prefix is checked as 'requests.<prefix>' against the DNS-1123
+          # subdomain limit (253). That leaves 253 - len('requests.') = 244
+          # for the prefix itself.
+          - (item.split('/') | first | length) <= 244
+          - (item.split('/') | first) is match('^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')
+          - (item.split('/') | last | length) >= 1
+          - (item.split('/') | last | length) <= 63
+          - (item.split('/') | last) is match('^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$')
+        fail_msg: >-
+          Invalid SR-IOV resource pool name {{ item | to_json }}. It must be a
+          fully qualified Kubernetes extended resource name of the form
+          'prefix/name' (e.g. 'intel.com/intel_sriov_vfio_access'), where the
+          prefix is a DNS-1123 subdomain (1-244 chars, neither under
+          'kubernetes.io' nor starting with the reserved 'requests.') and
+          the name is a qualified name (1-63 chars: alphanumerics plus '-',
+          '_', '.', starting and ending with an alphanumeric). Fix
+          core.upf.access_resource_name / core.upf.core_resource_name in
+          vars/main.yml.
+      loop:
+        - "{{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') }}"
+        - "{{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') }}"
+      loop_control:
+        label: "{{ item }}"
+
+    # The pinned bess-upf chart derives the per-pool device-plugin env var
+    # by replacing '.', '/' and '-' with '_' and upper-casing the name
+    # (PCIDEVICE_<NORMALIZED>), then only appends the core pool's devices
+    # when its normalized name differs from access's. Two *distinct* names
+    # that normalize to the same token (e.g. 'example.com/foo-bar' vs
+    # 'example.com/foo_bar', or names differing only by case) therefore
+    # collide: BESS would start with the access pool's devices only. Reject
+    # that here — require the full names to be identical (intentional shared
+    # pool) or their chart-normalized forms to differ.
+    - name: reject SR-IOV resource pool names that collide after chart normalization
+      ansible.builtin.assert:
+        that:
+          - >-
+            ((core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access'))
+             == (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')))
+            or
+            ((core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') | replace('.', '_') | replace('/', '_') | replace('-', '_') | upper)
+             != (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') | replace('.', '_') | replace('/', '_') | replace('-', '_') | upper))
+        fail_msg: >-
+          SR-IOV access and core resource pool names
+          ({{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') | to_json }}
+          and {{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') | to_json }})
+          are different but normalize to the same bess-upf device-plugin
+          environment variable 'PCIDEVICE_{{ core.upf.access_resource_name
+          | default('intel.com/intel_sriov_vfio_access') | replace('.', '_')
+          | replace('/', '_') | replace('-', '_') | upper }}' (the chart
+          replaces '.', '/' and '-' with '_' and upper-cases the name). The
+          chart would then request two pools but skip the core pool's
+          devices at BESS startup. Use identical names to share a single
+          pool, or names whose normalized forms differ, in
+          core.upf.access_resource_name / core.upf.core_resource_name.
+
+    - name: Get number of configured VFs for interface {{ core.data_iface }}
+      command:
+        argv:
+          - ip
+          - -d
+          - link
+          - show
+          - "{{ core.data_iface }}"
+      register: vf_status
+      changed_when: false
+      failed_when: false
+
+    - debug:
+        var: vf_status.stdout_lines
+
+    # The chart's sriov-device-plugin selector only exposes VFs that are
+    # bound to the 'vfio-pci' driver ("drivers": ["vfio-pci"] in the pinned
+    # bess-upf sriov-device-plugin-config template). VFs bound to any other
+    # driver can never be allocated to the UPF pod, so MAC checks must be
+    # restricted to vfio-pci-bound VFs: otherwise a non-zero-MAC VF on the
+    # wrong driver would wrongly pass (leaving the pod unschedulable) and a
+    # zero-MAC VF on the wrong driver would wrongly fail (it can never be
+    # allocated). Discover each VF's bound driver from sysfs; virtfn<N> maps
+    # to 'vf <N>' in the 'ip link' output.
+    - name: discover each VF's bound driver on {{ core.data_iface }}
+      ansible.builtin.shell: |
+        set -u
+        for d in /sys/class/net/{{ core.data_iface }}/device/virtfn*; do
+          [ -e "$d" ] || continue
+          idx=${d##*/virtfn}
+          link=$(readlink "$d/driver" 2>/dev/null || true)
+          drv=${link##*/}
+          [ -n "$drv" ] || drv=none
+          echo "$idx $drv"
+        done
+      args:
+        executable: /bin/bash
+      register: vf_driver_lines
+      changed_when: false
+      failed_when: false
+
+    - debug:
+        var: vf_driver_lines.stdout_lines
+
+    # Build the set of VF indices eligible for allocation (bound to
+    # vfio-pci) and the set with non-zero MAC addresses, so the assertions
+    # below reason only over VFs the chart can actually hand to the UPF.
+    - name: compute vfio-pci-eligible and non-zero-MAC VF sets for {{ core.data_iface }}
+      ansible.builtin.set_fact:
+        vf_eligible_indices: >-
+          {{ vf_driver_lines.stdout_lines
+             | select('match', '^[0-9]+ vfio-pci$')
+             | map('regex_replace', ' .*$', '')
+             | map('int') | list }}
+        vf_nonzero_mac_indices: >-
+          {{ vf_status.stdout
+             | regex_findall('(?mi)^\s*vf\s+(\d+)\s+link/ether\s+(?!00:00:00:00:00:00)[0-9a-f:]{17}')
+             | map('int') | list }}
+
+    # VF eligibility depends on how the chart selects devices (verified
+    # against the pinned bess-upf sriov-device-plugin-config template):
+    #   - Different access/core pools: each pool's selector pins a single
+    #     VF index ('<iface>#0' for access, '<iface>#1' for core), so only
+    #     vf 0 and vf 1 can ever be allocated. Both must be bound to
+    #     vfio-pci and have non-zero MAC addresses.
+    #   - Same (shared) pool: the selector is the bare PF ('<iface>'), which
+    #     exposes *every* vfio-pci VF on the interface. Kubernetes may hand
+    #     the UPF any of them, so a single eligible zero-MAC VF anywhere on
+    #     the interface can be allocated and leave vfioveth deriving a zero
+    #     MAC. Require at least two eligible VFs and that *all* eligible
+    #     (vfio-pci-bound) VFs have non-zero MAC addresses.
+    - name: verify the required VF resources are configured on {{ core.data_iface }}
+      ansible.builtin.assert:
+        that:
+          - (vf_eligible_indices | length) >= 2
+          - >-
+            (
+              ((core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access'))
+               == (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')))
+              and
+              ((vf_eligible_indices | difference(vf_nonzero_mac_indices) | length) == 0)
+            )
+            or
+            (
+              ((core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access'))
+               != (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')))
+              and
+              (0 in vf_eligible_indices) and (1 in vf_eligible_indices)
+              and (0 in vf_nonzero_mac_indices) and (1 in vf_nonzero_mac_indices)
+            )
+        fail_msg: >-
+          DPDK mode requires at least two VFs on {{ core.data_iface | default('') }}
+          that are bound to the vfio-pci driver (the only VFs the chart's
+          sriov-device-plugin selector exposes) and have non-zero MAC
+          addresses. {% if
+          (core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access')) !=
+          (core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core')) %}
+          Because access and core use different SR-IOV resource pools
+          ({{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') }}
+          and {{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') }}),
+          the chart pins them to vf 0 and vf 1 specifically, so both of
+          those VFs must be bound to vfio-pci and have non-zero MAC
+          addresses. {% else %}Because access and core share one SR-IOV
+          resource pool
+          ({{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') }})
+          whose selector exposes every vfio-pci VF on the interface, the
+          allocator may hand the UPF any of them, so ALL vfio-pci-bound VFs
+          on {{ core.data_iface | default('') }} must have non-zero MAC
+          addresses. {% endif %}vfio-pci-bound VF indices:
+          {{ vf_eligible_indices | default([]) }}; VF indices with non-zero
+          MAC: {{ vf_nonzero_mac_indices | default([]) }} (from
+          'ip -d link show {{ core.data_iface | default('') }}' and
+          /sys/class/net/{{ core.data_iface | default('') }}/device/virtfn*/driver).
+
+  when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"

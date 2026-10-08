@@ -32,7 +32,9 @@ To install the 5g-core, follow these steps:
    - Run `make 5gc-install`.
    - It creates networking interfaces for UPF, such as access/core, using `5gc-router-install`.
    - Finally, it installs the 5g core using the values specified in `5gc-core-install`.
-   - When `core.upf.mode` is set to `dpdk`, the core and additional UPF install roles validate that `core.data_iface` has at least two VFs before deploying the UPF workload.
+   - When `core.upf.mode` is set to `dpdk`, the core and additional UPF install roles validate that `core.data_iface` has at least two VFs bound to the `vfio-pci` driver before deploying the UPF workload. The chart's SR-IOV device-plugin selector only exposes `vfio-pci`-bound VFs, so VFs bound to any other driver are ignored (they can never be allocated to the UPF pod).
+      - If `core.upf.access_resource_name` and `core.upf.core_resource_name` are different, the chart pins access/core to `vf 0` and `vf 1` specifically, so those two VFs must be bound to `vfio-pci` and have non-zero MAC addresses.
+      - If `core.upf.access_resource_name` and `core.upf.core_resource_name` are the same, access/core share one SR-IOV resource pool whose selector exposes every `vfio-pci`-bound VF on `core.data_iface`. The allocator may hand the UPF any of them, so **all** `vfio-pci`-bound VFs on the interface must have non-zero MAC addresses.
      - The installation process may take up to 3 minutes.
 
 #### One-Step Installation

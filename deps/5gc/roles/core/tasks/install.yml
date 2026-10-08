@@ -62,29 +62,14 @@
       Run the k8s provisioning flow first, or set kubeconfig_source to a valid
       cluster kubeconfig path on the target host.
 
-- name: check configured VF resources for built-in UPF
-  block:
-    - name: Get number of configured VFs for interface {{ core.data_iface }}
-      command:
-        argv:
-          - ip
-          - -d
-          - link
-          - show
-          - "{{ core.data_iface }}"
-      register: vf_status
-      changed_when: false
-      failed_when: false
-
-    - debug:
-        var: vf_status.stdout_lines
-
-    - name: verify the required VF resources are configured on {{ core.data_iface }}
-      ansible.builtin.assert:
-        that:
-          - (vf_status.stdout | regex_findall('(?m)^\s+vf\s+\d+') | length) >= 2
-
-  when: inventory_hostname in groups['master_nodes'] and core.upf.mode == "dpdk"
+# Validate SR-IOV UPF resource pools and VF MAC addresses for the built-in
+# UPF. Shared with the additional-UPF install path (5gc/upf) via the
+# preflight role so both paths accept identical configuration and cannot
+# drift. The task file is internally gated on DPDK mode and master_nodes.
+- name: validate SR-IOV UPF resource pools for built-in UPF
+  import_role:
+    name: preflight
+    tasks_from: sriov_upf_pools.yml
 
 - name: find {{ core.data_iface }}'s subnet for RAN
   command:
