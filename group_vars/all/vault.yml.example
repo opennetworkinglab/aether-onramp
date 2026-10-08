@@ -3,20 +3,40 @@
 #
 # These variables are referenced from hosts.ini (see the commented
 # "vault-based access" example). Ansible does NOT auto-load this file:
-# the ".example" suffix keeps it out of the group_vars/all/ variables that
-# Ansible loads automatically (only .yml/.yaml/.json files are loaded), so
-# it is safe to keep this plaintext template in the repository.
+# under group_vars/all/ it auto-loads files that have no extension or a
+# .yml/.yaml/.json extension, so the ".example" suffix keeps this file out of
+# the loaded variables and it is safe to keep as a plaintext template in the
+# repository.
 #
 # To enable vault-based credentials:
 #
-#   1. Copy this file to group_vars/all/vault.yml:
-#        cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+#   1. Copy this file to group_vars/all/vault.yml with owner-only access, so
+#      the real credentials you add in step 2 are never readable by other
+#      local users while the file is still plaintext (a plain "cp" would
+#      create it world-readable under the default umask):
+#        install -m 600 group_vars/all/vault.yml.example group_vars/all/vault.yml
 #   2. Replace the placeholder values below with your real credentials.
 #   3. Encrypt the file with your own vault password:
 #        ansible-vault encrypt group_vars/all/vault.yml
-#   4. Tell Ansible where to find the matching vault password, either by
-#      uncommenting "vault_password_file" in ansible.cfg (and creating that
-#      file), or by passing --ask-vault-pass on the command line.
+#   4. Activate the vault-based inventory entry in hosts.ini: uncomment the
+#      "vault-based access" node line (setting ansible_user), and comment out
+#      or remove the plain default line for that node. Without this step the
+#      node still has no ansible_password/ansible_sudo_pass and vault-based
+#      login is not used.
+#   5. Tell Ansible where to find the matching vault password. OnRamp drives
+#      Ansible through Make targets (e.g. "make aether-pingall") whose recipes
+#      do not forward --ask-vault-pass, so Make-based use requires a vault
+#      password file: create one and uncomment "vault_password_file" in
+#      ansible.cfg. (--ask-vault-pass works only for direct "ansible-playbook"
+#      invocations.)
+#      The file must contain, in plaintext, the same password you passed to
+#      "ansible-vault encrypt" above; an empty file cannot decrypt vault.yml.
+#      Because it holds that plaintext password, create it with owner-only
+#      access first (the default umask may otherwise leave it world-readable),
+#      then write the password without recording it in your shell history:
+#        install -m 600 /dev/null ~/.ansible_vault_pass
+#        read -rsp 'Vault password: ' vault_pw && \
+#          printf '%s\n' "$vault_pw" > ~/.ansible_vault_pass && unset vault_pw
 #
 # group_vars/all/vault.yml is git-ignored so your encrypted secrets are
 # never committed.

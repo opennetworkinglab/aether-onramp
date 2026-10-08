@@ -1,9 +1,9 @@
 ---
 # Computed variables derived from user configuration.
-# Ansible automatically loads every .yml/.yaml/.json file under group_vars/all/
-# for every host (e.g. this file, plus vault.yml once you create it from
-# vault.yml.example). Files with other suffixes, such as vault.yml.example, are
-# not loaded.
+# Ansible automatically loads every file under group_vars/all/ that has no
+# extension or a .yml/.yaml/.json extension, for every host (e.g. this file,
+# plus vault.yml once you create it from vault.yml.example). Files with other
+# suffixes, such as vault.yml.example, are not loaded.
 
 proxy_env: >-
   {{
