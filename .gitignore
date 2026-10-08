@@ -6,6 +6,9 @@
 # hosts file
 hosts.ini
 
+# vault-encrypted credentials (keep the .example template in the repo)
+group_vars/all/vault.yml
+
 # debug
 *.log
 *.pcap
