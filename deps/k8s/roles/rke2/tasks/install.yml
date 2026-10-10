@@ -166,6 +166,22 @@
   failed_when: false
   become: true
 
+- name: create rke2 server manifests directory
+  file:
+    path: /var/lib/rancher/rke2/server/manifests
+    state: directory
+    mode: '0755'
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: keep the Multus CNI config across reboots (rke2-multus HelmChartConfig)
+  template:
+    src: rke2-multus-config.yaml
+    dest: /var/lib/rancher/rke2/server/manifests/rke2-multus-config.yaml
+    mode: '0644'
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
 - name: start rke2-server on masters
   systemd:
     name: rke2-server
