@@ -294,7 +294,10 @@
 # TODO: add systems check to avoid issues (e.g., mongodb needing avx support)
 - name: deploy aether 5gc
   block:
+    # Render helm-diff server-side so `lookup` works on upgrade (Helm 3.13+).
     - name: deploy aether 5gc
+      environment:
+        HELM_DIFF_USE_UPGRADE_DRY_RUN: "true"
       kubernetes.core.helm:
         update_repo_cache: "{{ core_helm_requires_repo_update }}"
         name: sd-core
@@ -381,6 +384,20 @@
         - ((item.status.phase | default('')) != 'Running') or
           ((item.status.conditions | default([]) | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) == 0)
       ignore_errors: yes
+
+    # Nothing to recover when every pod was Ready: re-raise the helm failure.
+    - name: fail loudly when helm deploy failed with every pod already Ready
+      ansible.builtin.fail:
+        msg: |-
+          sd-core helm deploy failed and every pod in aether-5gc was already
+          Running and Ready, so there was nothing for the rescue to recover.
+
+          Original failure in task '{{ ansible_failed_task.name | default('unknown', true) }}':
+          {{ ansible_failed_result.msg | default('', true)
+             | default(ansible_failed_result | default({}, true) | to_nice_yaml, true) }}
+      when:
+        - inventory_hostname in groups['master_nodes']
+        - (pod_restart.results | default([]) | selectattr('changed', 'defined') | selectattr('changed') | list | length) == 0
 
     # kubernetes.core.k8s_info's own wait/wait_condition retries the list
     # query (until it is non-empty) and then waits per-pod for the Ready
