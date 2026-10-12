@@ -385,12 +385,13 @@
           ((item.status.conditions | default([]) | selectattr('type', 'equalto', 'Ready') | selectattr('status', 'equalto', 'True') | list | length) == 0)
       ignore_errors: yes
 
-    # Nothing to recover when every pod was Ready: re-raise the helm failure.
-    - name: fail loudly when helm deploy failed with every pod already Ready
+    # Nothing recovered when no pod was restarted: re-raise the helm failure.
+    - name: fail loudly when helm deploy failed and the rescue restarted no pods
       ansible.builtin.fail:
         msg: |-
-          sd-core helm deploy failed and every pod in aether-5gc was already
-          Running and Ready, so there was nothing for the rescue to recover.
+          sd-core helm deploy failed and the rescue restarted no pods in
+          aether-5gc (every pod was Ready, or the unready ones were already
+          terminating or could not be deleted), so it recovered nothing.
 
           Original failure in task '{{ ansible_failed_task.name | default('unknown', true) }}':
           {{ ansible_failed_result.msg | default('', true)
