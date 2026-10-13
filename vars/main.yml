@@ -41,6 +41,7 @@ core:
       ue_ip_pool: "192.168.100.0/24"
   amf:
     ip: "10.76.28.113"
+    # external_traffic_policy: Local  # Options: Cluster or Local
 
 gnbsim:
   docker:

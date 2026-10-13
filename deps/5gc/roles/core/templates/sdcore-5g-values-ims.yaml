@@ -107,6 +107,9 @@ omec-control-plane:
     amf:
       ngapp:
         externalIp: {{ core.amf.ip }}
+{% if core.amf.get('external_traffic_policy') %}
+        externalTrafficPolicy: {{ core.amf.external_traffic_policy }}
+{% endif %}
       cfgFiles:
         amfcfg.yaml:
           configuration:
