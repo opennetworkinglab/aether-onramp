@@ -1,0 +1,12 @@
+# Keep Multus's CNI config across reboots so the UPF gets its macvlans at boot.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: rke2-multus
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    config:
+      cni_conf:
+        cleanupConfigOnExit: false
+        readinessIndicatorFile: /etc/cni/net.d/10-canal.conflist
