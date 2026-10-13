@@ -174,14 +174,6 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: read the rke2 server config for its CNI
-  slurp:
-    src: /etc/rancher/rke2/config.yaml
-  register: rke2_server_config_file
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-  no_log: true
-
 - name: keep the Multus CNI config across reboots (rke2-multus HelmChartConfig)
   template:
     src: rke2-multus-config.yaml

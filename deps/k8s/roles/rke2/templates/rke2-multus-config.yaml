@@ -1,8 +1,4 @@
 # Keep Multus's CNI config across reboots so the UPF gets its macvlans at boot.
-# Multus waits for Canal's conflist only when Canal is the configured CNI (RKE2's
-# default); with another primary CNI that file never appears.
-{% set rke2_cni = (rke2_server_config_file.content | b64decode | from_yaml).cni | default('canal') %}
-{% set rke2_cni = rke2_cni.split(',') if rke2_cni is string else rke2_cni %}
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
@@ -13,6 +9,4 @@ spec:
     config:
       cni_conf:
         cleanupConfigOnExit: false
-{% if 'canal' in rke2_cni | map('trim') | list %}
         readinessIndicatorFile: /etc/cni/net.d/10-canal.conflist
-{% endif %}
