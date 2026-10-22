@@ -33,7 +33,7 @@ core:
     access_subnet: "192.168.252.1/24"  # access subnet & gateway
     core_subnet: "192.168.250.1/24"  # core subnet & gateway
     mode: af_packet      # Options: af_packet or dpdk
-    multihop_gnb: false      # set to true to override default N3 subnet
+    access_overlay: true     # false puts the UPF's access side on data_iface's own subnet
     default_upf:
       ip:
         access: "192.168.252.3"

@@ -20,7 +20,7 @@
   when:
     - (inventory_hostname in groups['n3iwf_nodes'])
     - (inventory_hostname not in groups['master_nodes'])
-    - core.upf.multihop_gnb == false
+    - core.upf.access_overlay
   become: true
 
 - name: remove a static route on n3iwf host for {{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }} via {{ core.amf.ip }}
@@ -35,7 +35,7 @@
   when:
     - (inventory_hostname in groups['n3iwf_nodes'])
     - (inventory_hostname not in groups['master_nodes'])
-    - core.upf.multihop_gnb == false
+    - core.upf.access_overlay
     - route_check.stdout != ""
   become: true
 

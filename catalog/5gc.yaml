@@ -88,9 +88,9 @@ schema:
           # See access_resource_name: same fully-qualified extended
           # resource-name constraint, with length bounds encoded in the pattern.
           pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
-        multihop_gnb:
+        access_overlay:
           type: boolean
-          description: When true, the access subnet shares data_iface instead of using a separate RAN-facing interface
+          description: Build the UPF's access subnet as an overlay on data_iface and route to it from each RAN node
         helm:
           type: object
           description: Helm chart reference for the optional standalone UPF
@@ -162,5 +162,5 @@ defaults:
     mode: af_packet
     access_resource_name: "intel.com/intel_sriov_vfio_access"
     core_resource_name: "intel.com/intel_sriov_vfio_core"
-    multihop_gnb: false
+    access_overlay: true
 

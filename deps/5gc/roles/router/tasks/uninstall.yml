@@ -132,7 +132,7 @@
     out_interface: access
     jump: ACCEPT
     state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
   ignore_errors: yes
 
@@ -143,7 +143,7 @@
     out_interface: "{{ core.data_iface }}"
     jump: ACCEPT
     state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
   ignore_errors: yes
 
@@ -367,7 +367,7 @@
   file:
     path: "{{ systemd_network_dir }}/20-aether-access.network"
     state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
   ignore_errors: yes
 
@@ -375,7 +375,7 @@
   file:
     path: "{{ systemd_network_dir }}/10-aether-access.netdev"
     state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
   ignore_errors: yes
 

@@ -4,7 +4,7 @@
 
 *filter
 :FORWARD ACCEPT [0:0]
-{% if core.upf.multihop_gnb == false %}
+{% if core.upf.access_overlay %}
 -A FORWARD -i {{ core.data_iface }} -o access -j ACCEPT
 -A FORWARD -i access -o {{ core.data_iface }} -j ACCEPT
 {% endif %}

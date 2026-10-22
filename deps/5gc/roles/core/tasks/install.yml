@@ -66,6 +66,11 @@
 # UPF. Shared with the additional-UPF install path (5gc/upf) via the
 # preflight role so both paths accept identical configuration and cannot
 # drift. The task file is internally gated on DPDK mode and master_nodes.
+- name: reject renamed configuration keys
+  import_role:
+    name: preflight
+    tasks_from: renamed_vars.yml
+
 - name: validate SR-IOV UPF resource pools for built-in UPF
   import_role:
     name: preflight

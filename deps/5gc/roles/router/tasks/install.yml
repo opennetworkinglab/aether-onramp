@@ -160,14 +160,14 @@
   template:
     src: roles/router/templates/10-aether-access.netdev
     dest: "{{ systemd_network_dir }}/10-aether-access.netdev"
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
 
 - name: copy 20-aether-access.network to {{ systemd_network_dir }}/20-aether-access.network
   template:
     src: roles/router/templates/20-aether-access.network
     dest: "{{ systemd_network_dir }}/20-aether-access.network"
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
+  when: inventory_hostname in groups['master_nodes'] and core.upf.access_overlay
   become: true
 
 - name: copy 10-aether-core.netdev to {{ systemd_network_dir }}/10-aether-core.netdev
@@ -509,7 +509,7 @@
   until: access_interface_check.rc == 0
   when:
     - inventory_hostname in groups['master_nodes']
-    - not core.upf.multihop_gnb
+    - core.upf.access_overlay
   become: true
 
 - name: start 5gc-iptables.service

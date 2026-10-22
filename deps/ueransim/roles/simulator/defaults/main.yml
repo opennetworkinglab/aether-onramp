@@ -16,6 +16,6 @@ ueransim:
 core:
   upf:
     core_subnet: "192.168.250.1/24"
-    multihop_gnb: false
+    access_overlay: true
   amf:
     ip: "172.16.248.6"

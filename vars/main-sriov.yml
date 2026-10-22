@@ -38,7 +38,7 @@ core:
     #      and these devices are attached to vfio-pci driver.
     # access_resource_name: "intel.com/intel_sriov_vfio_access"  # SR-IOV resource pool for the access (N3) interface; defaults to "intel.com/intel_sriov_vfio_access"
     # core_resource_name: "intel.com/intel_sriov_vfio_core"      # SR-IOV resource pool for the core (N6) interface; defaults to "intel.com/intel_sriov_vfio_core"
-    multihop_gnb: false      # set to true to override default N3 subnet
+    access_overlay: true     # false puts the UPF's access side on data_iface's own subnet
     default_upf:
       ip:
         access: "192.168.252.3"

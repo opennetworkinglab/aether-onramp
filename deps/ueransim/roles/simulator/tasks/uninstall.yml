@@ -51,6 +51,6 @@
       - "{{ subnet }}"
       - via
       - "{{ core.amf.ip }}"
-  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.access_overlay
   become: true
   ignore_errors: yes

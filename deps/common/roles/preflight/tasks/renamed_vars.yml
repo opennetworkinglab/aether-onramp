@@ -1,0 +1,22 @@
+---
+
+# Fails on configuration keys that have been renamed, so a stale key is a clear
+# message rather than silently-ignored configuration.
+#
+# Imported by the 5gc core role, which every install path runs, so an operator
+# upgrading OnRamp hits this before anything is deployed.
+
+- name: reject the renamed core.upf.multihop_gnb
+  ansible.builtin.fail:
+    msg: >-
+      core.upf.multihop_gnb has been renamed to core.upf.access_overlay, and the
+      sense is inverted: access_overlay describes whether OnRamp builds the
+      access overlay, which multihop_gnb disabled. Set
+      core.upf.access_overlay: false where you had multihop_gnb: true, and
+      remove multihop_gnb (its current value,
+      {{ core.upf.multihop_gnb | to_json }}, is being ignored). Leaving it set
+      cannot be honoured, because the two keys disagree about which value means
+      "build the overlay".
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.upf.multihop_gnb is defined

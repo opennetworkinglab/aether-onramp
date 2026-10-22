@@ -81,7 +81,7 @@ ocudu:
 core:
    upf:
       access_subnet: "192.168.252.1/24"
-      multihop_gnb: false
+      access_overlay: true
    amf:
       ip: "10.76.28.113"
 ```
@@ -106,7 +106,7 @@ Key variables:
 - `ocudu.servers[n].dpdk.ru_mac_addr`: RU fronthaul MAC address rendered into the DPDK gNB config; defaults to the checked-in Benetel example value
 - `core.amf.ip`: AMF address used by the gNB and routing playbooks
 - `core.upf.access_subnet`: subnet used to install the OCUDU-side route toward the UPF
-- `core.upf.multihop_gnb`: disables the static route task when set to `true`
+- `core.upf.access_overlay`: when `false`, the UPF's access side sits on `core.data_iface`'s own subnet and this static route is not installed
 
 Additional UE simulator variables are required by `roles/uEsimulator/tasks/start.yml`:
 
