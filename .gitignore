@@ -12,3 +12,6 @@ group_vars/all/vault.yml
 # debug
 *.log
 *.pcap
+
+# python bytecode from the resolver unit tests
+__pycache__/

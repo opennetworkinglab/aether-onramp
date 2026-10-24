@@ -17,8 +17,5 @@ n3iwf:
       nwu_ip: "192.168.150.1/24"
 
 core:
-  upf:
-    access_subnet: "192.168.252.1/24"
-    multihop_gnb: false
   amf:
     ip: "172.16.248.6"

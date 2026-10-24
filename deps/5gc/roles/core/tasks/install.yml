@@ -1,31 +1,13 @@
 ---
 
-# Resolve `core.data_iface` from the default-route interface when it
-# is unset or left at one of the stock defaults. See the router
-# role's install.yml for the full rationale.
-- name: derive core.data_iface from default-route interface when unset
-  ansible.builtin.set_fact:
-    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - ansible_default_ipv4.interface is defined
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
-
-- name: validate core.data_iface is set and exists on this host
-  ansible.builtin.fail:
-    msg: >-
-      core.data_iface (={{ core.data_iface | default('<unset>') | to_json }}) is
-      not a valid network interface on this host. Either it was left
-      at a placeholder and no IPv4 default route was available to
-      derive from, or the configured value does not match any
-      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
-      Set core.data_iface in vars/main.yml to the data-plane
-      interface name on the target node.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (core.data_iface is not defined)
-      or (core.data_iface in ['', 'data'])
-      or (core.data_iface not in (ansible_interfaces | default([])))
+# Interpret core.networks and core.upf.instances and check them against this
+# host before anything is installed. The router and additional-UPF roles
+# import the same task file, so all three read one resolved description of
+# the UPF's networking and fail with the same messages.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
 
 # kubernetes.core modules (helm, k8s, k8s_info, etc.) require the python
 # `kubernetes` client library, which is NOT pulled in by a stock apt
@@ -65,81 +47,12 @@
 # Validate SR-IOV UPF resource pools and VF MAC addresses for the built-in
 # UPF. Shared with the additional-UPF install path (5gc/upf) via the
 # preflight role so both paths accept identical configuration and cannot
-# drift. The task file is internally gated on DPDK mode and master_nodes.
+# drift. The task file checks each PF a dpdk UPF attaches through, and does
+# nothing when no UPF is in dpdk mode.
 - name: validate SR-IOV UPF resource pools for built-in UPF
   import_role:
     name: preflight
     tasks_from: sriov_upf_pools.yml
-
-- name: find {{ core.data_iface }}'s subnet for RAN
-  command:
-    argv:
-      - ip
-      - -o
-      - route
-      - show
-      - dev
-      - "{{ core.data_iface }}"
-  register: result
-  changed_when: false
-  failed_when: false
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
-  ansible.builtin.assert:
-    that:
-      - result.rc == 0
-      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
-    fail_msg: >-
-      Unable to derive ran_subnet from interface {{ core.data_iface }}.
-      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.ran_subnet == ''
-
-- set_fact:
-    ran_subnet: >-
-      {{
-        (
-          result.stdout_lines
-          | default([])
-          | select('search', ' proto kernel ')
-          | map('regex_search', '^[^ ]+')
-          | list
-          | first
-          | default('')
-        ) if (core.ran_subnet == '') else core.ran_subnet
-      }}
-    access_gw: "{{ core.upf.access_subnet | split('/') | first }}"
-    access_ip: "{{ core.upf.default_upf.ip.access + '/' + (core.upf.access_subnet | split('/') | last) }}"
-    core_gw: "{{ core.upf.core_subnet | split('/') | first }}"
-    core_ip: "{{ core.upf.default_upf.ip.core + '/' + (core.upf.core_subnet | split('/') | last) }}"
-  when: inventory_hostname in groups['master_nodes']
-
-- name: validate ran_subnet is in valid CIDR format
-  ansible.builtin.assert:
-    that:
-      - ran_subnet is defined
-      - ran_subnet | length > 0
-      - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
-      - (ran_subnet | split('/') | last | int) >= 8
-      - (ran_subnet | split('/') | last | int) <= 30
-      - >-
-        ((
-          (ran_subnet.split('/')[0].split('.')[0] | int) * 16777216 +
-          (ran_subnet.split('/')[0].split('.')[1] | int) * 65536 +
-          (ran_subnet.split('/')[0].split('.')[2] | int) * 256 +
-          (ran_subnet.split('/')[0].split('.')[3] | int)
-        ) % (2 ** (32 - (ran_subnet.split('/')[1] | int)))) == 0
-    fail_msg: >-
-      Invalid ran_subnet '{{ ran_subnet }}'. Must be in valid CIDR notation
-      with no host bits set (e.g., 172.20.0.0/16) and prefix length between /8 and /30.
-  when: inventory_hostname in groups['master_nodes']
-
-- debug:
-    var: ran_subnet
-  when: inventory_hostname in groups['master_nodes']
 
 - name: remove /tmp/sdcore-5g-values.yaml
   file:
@@ -151,6 +64,8 @@
   template:
     src: "{{ ROOT_DIR }}/{{ core.values_file }}"
     dest: "/tmp/sdcore-5g-values.yaml"
+  vars:
+    upf: "{{ upf_instances.default }}"
   when: inventory_hostname in groups['master_nodes']
 
 - set_fact:

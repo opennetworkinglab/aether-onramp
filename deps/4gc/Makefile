@@ -22,11 +22,12 @@ export HOSTS_INI_FILE ?= $(4GC_ROOT_DIR)/hosts.ini
 4gc-uninstall: 4gc-core-uninstall 4gc-router-uninstall
 
 #### c. Provision router ####
+#### 4G/5G share the router role: the host side of the UPF's networks is the same ####
 4gc-router-install:
-	ansible-playbook -i $(HOSTS_INI_FILE) $(4GC_ROOT_DIR)/router.yml --tags install \
+	ansible-playbook -i $(HOSTS_INI_FILE) $(4GC_ROOT_DIR)/../5gc/router.yml --tags install \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 4gc-router-uninstall:
-	ansible-playbook -i $(HOSTS_INI_FILE) $(4GC_ROOT_DIR)/router.yml --tags uninstall \
+	ansible-playbook -i $(HOSTS_INI_FILE) $(4GC_ROOT_DIR)/../5gc/router.yml --tags uninstall \
 		--extra-vars "ROOT_DIR=$(ROOT_DIR)" --extra-vars $(EXTRA_VARS)
 
 #### d. Provision core ####

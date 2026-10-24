@@ -1,0 +1,19 @@
+name: unit-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install test dependencies
+        run: pip install ansible-core pytest
+      - name: run unit tests
+        run: pytest tests/ -q

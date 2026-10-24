@@ -17,16 +17,15 @@ git clone https://gitlab.com/onf-internship/k8s.git
 ### Step-by-Step Installation
 To install the 4g-core, follow these steps:
 1. Set the configuration variables in the vars/main.yaml file.
-   - Specify the "data_iface" parameter as the network interface name of the machine.
    - Set the "values_file" parameter:
      - Use "sdcore-4g-values.yaml"
-   - The "custom_ran_subnet" parameter, if left empty, core will use the subnet of "data_iface" for UPF.
+   - The UPF's networking is described by `core.networks` and `core.upf.instances`, shared with the 5G core; see `deps/5gc/README.md` → *UPF networking*. Leaving `core.networks.access.ran_subnet` empty derives the eNB network from the access interface.
 2. Add the hosts to the init file.
 3. Run `make ansible`.
 4. In the running Ansible docker terminal:
    - Make sure you have dployed a k8 cluster using `k8s-install` from k8s repo.
    - run `make 4gc-install`
-   - It creates networking interfaces for UPF, such as access/core, using `4gc-router-install`.
+   - It creates the host side of the UPF's networks (the `access` and `core` interfaces by default) using `4gc-router-install`, which runs the router role shared with the 5G core.
    - Finally, it installs the 5g core using the values specified in `4gc-core-install`.
      - The installation process may take up to 3 minutes.
 

@@ -5,71 +5,25 @@
     name: preflight
     tasks_from: python_kubernetes.yml
 
-- name: find {{ core.data_iface }}'s subnet for RAN
-  command:
-    argv:
-      - ip
-      - -o
-      - route
-      - show
-      - dev
-      - "{{ core.data_iface }}"
-  register: result
-  changed_when: false
-  failed_when: false
-  when: inventory_hostname in groups['master_nodes']
-  become: true
+# Interpret core.networks and core.upf.instances and check them against this
+# host. The same resolver the 5gc roles use, so the UPF is described one way
+# for both cores (aether-4gc-install runs 5gc-router-install for the host side).
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
 
-- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
-  ansible.builtin.assert:
-    that:
-      - result.rc == 0
-      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
-    fail_msg: >-
-      Unable to derive ran_subnet from interface {{ core.data_iface }}.
-      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
+# The 4G values template renders an af_packet UPF only; SR-IOV, hugepages and
+# the dpdk datapath are not wired for it.
+- name: refuse a dpdk UPF for the 4G core
+  ansible.builtin.fail:
+    msg: >-
+      core.upf.instances.default.mode is dpdk, which the 4G core does not
+      support: its values template renders an af_packet UPF only. Set
+      core.upf.mode (or the instance's mode) to af_packet.
   when:
     - inventory_hostname in groups['master_nodes']
-    - core.ran_subnet == ''
-
-- set_fact:
-    ran_subnet: >-
-      {{
-        (
-          result.stdout_lines
-          | default([])
-          | select('search', ' proto kernel ')
-          | map('regex_search', '^[^ ]+')
-          | list
-          | first
-          | default('')
-        ) if (core.ran_subnet == '') else core.ran_subnet
-      }}
-  when: inventory_hostname in groups['master_nodes']
-
-- name: validate ran_subnet is in valid CIDR format
-  ansible.builtin.assert:
-    that:
-      - ran_subnet is defined
-      - ran_subnet | length > 0
-      - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
-      - (ran_subnet | split('/') | last | int) >= 8
-      - (ran_subnet | split('/') | last | int) <= 30
-      - >-
-        ((
-          (ran_subnet.split('/')[0].split('.')[0] | int) * 16777216 +
-          (ran_subnet.split('/')[0].split('.')[1] | int) * 65536 +
-          (ran_subnet.split('/')[0].split('.')[2] | int) * 256 +
-          (ran_subnet.split('/')[0].split('.')[3] | int)
-        ) % (2 ** (32 - (ran_subnet.split('/')[1] | int)))) == 0
-    fail_msg: >-
-      Invalid ran_subnet '{{ ran_subnet }}'. Must be in valid CIDR notation
-      with no host bits set (e.g., 172.20.0.0/16) and prefix length between /8 and /30.
-  when: inventory_hostname in groups['master_nodes']
-
-- debug:
-    var: "ran_subnet"
-  when: inventory_hostname in groups['master_nodes']
+    - upf_instances.default.mode == 'dpdk'
 
 - name: remove /tmp/sdcore-4g-values.yaml
   file:
@@ -81,6 +35,8 @@
   template:
     src: "{{ ROOT_DIR }}/{{ core.values_file }}"
     dest: "/tmp/sdcore-4g-values.yaml"
+  vars:
+    upf: "{{ upf_instances.default }}"
   when: inventory_hostname in groups['master_nodes']
 
 - set_fact:

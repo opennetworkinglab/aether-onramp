@@ -1,7 +1,5 @@
 core:
-  data_iface: data
   values_file: "roles/core/templates/sdcore-4g-values.yaml"
-  ran_subnet: "" # set it to empty to get subnet from 'data_iface'
 
   helm:
     chart_ref: oci://ghcr.io/omec-project/sd-core

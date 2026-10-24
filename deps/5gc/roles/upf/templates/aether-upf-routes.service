@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026-present Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Host side of additional UPF {{ upf.name }}: the route to its UE pool via its
+# core address, and masquerade for the pool on the way out. Installed and
+# removed with the UPF's release by the 5gc/upf role.
+
+[Unit]
+Description=Aether UPF {{ upf.name }} UE pool route and NAT
+After=network-online.target aether-5gc-macvlan.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/ip route replace {{ upf.ue_ip_pool }} via {{ upf.core.ip }} dev {{ upf.core.network }} onlink
+{% for egress in upf_egress %}
+ExecStart=/bin/bash -c "/usr/sbin/iptables -t nat -C POSTROUTING -s {{ upf.ue_ip_pool }} -o {{ egress }} -j MASQUERADE || /usr/sbin/iptables -t nat -A POSTROUTING -s {{ upf.ue_ip_pool }} -o {{ egress }} -j MASQUERADE"
+{% endfor %}
+ExecStop=-/usr/sbin/ip route del {{ upf.ue_ip_pool }} via {{ upf.core.ip }} dev {{ upf.core.network }}
+{% for egress in upf_egress %}
+ExecStop=-/usr/sbin/iptables -t nat -D POSTROUTING -s {{ upf.ue_ip_pool }} -o {{ egress }} -j MASQUERADE
+{% endfor %}
+
+[Install]
+WantedBy=multi-user.target

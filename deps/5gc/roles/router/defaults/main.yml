@@ -1,3 +1,0 @@
-core:
-  # Empty = auto-derive from default-route interface at install time.
-  data_iface: ""

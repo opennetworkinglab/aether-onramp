@@ -2,83 +2,91 @@
 
 # TODO: running on master node for now (fix to run on multiple nodes)
 
-# Path is shared with install.yml; declared up-front so the recovery
-# slurp below and the later set_fact block use one source of truth.
-- name: declare paths shared with install.yml
-  ansible.builtin.set_fact:
-    router_sysctl_backup_file: /var/lib/aether-5gc-router-sysctl-backup.conf
+# Cleanup is best-effort: most tasks ignore errors so a host whose interfaces
+# have since changed still gets the rest of the cleanup. The resolver runs in
+# non-strict mode for the same reason.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
 
-# Recover the install-time data_iface from the sysctl backup file.
-# The backup was written by install.yml in the form
-#     net/ipv4/conf/<install-time-iface>/forwarding=<original-value>
-# Reading it back here guarantees uninstall targets the same
-# interface install used, even if the host's default route has since
-# moved to a different NIC. Operator overrides via vars/main.yml or
-# inventory still win; the auto-derive below only fires if both the
-# explicit override and the backup file are absent/unparseable.
-# `become: true`: the backup file is written by install at mode 0600
-# owned by root, so an unprivileged ansible_user can't slurp it.
-- name: read sysctl backup file for install-time data_iface
-  ansible.builtin.slurp:
-    src: "{{ router_sysctl_backup_file }}"
-  register: _router_sysctl_backup
-  failed_when: false
-  changed_when: false
-  become: true
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
-
-- name: recover core.data_iface from sysctl backup file
-  ansible.builtin.set_fact:
-    core: "{{ core | combine({'data_iface':
-      _router_sysctl_backup.content | b64decode
-        | regex_findall('(?m)^net/ipv4/conf/([^/]+)/forwarding=') | first }) }}"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
-    - _router_sysctl_backup.content is defined
-    - (_router_sysctl_backup.content | b64decode) is regex('(?m)^net/ipv4/conf/[^/]+/forwarding=')
-
-# Mirror the install-time auto-derive when neither an explicit
-# operator value nor the backup-file recovery resolved the interface.
-- name: derive core.data_iface from default-route interface when unset
-  ansible.builtin.set_fact:
-    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - ansible_default_ipv4.interface is defined
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
-
-# Non-fatal in uninstall: cleanup is best-effort (most tasks below
-# use `ignore_errors: yes`), so a hard failure here would block
-# legitimate uninstall runs on hosts where the install-time interface
-# is no longer present (renamed NIC, decommissioned hardware, etc.).
-# Surface a warning instead — interface-dependent tasks downstream
-# will fail individually under their existing ignore_errors and the
-# rest of the cleanup still completes.
-- name: warn when core.data_iface cannot be resolved on this host
-  ansible.builtin.debug:
-    msg: >-
-      WARNING: core.data_iface (={{ core.data_iface | default('<unset>') | to_json }})
-      is not a valid network interface on this host. Either it was
-      left at a placeholder and no IPv4 default route was available
-      to derive from, or the configured value does not match any
-      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
-      Interface-specific cleanup steps may be skipped; re-run with
-      `core.data_iface` set explicitly to fully clean up.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (core.data_iface is not defined)
-      or (core.data_iface in ['', 'data'])
-      or (core.data_iface not in (ansible_interfaces | default([])))
+- import_tasks: describe.yml
 
 - set_fact:
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
-    router_data_iface_forwarding_sysctl: net/ipv4/conf/{{ core.data_iface }}/forwarding
-    router_data_iface_forwarding_backup_regexp: >-
-      ^(net\.ipv4\.conf\.{{ core.data_iface | regex_escape }}\.forwarding|net/ipv4/conf/{{ core.data_iface | regex_escape }}/forwarding)=(.+)$
+    router_sysctl_backup_file: /var/lib/aether-5gc-router-sysctl-backup.conf
+    router_state_file: /var/lib/aether-5gc-router-state.yml
+
+# Prefer what install recorded over what the current config and default route
+# describe: the interface or the network names may have changed since.
+- name: read the router state file written by install
+  slurp:
+    src: "{{ router_state_file }}"
+  register: router_state_slurp
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: clean up what install recorded
+  set_fact:
+    router_networks: "{{ router_state.networks }}"
+    router_parents: "{{ router_state.parents }}"
+    router_vlans: >-
+      {%- set out = [] -%}{%- for v in router_state.vlans -%}{%- set _ = out.append({'parent': v}) -%}{%- endfor -%}{{ out }}
+    router_vlans_created: "{{ router_state.vlans_created }}"
+    router_nat_rules: "{{ router_state.nat_rules }}"
+    router_forward_rules: "{{ router_state.forward_rules }}"
+    router_recorded_files: "{{ router_state.managed | default({}) }}"
+  vars:
+    router_state: "{{ router_state_slurp.content | b64decode | from_yaml }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_state_slurp.content is defined
+
+# Without a record (an install from before the record existed, which could not
+# create VLAN children) nothing is known to have been created by this role,
+# and the interface it built on is the one its sysctl backup names - today's
+# default route may be another NIC.
+- name: default to the current config when there is no state file
+  set_fact:
+    router_vlans_created: []
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_state_slurp.content is not defined
+
+- name: read the sysctl backup of a pre-record install
+  slurp:
+    src: "{{ router_sysctl_backup_file }}"
+  register: router_legacy_backup_slurp
+  failed_when: false
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_state_slurp.content is not defined
+  become: true
+
+- name: clean up on the interface a pre-record install used
+  vars:
+    legacy_iface: >-
+      {{ (router_legacy_backup_slurp.content | default('') | b64decode)
+         | regex_findall('(?m)^net/ipv4/conf/([^/]+)/forwarding=') | first | default('') }}
+  set_fact:
+    router_parents: "{{ [legacy_iface] }}"
+    router_forward_rules: >-
+      {%- set out = [] -%}{%- for n in router_networks -%}
+      {%- set _ = out.append({'in': legacy_iface, 'out': n.name}) -%}{%- set _ = out.append({'in': n.name, 'out': legacy_iface}) -%}
+      {%- endfor -%}{{ out }}
+    router_nat_rules: >-
+      {%- set out = [] -%}{%- for u in router_nat_instances -%}
+      {%- set _ = out.append({'name': u.name, 'ue_ip_pool': u.ue_ip_pool, 'egress': legacy_iface}) -%}
+      {%- endfor -%}{{ out }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_state_slurp.content is not defined
+    - router_legacy_backup_slurp.content is defined
+    - legacy_iface != ''
 
 - name: delete static route for UE subnet in IMS dnn on master node
   command:
@@ -88,8 +96,11 @@
       - del
       - "{{ core.ims.ue_ip_pool_ims | ansible.utils.ipaddr('network/prefix') }}"
       - via
-      - "{{ core.upf.default_upf.ip.core }}"
-  when: (inventory_hostname in groups['master_nodes']) and core.ims.ue_ip_pool_ims is defined and core.upf.default_upf.ip.core is defined
+      - "{{ upf_instances.default.core.ip }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.ims.ue_ip_pool_ims is defined
+    - upf_instances.default.core.host_gateway
   become: true
   ignore_errors: yes
 
@@ -125,46 +136,16 @@
   become: true
   ignore_errors: yes
 
-- name: "delete iptable rule: forward from {{ core.data_iface }} to access"
+- name: delete iptable forwarding rules between the UPF networks and their interfaces
   iptables:
     chain: FORWARD
-    in_interface: "{{ core.data_iface }}"
-    out_interface: access
+    in_interface: "{{ item.in }}"
+    out_interface: "{{ item.out }}"
     jump: ACCEPT
     state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
-  become: true
-  ignore_errors: yes
-
-- name: "delete iptable rule: forward from access to {{ core.data_iface }}"
-  iptables:
-    chain: FORWARD
-    in_interface: access
-    out_interface: "{{ core.data_iface }}"
-    jump: ACCEPT
-    state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
-  become: true
-  ignore_errors: yes
-
-- name: "delete iptable rule: forward from {{ core.data_iface }} to core"
-  iptables:
-    chain: FORWARD
-    in_interface: "{{ core.data_iface }}"
-    out_interface: core
-    jump: ACCEPT
-    state: absent
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-  ignore_errors: yes
-
-- name: "delete iptable rule: forward from core to {{ core.data_iface }}"
-  iptables:
-    chain: FORWARD
-    in_interface: core
-    out_interface: "{{ core.data_iface }}"
-    jump: ACCEPT
-    state: absent
+  loop: "{{ router_forward_rules | default([]) }}"
+  loop_control:
+    label: "{{ item.in }} -> {{ item.out }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
@@ -230,192 +211,133 @@
   become: true
   ignore_errors: yes
 
+# Start from the files install recorded (an interface renamed since would not
+# be found again) and discover only parents the record does not cover.
 - name: set whether systemd-networkd is active
   set_fact:
     systemd_networkd_active: "{{ (systemd_networkd_state.stdout | default('') | trim) == 'active' }}"
+    networkd_files: "{{ router_recorded_files | default({}) }}"
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
-- name: read {{ core.data_iface }} networkctl status
-  command:
-    argv:
-      - networkctl
-      - status
-      - "{{ core.data_iface }}"
-  register: data_iface_networkctl_status
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['master_nodes']
-  become: true
-  ignore_errors: yes
-
-- name: derive {{ core.data_iface }}'s active systemd-networkd file via networkctl
-  set_fact:
-    data_iface_network_file_networkctl: >-
-      {{
-        data_iface_networkctl_status.stdout_lines
-        | default([])
-        | select('match', '^\s*Network File:\s+.*\.network\s*$')
-        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
-        | list
-        | first
-        | default('')
-        | basename
-      }}
-  when:
-    - inventory_hostname in groups['master_nodes']
-  ignore_errors: yes
-
-- name: find {{ core.data_iface }}'s systemd-networkd file by filename
-  find:
-    paths:
-      - /etc/systemd/network
-      - /run/systemd/network
-      - /lib/systemd/network
-      - /usr/lib/systemd/network
-    patterns: "*{{ core.data_iface }}.network"
-    recurse: false
-    file_type: file
-  register: data_iface_network_file_matches
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_file_networkctl | default('') | trim) == ''
-  become: true
-  ignore_errors: yes
-
-- name: derive {{ core.data_iface }}'s systemd-networkd file by filename
-  set_fact:
-    data_iface_network_file_cmd: >-
-      {{
-        data_iface_network_file_matches.files
-        | default([])
-        | map(attribute='path')
-        | map('basename')
-        | sort
-        | first
-        | default('')
-      }}
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_file_networkctl | default('') | trim) == ''
-  ignore_errors: yes
-
-- name: set {{ core.data_iface }}'s systemd-networkd filename
-  set_fact:
-    data_iface_network_filename: >-
-      {{
-        (data_iface_network_file_networkctl | default('') | trim)
-        if (data_iface_network_file_networkctl | default('') | trim) != ''
-        else (data_iface_network_file_cmd | default('') | trim)
-      }}
+- name: find the systemd-networkd file managing each UPF network's interface
+  include_tasks: networkd_file.yml
+  vars:
+    nd_iface: "{{ item }}"
+  loop: "{{ router_parents | default([]) | difference(router_recorded_files | default({}) | list) }}"
   when:
     - inventory_hostname in groups['master_nodes']
     - systemd_networkd_active
-  ignore_errors: yes
 
-- name: set empty systemd-networkd filename when systemd-networkd is inactive
-  set_fact:
-    data_iface_network_filename: ''
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not (systemd_networkd_active | default(false))
-  ignore_errors: yes
-
-- name: delete {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf
+- name: delete {{ systemd_network_dir }}/<file>.d/macvlan.conf for each managed interface
   file:
-    path: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf"
+    path: "{{ systemd_network_dir }}/{{ item.value }}.d/macvlan.conf"
     state: absent
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_filename | default('') | trim) != ''
+  loop: "{{ (networkd_files | default({})) | dict2items | rejectattr('value', 'equalto', '') | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: delete {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d if empty
+- name: delete {{ systemd_network_dir }}/<file>.d if empty
   command:
     argv:
       - rmdir
-      - "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d"
+      - "{{ systemd_network_dir }}/{{ item.value }}.d"
   changed_when: false
   failed_when: false
+  loop: "{{ (networkd_files | default({})) | dict2items | rejectattr('value', 'equalto', '') | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  ignore_errors: yes
+
+# Install restarts networkd after writing the drop-in; mirror that after
+# removing it, so networkd stops carrying IPForward=yes for the interface.
+- name: restart systemd-networkd after removing its drop-ins
+  systemd:
+    name: systemd-networkd
+    state: restarted
   when:
     - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_filename | default('') | trim) != ''
+    - ((networkd_files | default({})) | dict2items | rejectattr('value', 'equalto', '') | list | length) > 0
   become: true
   ignore_errors: yes
 
-- name: delete {{ systemd_network_dir }}/20-aether-core.network
-  file:
-    path: "{{ systemd_network_dir }}/20-aether-core.network"
-    state: absent
+# Every 10-aether-*.netdev / 20-aether-*.network under the network directory
+# is one this role wrote, so remove them by pattern rather than by the names
+# the current config happens to use.
+- name: find the macvlan unit files this role wrote
+  find:
+    paths: "{{ systemd_network_dir }}"
+    patterns:
+      - "10-aether-*.netdev"
+      - "20-aether-*.network"
+    file_type: file
+  register: router_unit_files
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: delete {{ systemd_network_dir }}/10-aether-core.netdev
+- name: delete the macvlan unit files
   file:
-    path: "{{ systemd_network_dir }}/10-aether-core.netdev"
+    path: "{{ item.path }}"
     state: absent
+  loop: "{{ router_unit_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
   when: inventory_hostname in groups['master_nodes']
-  become: true
-  ignore_errors: yes
-
-- name: delete {{ systemd_network_dir }}/20-aether-access.network
-  file:
-    path: "{{ systemd_network_dir }}/20-aether-access.network"
-    state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
-  become: true
-  ignore_errors: yes
-
-- name: delete  {{ systemd_network_dir }}/10-aether-access.netdev
-  file:
-    path: "{{ systemd_network_dir }}/10-aether-access.netdev"
-    state: absent
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
   become: true
   ignore_errors: yes
 
 # TODO: fix this hack (make a proper cleanup service)
-- name: delete access macvlan interface
+- name: delete each UPF network's macvlan interface
   command:
     argv:
       - ip
       - link
       - del
-      - access
-  register: delete_access_macvlan
-  changed_when: delete_access_macvlan.rc == 0
+      - "{{ item.name }}"
+  register: delete_macvlan
+  changed_when: delete_macvlan.rc == 0
   failed_when: false
+  loop: "{{ router_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: delete core macvlan interface
+- name: delete each VLAN child this role created
   command:
     argv:
       - ip
       - link
       - del
-      - core
-  register: delete_core_macvlan
-  changed_when: delete_core_macvlan.rc == 0
+      - "{{ item }}"
+  register: delete_vlan
+  changed_when: delete_vlan.rc == 0
   failed_when: false
+  loop: "{{ router_vlans_created | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: delete NAT masquerade rule for UE traffic
+- name: delete NAT masquerade rules for UE traffic
   iptables:
     table: nat
     chain: POSTROUTING
-    source: "{{ core.upf.default_upf.ue_ip_pool }}"
-    out_interface: "{{ core.data_iface }}"
+    source: "{{ item.ue_ip_pool }}"
+    out_interface: "{{ item.egress }}"
     jump: MASQUERADE
     state: absent
+  loop: "{{ router_nat_rules | default([]) }}"
+  loop_control:
+    label: "{{ item.name }} via {{ item.egress }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
@@ -445,8 +367,23 @@
   become: true
   ignore_errors: yes
 
+# The backup records what install found: net.ipv4.ip_forward, one forwarding
+# line per interface a macvlan child was put on (either spelling, dotted or
+# slashed, from older installs), and each interface's GRO setting. Restore
+# every interface it names rather than the ones the current config happens to
+# list.
 - name: extract saved router sysctl values
   set_fact:
+    saved_sysctl_conf: >-
+      {{
+        (router_sysctl_backup_content.content | default('') | b64decode)
+        | regex_findall('(?m)^sysctl\.conf/([^=]+)=(.*)$')
+      }}
+    saved_gro: >-
+      {{
+        (router_sysctl_backup_content.content | default('') | b64decode)
+        | regex_findall('(?m)^ethtool/([^/]+)/gro=(on|off)$')
+      }}
     saved_net_ipv4_ip_forward: >-
       {{
         (router_sysctl_backup_content.content | default('') | b64decode)
@@ -454,102 +391,122 @@
         | first
         | default('', true)
       }}
-    saved_net_ipv4_conf_iface_forwarding: >-
+    saved_iface_forwarding: >-
       {{
-        (router_sysctl_backup_content.content | default('') | b64decode)
-        | regex_findall(router_data_iface_forwarding_backup_regexp, multiline=true)
-        | first
-        | default(['', ''], true)
-        | last
+        ((router_sysctl_backup_content.content | default('') | b64decode)
+         | regex_findall('(?m)^net/ipv4/conf/([^/]+)/forwarding=(.*)$'))
+        +
+        ((router_sysctl_backup_content.content | default('') | b64decode)
+         | regex_findall('(?m)^net\.ipv4\.conf\.(.+)\.forwarding=(.*)$'))
       }}
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
-- name: set net.ipv4.conf.all.arp_filter to 0
-  ansible.posix.sysctl:
-    name: net.ipv4.conf.all.arp_filter
-    value: '0'
-    sysctl_set: true
-    reload: true
+# Install set these; put the runtime values back - to what the host's own
+# sysctl.conf line said when it had one, else to the kernel defaults - and
+# remove the lines install persisted rather than persisting these too.
+- name: restore the arp and rp_filter sysctls
+  command:
+    argv:
+      - sysctl
+      - -w
+      - "{{ item.name }}={{ saved_sysctl_conf | default([]) | selectattr('0', 'equalto', item.name) | map(attribute='1') | reject('equalto', 'ABSENT') | first | default(item.value) }}"
+  loop:
+    - { name: net.ipv4.conf.all.arp_filter, value: '0' }
+    - { name: net.ipv4.conf.all.arp_ignore, value: '0' }
+    - { name: net.ipv4.conf.all.arp_announce, value: '0' }
+    - { name: net.ipv4.conf.all.rp_filter, value: '2' }
+  loop_control:
+    label: "{{ item.name }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: set net.ipv4.conf.all.arp_ignore to 0
-  ansible.posix.sysctl:
-    name: net.ipv4.conf.all.arp_ignore
-    value: '0'
-    sysctl_set: true
-    reload: true
+- name: restore each interface's GRO setting
+  command:
+    argv:
+      - ethtool
+      - -K
+      - "{{ item.0 }}"
+      - gro
+      - "{{ item.1 }}"
+  loop: "{{ saved_gro | default([]) }}"
+  loop_control:
+    label: "{{ item.0 }} gro {{ item.1 }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes
 
-- name: set net.ipv4.conf.all.arp_announce to 0
-  ansible.posix.sysctl:
-    name: net.ipv4.conf.all.arp_announce
-    value: '0'
-    sysctl_set: true
-    reload: true
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-  ignore_errors: yes
-
-- name: set net.ipv4.conf.all.rp_filter to 2
-  ansible.posix.sysctl:
-    name: net.ipv4.conf.all.rp_filter
-    value: '2'
-    sysctl_set: true
-    reload: true
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-  ignore_errors: yes
-
-- name: restore {{ router_data_iface_forwarding_sysctl }}
-  ansible.posix.sysctl:
-    name: "{{ router_data_iface_forwarding_sysctl }}"
-    value: '{{ saved_net_ipv4_conf_iface_forwarding }}'
-    sysctl_set: true
-    reload: true
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (saved_net_ipv4_conf_iface_forwarding | default('')) != ''
-  become: true
-  ignore_errors: yes
-
-- name: remove {{ router_data_iface_forwarding_sysctl }} sysctl configuration
-  ansible.posix.sysctl:
-    name: "{{ router_data_iface_forwarding_sysctl }}"
-    state: absent
-    sysctl_set: false
-    reload: true
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (saved_net_ipv4_conf_iface_forwarding | default('')) == ''
-  become: true
-  ignore_errors: yes
-
+# Writing net.ipv4.ip_forward resets every interface's forwarding to that
+# value, so it goes back first and the per-interface values after it. The
+# runtime value is set with sysctl -w and the line install persisted is
+# removed, rather than persisting the original: a line left in sysctl.conf
+# would be re-applied by the next reload, and the host had none before.
 - name: restore net.ipv4.ip_forward
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    value: '{{ saved_net_ipv4_ip_forward }}'
-    sysctl_set: true
-    reload: true
+  command:
+    argv:
+      - sysctl
+      - -w
+      - "net.ipv4.ip_forward={{ saved_net_ipv4_ip_forward }}"
   when:
     - inventory_hostname in groups['master_nodes']
     - (saved_net_ipv4_ip_forward | default('')) != ''
   become: true
   ignore_errors: yes
 
-- name: remove net.ipv4.ip_forward sysctl configuration
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    state: absent
-    sysctl_set: false
-    reload: true
+- name: restore each interface's forwarding value
+  command:
+    argv:
+      - sysctl
+      - -w
+      - "net/ipv4/conf/{{ item.0 }}/forwarding={{ item.1 }}"
+  loop: "{{ saved_iface_forwarding | default([]) }}"
+  loop_control:
+    label: "{{ item.0 }}"
   when:
     - inventory_hostname in groups['master_nodes']
-    - (saved_net_ipv4_ip_forward | default('')) == ''
+    - item.1 != ''
+  become: true
+  ignore_errors: yes
+
+# Lines this role persisted in /etc/sysctl.conf: put back the ones that were
+# there before install with their old values, remove the ones it added.
+# Every key install persists, from the record when there is one (newer
+# installs) or implied by the forwarding lines in the backup (older ones).
+- name: list the sysctl.conf keys install persisted
+  set_fact:
+    router_sysctl_keys: >-
+      {{ ['net.ipv4.ip_forward', 'net.ipv4.conf.all.arp_filter', 'net.ipv4.conf.all.arp_ignore',
+          'net.ipv4.conf.all.arp_announce', 'net.ipv4.conf.all.rp_filter']
+         + (saved_iface_forwarding | default([]) | map('first') | map('regex_replace', '^', 'net/ipv4/conf/') | map('regex_replace', '$', '/forwarding') | list) }}
+    router_sysctl_recorded: "{{ dict(saved_sysctl_conf | default([])) }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: restore pre-existing sysctl.conf lines
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "{{ router_sysctl_recorded[item] }}"
+    state: present
+    sysctl_set: false
+    reload: false
+  loop: "{{ router_sysctl_keys | default([]) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item in router_sysctl_recorded
+    - router_sysctl_recorded[item] != 'ABSENT'
+  become: true
+  ignore_errors: yes
+
+- name: remove sysctl.conf lines this role added
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    state: absent
+    sysctl_set: false
+    reload: false
+  loop: "{{ router_sysctl_keys | default([]) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - (item not in router_sysctl_recorded) or (router_sysctl_recorded[item] == 'ABSENT')
   become: true
   ignore_errors: yes
 
@@ -560,5 +517,13 @@
   when:
     - inventory_hostname in groups['master_nodes']
     - router_sysctl_backup_stat.stat.exists
+  become: true
+  ignore_errors: yes
+
+- name: delete the router state file
+  file:
+    path: "{{ router_state_file }}"
+    state: absent
+  when: inventory_hostname in groups['master_nodes']
   become: true
   ignore_errors: yes

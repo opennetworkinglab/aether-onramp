@@ -1,8 +1,5 @@
 core:
-  # Empty = auto-derive from default-route interface at install time.
-  data_iface: ""
   values_file: "roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "" # set it to empty to get subnet from 'data_iface'
 
   helm:
     local_charts: false

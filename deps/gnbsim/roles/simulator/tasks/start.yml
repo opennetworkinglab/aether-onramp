@@ -1,5 +1,15 @@
 ---
 
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 - set_fact:
     network_macvlan_name: "{{ gnbsim.docker.network.macvlan.name }}"
 
@@ -65,7 +75,7 @@
     src: "{{ ROOT_DIR }}/{{ item.1 }}"
     dest: /tmp/gnbsim-{{ (item.0|int)+1 }}.yaml
   vars:
-    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
+    ping_target: "{{ upf_instances.default.core.gateway }}"
     amf_ip: "{{ core.amf.ip }}"
     container_ip: "{{ container_info.results[item.0].container.NetworkSettings.Networks[network_macvlan_name].IPAddress }}"
   with_indexed_items: "{{ gnbsim.servers[lookup('ansible.utils.index_of', groups['gnbsim_nodes'], 'eq', inventory_hostname)] }}"

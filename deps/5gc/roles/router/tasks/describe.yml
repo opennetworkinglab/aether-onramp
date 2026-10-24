@@ -1,0 +1,58 @@
+---
+
+# Derive, from the resolved UPF networking, what this host has to build. Shared
+# by install.yml and uninstall.yml so both act on the same list of things.
+#
+#   router_networks       networks this host is the gateway for: a macvlan child
+#                         named after the network carries the gateway address
+#   router_parents        the interfaces those children sit on
+#   router_vlans          networks on a VLAN child OnRamp creates (any gateway)
+#   router_base_ifaces    every physical interface the UPF's traffic crosses
+#   router_nat_instances  the built-in UPF, when this host routes and NATs its
+#                         core (N6) side; additional UPFs' route and NAT are
+#                         owned by the 5gc/upf role with their releases
+#                         UE traffic leaves this host on the default-route
+#                         interface, and on the core network's own interface
+#                         when that is a different one
+#   router_nat_rules      one {name, ue_ip_pool, egress} per UPF and egress
+#   router_routes         one {pool, via, dev} per UPF: its UE pool via its core address
+#   router_forward_rules  FORWARD accepts between each child and its interface,
+#                         and between a core child and the egress interfaces
+
+- name: describe this host's side of the UPF networks
+  ansible.builtin.set_fact:
+    router_networks: "{{ upf_networks.values() | selectattr('host_gateway') | list }}"
+    router_parents: "{{ upf_networks.values() | selectattr('host_gateway') | map(attribute='parent') | unique | list }}"
+    router_vlans: "{{ upf_networks.values() | rejectattr('vlan', 'none') | list }}"
+    router_base_ifaces: "{{ upf_networks.values() | map(attribute='iface') | unique | list }}"
+    router_nat_instances: "{{ upf_instances.values() | selectattr('builtin') | selectattr('core.host_gateway') | list }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: list each UPF's egress interfaces and the forwarding rules to allow
+  ansible.builtin.set_fact:
+    router_nat_rules: >-
+      {%- set out = [] -%}
+      {%- for u in router_nat_instances -%}
+      {%- for e in ([ansible_default_ipv4.interface | default(''), upf_networks[u.core.network].parent] | reject('equalto', '') | unique) -%}
+      {%- set _ = out.append({'name': u.name, 'ue_ip_pool': u.ue_ip_pool, 'egress': e}) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+    router_routes: >-
+      {%- set out = [] -%}
+      {%- for u in router_nat_instances -%}
+      {%- set _ = out.append({'pool': u.ue_ip_pool, 'via': u.core.ip, 'dev': u.core.network}) -%}
+      {%- endfor -%}
+      {{ out }}
+    router_forward_rules: >-
+      {%- set out = [] -%}
+      {%- for n in router_networks -%}
+      {%- set _ = out.append({'in': n.parent, 'out': n.name}) -%}
+      {%- set _ = out.append({'in': n.name, 'out': n.parent}) -%}
+      {%- if n.role == 'core' and (ansible_default_ipv4.interface | default('')) not in ['', n.parent] -%}
+      {%- set _ = out.append({'in': n.name, 'out': ansible_default_ipv4.interface}) -%}
+      {%- set _ = out.append({'in': ansible_default_ipv4.interface, 'out': n.name}) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ out }}
+  when: inventory_hostname in groups['master_nodes']

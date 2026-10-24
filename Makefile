@@ -72,7 +72,7 @@ aether-4gc-uninstall: 4gc-core-uninstall 5gc-router-uninstall
 aether-5gc-reset: 5gc-core-reset
 aether-4gc-reset: 4gc-core-uninstall 4gc-core-install
 aether-gnbsim-run: gnbsim-simulator-run
-aether-add-upfs: 5gc-upf-install
+aether-add-upfs: 5gc-router-install 5gc-upf-install
 aether-remove-upfs: 5gc-upf-uninstall
 aether-ueransim-run: ueransim-run
 aether-ueransim-stop: ueransim-stop

@@ -7,7 +7,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c "/usr/sbin/iptables -t nat -C POSTROUTING -s {{ core.upf.default_upf.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE || /usr/sbin/iptables -t nat -A POSTROUTING -s {{ core.upf.default_upf.ue_ip_pool }} -o {{ core.data_iface }} -j MASQUERADE"
+{% for r in router_nat_rules %}
+ExecStart=/bin/bash -c "/usr/sbin/iptables -t nat -C POSTROUTING -s {{ r.ue_ip_pool }} -o {{ r.egress }} -j MASQUERADE || /usr/sbin/iptables -t nat -A POSTROUTING -s {{ r.ue_ip_pool }} -o {{ r.egress }} -j MASQUERADE"
+{% endfor %}
 
 [Install]
-WantedBy=sys-subsystem-net-devices-core.device
+WantedBy={% for n in router_networks if n.role == 'core' %}sys-subsystem-net-devices-{{ n.name | replace('-', '\\x2d') }}.device{% if not loop.last %} {% endif %}{% endfor %}

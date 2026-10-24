@@ -1,18 +1,75 @@
 ---
 
-- name: delete route for upf to UE
-  command:
-    argv:
-      - ip
-      - route
-      - del
-      - "{{ item.value.ue_ip_pool }}"
-      - via
-      - "{{ item.value.ip.core }}"
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
+- name: list the additional UPF instances
+  ansible.builtin.set_fact:
+    additional_upfs: "{{ upf_instances | dict2items | rejectattr('value.builtin') | list }}"
+
+# Each additional UPF's route and NAT unit goes with its release; stopping it
+# removes the route and the masquerade rules it added.
+- name: stop and disable each additional UPF's route and NAT unit
+  systemd:
+    name: aether-upf-{{ item.key }}-routes.service
+    enabled: false
+    state: stopped
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
-  with_dict: "{{ core.upf.additional_upfs}}"
   become: true
-  ignore_errors: yes
+  failed_when: false
+
+- name: remove each additional UPF's route and NAT unit
+  file:
+    path: /etc/systemd/system/aether-upf-{{ item.key }}-routes.service
+    state: absent
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: force systemd to reread configs
+  systemd:
+    daemon_reload: true
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# An additional UPF installed before the units existed has its route and NAT
+# only in the kernel; take them down directly, best effort.
+- name: delete each additional UPF's UE pool route
+  command:
+    argv: [ip, route, del, "{{ item.value.ue_ip_pool }}", via, "{{ item.value.core.ip }}"]
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  failed_when: false
+
+- name: delete each additional UPF's NAT rules
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "{{ item.0.value.ue_ip_pool }}"
+    out_interface: "{{ item.1 }}"
+    jump: MASQUERADE
+    state: absent
+  loop: >-
+    {%- set out = [] -%}{%- for u in additional_upfs -%}
+    {%- for e in ([ansible_default_ipv4.interface | default(''), upf_networks[u.value.core.network].parent] | reject('equalto', '') | unique) -%}
+    {%- set _ = out.append([u, e]) -%}{%- endfor -%}{%- endfor -%}{{ out }}
+  loop_control:
+    label: "{{ item.0.key }} via {{ item.1 }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  failed_when: false
 
 - name: verify helm prerequisites for 5gc/upf uninstall
   import_role:
@@ -35,7 +92,9 @@
     release_namespace: aether-upf-{{ item.key }}
     state: absent
     wait: true
-  with_dict: "{{ core.upf.additional_upfs}}"
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
@@ -46,7 +105,8 @@
       - delete
       - namespace
       - "aether-upf-{{ item.key }}"
-  with_dict: "{{ core.upf.additional_upfs}}"
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
-

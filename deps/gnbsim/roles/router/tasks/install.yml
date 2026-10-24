@@ -1,5 +1,15 @@
 ---
 
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 # Resolve `gnbsim.router.data_iface` from the default-route interface
 # when it is unset or empty. Explicit operator values are preserved as-is.
 - name: derive gnbsim.router.data_iface from default-route interface when unset

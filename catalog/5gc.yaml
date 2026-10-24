@@ -34,15 +34,54 @@ schema:
     closed_loop:
       type: boolean
       description: Enable SD-Core closed-loop control plane behavior
-    data_iface:
-      type: string
-      description: Data-plane network interface used for UPF traffic
     values_file:
       type: string
       description: Helm values file path for the core deployment
-    ran_subnet:
-      type: string
-      description: RAN-side subnet in CIDR notation
+    networks:
+      type: object
+      description: >-
+        Networks the UPF attaches to, keyed by name. Optional; a UPF side that
+        names no network uses 'access' (N3) or 'core' (N6), which exist with
+        their defaults whether or not they are listed here. Every field has a
+        default, so an empty mapping describes the collapsed single-interface
+        deployment. A network's name becomes the macvlan interface the host
+        creates for it when it provides the gateway.
+      additionalProperties:
+        type: object
+        properties:
+          iface:
+            type: string
+            description: Host interface the network is reached through; defaults to the interface carrying the default route
+          vlan:
+            type: integer
+            minimum: 1
+            maximum: 4094
+            description: 802.1Q tag; the UPF attaches to <iface>.<vlan>, which OnRamp creates on the host
+          subnet:
+            type: string
+            description: The network in CIDR form; defaults to 192.168.252.0/24 for 'access' and 192.168.250.0/24 for 'core', required otherwise
+          gateway:
+            type: string
+            description: "'host' (default) makes this host the gateway at the subnet's first address; an address names an external router instead, and the host configures nothing on this network"
+          attach:
+            type: string
+            description: How the UPF pod attaches in af_packet mode; macvlan shares the interface, host-device moves it into the pod (requires an external gateway)
+            enum: [macvlan, host-device]
+          resource_name:
+            type: string
+            description: SR-IOV resource pool name in dpdk mode; defaults to intel.com/intel_sriov_vfio_access for 'access' and intel.com/intel_sriov_vfio_core for 'core'
+            # Fully-qualified Kubernetes extended resource name 'prefix/name':
+            # prefix is a DNS-1123 subdomain (1-244 chars, neither under
+            # kubernetes.io nor starting with the reserved 'requests.'), name
+            # is a qualified name (1-63 chars). The 244 bound is 253 (DNS-1123
+            # subdomain max) minus len('requests.'), which IsExtendedResourceName
+            # prepends before validating. The length bounds are encoded in the
+            # pattern so this matches the install-time preflight exactly; no
+            # separate maxLength is needed.
+            pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
+          ran_subnet:
+            type: string
+            description: On an access network, the gNB network the UPF routes downlink to; empty derives it from the interface's own subnet
     helm:
       type: object
       description: Helm chart reference for SD-Core
@@ -60,40 +99,13 @@ schema:
       type: object
       description: User Plane Function configuration
       properties:
-        access_subnet:
-          type: string
-          description: Access subnet and gateway for the N3 side
-        core_subnet:
-          type: string
-          description: Core subnet and gateway for the N6 side
         mode:
           type: string
-          description: UPF operating mode
+          description: UPF datapath for instances that set none; dpdk attaches both sides through SR-IOV
           enum: [af_packet, dpdk]
-        access_resource_name:
-          type: string
-          description: SR-IOV resource pool name for the access (N3) interface in DPDK mode
-          # Fully-qualified Kubernetes extended resource name 'prefix/name':
-          # prefix is a DNS-1123 subdomain (1-244 chars, neither under
-          # kubernetes.io nor starting with the reserved 'requests.'), name
-          # is a qualified name (1-63 chars). The 244 bound is 253 (DNS-1123
-          # subdomain max) minus len('requests.'), which IsExtendedResourceName
-          # prepends before validating. The length bounds are encoded in the
-          # pattern so this matches the install-time preflight exactly; no
-          # separate maxLength is needed.
-          pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
-        core_resource_name:
-          type: string
-          description: SR-IOV resource pool name for the core (N6) interface in DPDK mode
-          # See access_resource_name: same fully-qualified extended
-          # resource-name constraint, with length bounds encoded in the pattern.
-          pattern: "^(?!.*kubernetes\\.io/)(?!requests\\.)(?=[^/]{1,244}/)[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$"
-        multihop_gnb:
-          type: boolean
-          description: When true, the access subnet shares data_iface instead of using a separate RAN-facing interface
         helm:
           type: object
-          description: Helm chart reference for the optional standalone UPF
+          description: Helm chart reference for additional UPFs (bess-upf)
           properties:
             local_charts:
               type: boolean
@@ -106,41 +118,43 @@ schema:
               description: Chart version constraint
         values_file:
           type: string
-          description: Helm values file path for the UPF deployment
-        default_upf:
+          description: Helm values file path for additional UPFs
+        instances:
           type: object
-          description: Default UPF instance settings
-          properties:
-            ip:
-              type: object
-              properties:
-                access:
-                  type: string
-                  description: UPF access-side IP
-                core:
-                  type: string
-                  description: UPF core-side IP
-            ue_ip_pool:
-              type: string
-              description: UE address pool in CIDR notation
-        additional_upfs:
-          type: object
-          description: Additional UPFs keyed by identifier
+          description: >-
+            UPFs keyed by name. 'default' is the built-in UPF deployed with the
+            core and always exists; every other entry is deployed by
+            5gc-upf-install as its own release in namespace aether-upf-<name>.
           additionalProperties:
             type: object
             properties:
-              ip:
+              access:
                 type: object
+                description: The UPF's N3 side
                 properties:
-                  access:
+                  network:
                     type: string
-                    description: UPF access-side IP
-                  core:
+                    description: Network name from core.networks; defaults to 'access'
+                  ip:
                     type: string
-                    description: UPF core-side IP
+                    description: The UPF's address on that network; defaults to the subnet's third address
+              core:
+                type: object
+                description: The UPF's N6 side
+                properties:
+                  network:
+                    type: string
+                    description: Network name from core.networks; defaults to 'core'
+                  ip:
+                    type: string
+                    description: The UPF's address on that network; defaults to the subnet's third address
               ue_ip_pool:
                 type: string
-                description: UE address pool in CIDR notation
+                description: UE address pool in CIDR notation; defaults to 192.168.100.0/24 for 'default', required otherwise
+              mode:
+                type: string
+                description: Datapath for this UPF; defaults to core.upf.mode
+                enum: [af_packet, dpdk]
     amf:
       type: object
       description: AMF connectivity settings
@@ -148,19 +162,22 @@ schema:
         ip:
           type: string
           description: AMF N2 IP address
+        external_traffic_policy:
+          type: string
+          description: Service externalTrafficPolicy for the AMF N2 Service
+          enum: [Cluster, Local]
 
 defaults:
   values_file: "deps/5gc/roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: ""
+  networks:
+    access:
+      ran_subnet: "172.20.0.0/16"
   helm:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
     chart_version: 5.0.0
   upf:
-    access_subnet: "192.168.252.1/24"
-    core_subnet: "192.168.250.1/24"
     mode: af_packet
-    access_resource_name: "intel.com/intel_sriov_vfio_access"
-    core_resource_name: "intel.com/intel_sriov_vfio_core"
-    multihop_gnb: false
-
+    instances:
+      default:
+        ue_ip_pool: "192.168.100.0/24"
