@@ -1,5 +1,15 @@
 ---
 
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 - name: check if servers and config server length are equal
   fail:
     msg: "Mismatch in number of servers and ocudu nodes: {{ ocudu.servers|length }} vs {{ groups['ocudu_nodes']|length }}"
@@ -73,13 +83,13 @@
     container: rfsim5g-nr-ue
     command: >-
       ip netns exec ue1 ip route replace default via
-      {{ (core.upf.default_upf.ue_ip_pool.split('.'))[:3] | join('.') }}.{{ (core.upf.default_upf.ue_ip_pool.split('.')[3] | int) + 1 }}
+      {{ (upf_instances.default.ue_ip_pool.split('.'))[:3] | join('.') }}.{{ (upf_instances.default.ue_ip_pool.split('.')[3] | int) + 1 }}
       dev tun_srsue
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
 - set_fact:
-    ping_target: "{{ core.upf.core_subnet | regex_replace('(/.*$)', '') }}"
+    ping_target: "{{ upf_instances.default.core.gateway }}"
   when: inventory_hostname in groups['ocudu_nodes']
 
 - name: run ping command to check if the UE is running and show output

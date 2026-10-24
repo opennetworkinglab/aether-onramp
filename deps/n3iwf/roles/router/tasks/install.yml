@@ -1,5 +1,15 @@
 ---
 
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 - name: check if servers and config server length are equal
   fail:
     msg: "Mismatch in number of servers and n3iwf nodes: {{ n3iwf.servers|length }} vs {{ groups['n3iwf_nodes']|length }}"
@@ -47,9 +57,9 @@
       - ip
       - route
       - replace
-      - "{{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }}"
+      - "{{ upf_instances.default.access.subnet }}"
       - via
       - "{{ core.amf.ip }}"
-  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  when: (inventory_hostname in groups['n3iwf_nodes']) and (inventory_hostname not in groups['master_nodes']) and upf_instances.default.access.host_gateway
   become: true
   ignore_errors: yes

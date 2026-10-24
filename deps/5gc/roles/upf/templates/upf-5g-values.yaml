@@ -18,36 +18,36 @@ config:
   upf:
     name: "aether-upf"
     sriov:
-      enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+      enabled: {{ (upf.mode == 'dpdk') | ternary('true', 'false') }}
     hugepage:
-      enabled: {{ (core.upf.mode == 'dpdk') | ternary('true', 'false') }}
+      enabled: {{ (upf.mode == 'dpdk') | ternary('true', 'false') }}
     routes:
       - to: {{ ansible_default_ipv4.address }}
         via: 169.254.1.1
     ran:
-      subnet: {{ ran_subnet }} # Subnet for the gNB network
+      subnet: {{ upf.access.ran_subnet }} # Subnet for the gNB network
     access:
       ipam: static
-      cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
-{% if core.upf.mode == 'dpdk' %}
-      resourceName: {{ core.upf.access_resource_name | default('intel.com/intel_sriov_vfio_access') | to_json }}
+      cniPlugin: {{ upf.access.cni }}
+{% if upf.mode == 'dpdk' %}
+      resourceName: {{ upf.access.resource_name | to_json }}
 {% endif %}
-      iface: {{ core.data_iface }}
-      gateway: {{ access_gw }}
-      ip: {{ upf_access_ip }}
+      iface: {{ upf.access.iface }}
+      gateway: {{ upf.access.gateway }}
+      ip: {{ upf.access.ip_cidr }}
     core:
       ipam: static
-      cniPlugin: {{ 'vfioveth' if core.upf.mode == 'dpdk' else 'macvlan' }}
-{% if core.upf.mode == 'dpdk' %}
-      resourceName: {{ core.upf.core_resource_name | default('intel.com/intel_sriov_vfio_core') | to_json }}
+      cniPlugin: {{ upf.core.cni }}
+{% if upf.mode == 'dpdk' %}
+      resourceName: {{ upf.core.resource_name | to_json }}
 {% endif %}
-      iface: {{ core.data_iface }}
-      gateway: {{ core_gw }}
-      ip: {{ upf_core_ip }}
+      iface: {{ upf.core.iface }}
+      gateway: {{ upf.core.gateway }}
+      ip: {{ upf.core.ip_cidr }}
     closedLoop: {{ core.closed_loop | default('false') | lower }}
     cfgFiles:
       upf.jsonc:
-        mode: {{ core.upf.mode }}
+        mode: {{ upf.mode }}
         hwcksum: true
         log_level: "info"
         measure_upf: true
@@ -62,7 +62,7 @@ config:
           hostname: "upf"
           #http_port: "8080"
           enable_ue_ip_alloc: true    # If true, UPF allocates address from following pool
-          ue_ip_pool: {{ upf_ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
+          ue_ip_pool: {{ upf.ue_ip_pool }} # IP pool used UEs if enable_ue_ip_alloc=true
         slice_rate_limit_config:       # Slice-level rate limiting
           # Uplink
           n6_bps: 10000000000          # 10Gbps

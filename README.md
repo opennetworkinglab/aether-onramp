@@ -69,11 +69,10 @@ $ make aether-pingall
 
 Edit ``vars/main.yml`` to reflect your local scenario. For
 the Quick Start deployment, this means setting variable
-``data_iface`` to your server's network interface. Note there are
-**two** lines that define this variable, one in the ``core`` section
-and one in the ``gnbsim`` section. You also need to set the
-IP address of the AMF (in the ``core`` section) to your servers's
-IP address.
+``data_iface`` in the ``gnbsim`` section to your server's network
+interface (the core finds its interface from the default route).
+You also need to set the IP address of the AMF (in the ``core``
+section) to your servers's IP address.
 
 You are now ready to install a one-node Kubernetes cluster. Type:
 

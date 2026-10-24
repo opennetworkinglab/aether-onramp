@@ -2,45 +2,192 @@
 
 # TODO: running on master node for now (fix to run on multiple nodes)
 
-# Resolve `core.data_iface` from the default-route interface when it
-# is unset, empty, or left at the legacy placeholder `data`. Empty
-# string is the new shipped default in vars/main.yml and the role
-# defaults; `data` is kept in the trigger set for backward
-# compatibility with older checkouts. `ens18` is NOT treated as a
-# placeholder — on proxmox/QEMU guests it is a legitimate interface
-# name, so an explicit `core.data_iface: ens18` must be honoured.
-# Any other explicit operator value is preserved as-is.
-- name: derive core.data_iface from default-route interface when unset
-  ansible.builtin.set_fact:
-    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - ansible_default_ipv4.interface is defined
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
+# The host side of the UPF's networks. For every network this host is the
+# gateway for (core.networks.<name>.gateway left at 'host'), this role creates
+# a macvlan child named after the network on the interface it sits on, gives it
+# the gateway address, forwards between it and that interface, routes each
+# UPF's UE pool to that UPF, and masquerades the pools on the way out. A
+# network with an external gateway, or one the UPF takes over with
+# host-device, has no host side and is left alone, except that a VLAN child
+# the UPF attaches to is still created here.
 
-- name: validate core.data_iface is set and exists on this host
-  ansible.builtin.fail:
-    msg: >-
-      core.data_iface (={{ core.data_iface | default('<unset>') | to_json }}) is
-      not a valid network interface on this host. Either it was left
-      at a placeholder and no IPv4 default route was available to
-      derive from, or the configured value does not match any
-      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
-      Set core.data_iface in vars/main.yml to the data-plane
-      interface name on the target node.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (core.data_iface is not defined)
-      or (core.data_iface in ['', 'data'])
-      or (core.data_iface not in (ansible_interfaces | default([])))
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+
+- import_tasks: describe.yml
 
 - set_fact:
     systemd_network_dir: /etc/systemd/network
     systemd_system_dir: /etc/systemd/system
     router_sysctl_backup_file: /var/lib/aether-5gc-router-sysctl-backup.conf
-    router_data_iface_forwarding_sysctl: net/ipv4/conf/{{ core.data_iface }}/forwarding
-    router_data_iface_forwarding_backup_regexp: >-
-      ^(net\.ipv4\.conf\.{{ core.data_iface | regex_escape }}\.forwarding|net/ipv4/conf/{{ core.data_iface | regex_escape }}/forwarding)=
+    router_state_file: /var/lib/aether-5gc-router-state.yml
+
+# What a previous install built, if any. Uninstall cleans up from this file
+# rather than from the current config and default route, so a changed
+# interface or network name between install and uninstall still leaves the
+# host clean; install uses it to know which VLAN children it created.
+- name: read the router state file from a previous install
+  slurp:
+    src: "{{ router_state_file }}"
+  register: router_state_slurp
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: load the previous install's record
+  set_fact:
+    router_previous: "{{ (router_state_slurp.content | b64decode | from_yaml) if (router_state_slurp.content is defined) else {} }}"
+  when: inventory_hostname in groups['master_nodes']
+
+# A VLAN child counts as created by this role if the previous record says so,
+# or if it is new to the configuration and does not exist yet. One the record
+# already knows keeps its classification: an operator's VLAN that host-device
+# has moved into a pod is absent from the host too, and must not be claimed.
+- name: set which VLAN children this role created
+  set_fact:
+    router_vlans_created: >-
+      {{ (router_previous.vlans_created | default([]) | intersect(router_vlans | map(attribute='parent') | list))
+         + (router_vlans | map(attribute='parent') | difference(router_previous.vlans | default([]))
+            | difference(ansible_interfaces) | list) }}
+  when: inventory_hostname in groups['master_nodes']
+
+# Re-install with a changed configuration: take down what the previous
+# install built and this one will not, so nothing is left behind and the
+# record below describes the host exactly.
+- name: remove host objects the previous install built that are no longer configured
+  vars:
+    # a network is rebuilt when its name is gone or its parent changed
+    gone_networks: >-
+      {%- set now = [] -%}{%- for n in router_networks -%}{%- set _ = now.append({'name': n.name, 'parent': n.parent}) -%}{%- endfor -%}
+      {{ router_previous.networks | default([]) | difference(now) | map(attribute='name') | list }}
+    gone_parents: "{{ (router_previous.managed | default({})) | dict2items | rejectattr('key', 'in', router_parents) | list }}"
+    gone_nat: "{{ router_previous.nat_rules | default([]) | difference(router_nat_rules) }}"
+    gone_forward: "{{ router_previous.forward_rules | default([]) | difference(router_forward_rules) }}"
+    gone_routes: "{{ router_previous.routes | default([]) | difference(router_routes) }}"
+    gone_vlans: "{{ router_previous.vlans_created | default([]) | difference(router_vlans_created) }}"
+  block:
+    - name: delete routes to UE pools of UPFs no longer configured
+      command:
+        argv: [ip, route, del, "{{ item.pool }}", via, "{{ item.via }}", dev, "{{ item.dev }}"]
+      loop: "{{ gone_routes }}"
+      loop_control:
+        label: "{{ item.pool }} via {{ item.via }}"
+      failed_when: false
+    - name: delete NAT rules no longer configured
+      iptables:
+        table: nat
+        chain: POSTROUTING
+        source: "{{ item.ue_ip_pool }}"
+        out_interface: "{{ item.egress }}"
+        jump: MASQUERADE
+        state: absent
+      loop: "{{ gone_nat }}"
+      loop_control:
+        label: "{{ item.ue_ip_pool }} via {{ item.egress }}"
+    - name: delete forwarding rules no longer configured
+      iptables:
+        chain: FORWARD
+        in_interface: "{{ item.in }}"
+        out_interface: "{{ item.out }}"
+        jump: ACCEPT
+        state: absent
+      loop: "{{ gone_forward }}"
+      loop_control:
+        label: "{{ item.in }} -> {{ item.out }}"
+    - name: delete macvlan children of networks no longer configured
+      command:
+        argv: [ip, link, del, "{{ item }}"]
+      loop: "{{ gone_networks }}"
+      failed_when: false
+    - name: delete unit files of networks no longer configured
+      file:
+        path: "{{ systemd_network_dir }}/{{ item }}"
+        state: absent
+      loop: >-
+        {%- set out = [] -%}{%- for n in gone_networks if n not in (router_networks | map(attribute='name') | list) -%}
+        {%- set _ = out.append('10-aether-' ~ n ~ '.netdev') -%}{%- set _ = out.append('20-aether-' ~ n ~ '.network') -%}
+        {%- endfor -%}{{ out }}
+    - name: drop the persisted forwarding setting of interfaces no longer carrying a network
+      ansible.posix.sysctl:
+        name: "net/ipv4/conf/{{ item }}/forwarding"
+        state: absent
+        sysctl_set: false
+        reload: false
+      loop: "{{ router_previous.parents | default([]) | difference(router_parents) }}"
+    - name: delete networkd drop-ins of interfaces no longer carrying a network
+      file:
+        path: "{{ systemd_network_dir }}/{{ item.value }}.d/macvlan.conf"
+        state: absent
+      loop: "{{ gone_parents }}"
+      loop_control:
+        label: "{{ item.key }}"
+    - name: delete VLAN children this role created that are no longer configured
+      command:
+        argv: [ip, link, del, "{{ item }}"]
+      loop: "{{ gone_vlans }}"
+      failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: check for router sysctl backup file
+  stat:
+    path: "{{ router_sysctl_backup_file }}"
+  register: router_sysctl_backup_stat
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: read router sysctl backup file
+  slurp:
+    src: "{{ router_sysctl_backup_file }}"
+  register: router_sysctl_backup_content
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_sysctl_backup_stat.stat.exists
+  become: true
+
+# ansible.posix.sysctl edits an existing /etc/sysctl.conf line in place, so
+# remember which of the keys this role persists were already there, and with
+# what value; uninstall restores those lines and removes the rest.
+- name: read /etc/sysctl.conf
+  slurp:
+    src: /etc/sysctl.conf
+  register: router_sysctl_conf
+  failed_when: false
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# A backup that records forwarding values but has no sysctl.conf records was
+# written by an install from before those records existed: the lines in
+# sysctl.conf now are that install's own, not the host's, so they count as
+# absent and uninstall removes them.
+- name: recognise a backup written before sysctl.conf lines were recorded
+  set_fact:
+    router_legacy_backup: >-
+      {{ (router_sysctl_backup_content.content | default('') | b64decode) is regex('(?m)^net\.ipv4\.ip_forward=')
+         and not ((router_sysctl_backup_content.content | default('') | b64decode) is regex('(?m)^sysctl\.conf/')) }}
+  when: inventory_hostname in groups['master_nodes']
+
+- name: persist which sysctl.conf lines existed before install
+  lineinfile:
+    path: "{{ router_sysctl_backup_file }}"
+    create: true
+    mode: '0600'
+    line: >-
+      sysctl.conf/{{ item }}={{ 'ABSENT' if (router_legacy_backup | bool) else
+        ((router_sysctl_conf.content | default('') | b64decode)
+         | regex_findall('(?m)^\s*' ~ (item | regex_escape) ~ '\s*=\s*(.*?)\s*$') | first | default('ABSENT')) }}
+    regexp: "^sysctl\\.conf/{{ item | regex_escape }}="
+  loop: >-
+    {%- set keys = ['net.ipv4.ip_forward', 'net.ipv4.conf.all.arp_filter', 'net.ipv4.conf.all.arp_ignore',
+                    'net.ipv4.conf.all.arp_announce', 'net.ipv4.conf.all.rp_filter'] -%}
+    {%- for p in router_parents | difference(router_vlans_created | default([])) -%}{%- set _ = keys.append('net/ipv4/conf/' ~ p ~ '/forwarding') -%}{%- endfor -%}
+    {{ keys }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not ((router_sysctl_backup_content.content | default('') | b64decode) is regex('^sysctl\.conf/' ~ (item | regex_escape) ~ '=', multiline=true))
+  become: true
 
 - name: set net.ipv4.conf.all.arp_filter to 1
   ansible.posix.sysctl:
@@ -78,22 +225,6 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: check for router sysctl backup file
-  stat:
-    path: "{{ router_sysctl_backup_file }}"
-  register: router_sysctl_backup_stat
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: read router sysctl backup file
-  slurp:
-    src: "{{ router_sysctl_backup_file }}"
-  register: router_sysctl_backup_content
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - router_sysctl_backup_stat.stat.exists
-  become: true
-
 - name: read current net.ipv4.ip_forward value
   command: sysctl -n net.ipv4.ip_forward
   register: original_net_ipv4_ip_forward
@@ -114,6 +245,42 @@
     - not ((router_sysctl_backup_content.content | default('') | b64decode) is regex('(?m)^net\\.ipv4\\.ip_forward='))
   become: true
 
+# Per-interface forwarding on each interface a macvlan child sits on, read
+# before net.ipv4.ip_forward is set: writing that resets every interface's
+# forwarding, so reading afterwards would record 1 as the original. VLAN
+# children this role creates are left out: they do not exist at boot before
+# the macvlan service creates them (a persisted line would make `sysctl -p`
+# fail), and the service enables forwarding on them itself.
+- name: read current forwarding value of each UPF network's interface
+  command:
+    argv:
+      - sysctl
+      - -n
+      - "net/ipv4/conf/{{ item }}/forwarding"
+  loop: "{{ router_parents | default([]) | difference(router_vlans_created | default([])) }}"
+  register: original_iface_forwarding
+  changed_when: false
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item in ansible_interfaces
+  become: true
+
+- name: persist original forwarding values for uninstall
+  lineinfile:
+    path: "{{ router_sysctl_backup_file }}"
+    create: true
+    mode: '0600'
+    line: "net/ipv4/conf/{{ item.item }}/forwarding={{ item.stdout | trim }}"
+    regexp: "^(net\\.ipv4\\.conf\\.{{ item.item | regex_escape }}\\.forwarding|net/ipv4/conf/{{ item.item | regex_escape }}/forwarding)="
+  loop: "{{ original_iface_forwarding.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item.rc is defined and item.rc == 0
+    - not ((router_sysctl_backup_content.content | default('') | b64decode) is regex('^(net\\.ipv4\\.conf\\.' ~ (item.item | regex_escape) ~ '\\.forwarding|net/ipv4/conf/' ~ (item.item | regex_escape) ~ '/forwarding)=', multiline=true))
+  become: true
+
 - name: set net.ipv4.ip_forward to 1
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
@@ -123,76 +290,84 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: read current {{ router_data_iface_forwarding_sysctl }} value
-  command:
-    argv:
-      - sysctl
-      - -n
-      - "{{ router_data_iface_forwarding_sysctl }}"
-  register: original_net_ipv4_conf_iface_forwarding
-  changed_when: false
+- name: set forwarding to 1 on each UPF network's interface
+  ansible.posix.sysctl:
+    name: "net/ipv4/conf/{{ item }}/forwarding"
+    value: '1'
+    sysctl_set: true
+    reload: true
+  loop: "{{ router_parents | default([]) | difference(router_vlans_created | default([])) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item in ansible_interfaces
+  become: true
+
+- name: copy 10-aether-<network>.netdev to {{ systemd_network_dir }}
+  template:
+    src: roles/router/templates/aether-macvlan.netdev
+    dest: "{{ systemd_network_dir }}/10-aether-{{ item.name }}.netdev"
+  vars:
+    net: "{{ item }}"
+  loop: "{{ router_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: persist original {{ router_data_iface_forwarding_sysctl }} value for uninstall
+- name: copy 20-aether-<network>.network to {{ systemd_network_dir }}
+  template:
+    src: roles/router/templates/aether-macvlan.network
+    dest: "{{ systemd_network_dir }}/20-aether-{{ item.name }}.network"
+  vars:
+    net: "{{ item }}"
+  loop: "{{ router_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# GRO is turned off for the UPF's sake; remember what it was so uninstall can
+# put it back. The record shares the sysctl backup file, under its own key.
+- name: read the current GRO setting of each interface the UPF's traffic crosses
+  shell: ethtool -k {{ item | quote }} | awk '/^generic-receive-offload:/ {print $2}'
+  loop: "{{ router_base_ifaces | default([]) }}"
+  register: original_gro
+  changed_when: false
+  failed_when: false
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item in ansible_interfaces
+  become: true
+
+- name: persist original GRO settings for uninstall
   lineinfile:
     path: "{{ router_sysctl_backup_file }}"
     create: true
     mode: '0600'
-    line: "{{ router_data_iface_forwarding_sysctl }}={{ original_net_ipv4_conf_iface_forwarding.stdout | trim }}"
-    regexp: "{{ router_data_iface_forwarding_backup_regexp }}"
+    line: "ethtool/{{ item.item }}/gro={{ item.stdout | trim }}"
+    regexp: "^ethtool/{{ item.item | regex_escape }}/gro="
+  loop: "{{ original_gro.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
   when:
     - inventory_hostname in groups['master_nodes']
-    - original_net_ipv4_conf_iface_forwarding is defined
-    - not ((router_sysctl_backup_content.content | default('') | b64decode) is regex(router_data_iface_forwarding_backup_regexp, multiline=true))
+    - item.rc is defined and item.rc == 0
+    - (item.stdout | trim) in ['on', 'off']
+    - not ((router_sysctl_backup_content.content | default('') | b64decode) is regex('^ethtool/' ~ (item.item | regex_escape) ~ '/gro=', multiline=true))
   become: true
 
-- name: set {{ router_data_iface_forwarding_sysctl }} to 1
-  ansible.posix.sysctl:
-    name: "{{ router_data_iface_forwarding_sysctl }}"
-    value: '1'
-    sysctl_set: true
-    reload: true
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: copy 10-aether-access.netdev to {{ systemd_network_dir }}/10-aether-access.netdev
-  template:
-    src: roles/router/templates/10-aether-access.netdev
-    dest: "{{ systemd_network_dir }}/10-aether-access.netdev"
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
-  become: true
-
-- name: copy 20-aether-access.network to {{ systemd_network_dir }}/20-aether-access.network
-  template:
-    src: roles/router/templates/20-aether-access.network
-    dest: "{{ systemd_network_dir }}/20-aether-access.network"
-  when: inventory_hostname in groups['master_nodes'] and core.upf.multihop_gnb == false
-  become: true
-
-- name: copy 10-aether-core.netdev to {{ systemd_network_dir }}/10-aether-core.netdev
-  template:
-    src: roles/router/templates/10-aether-core.netdev
-    dest: "{{ systemd_network_dir }}/10-aether-core.netdev"
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: copy 20-aether-core.network to {{ systemd_network_dir }}/20-aether-core.network
-  template:
-    src: roles/router/templates/20-aether-core.network
-    dest: "{{ systemd_network_dir }}/20-aether-core.network"
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: Disable GRO flag on the {{ core.data_iface }} interface
+- name: Disable GRO flag on each interface the UPF's traffic crosses
   command:
     argv:
       - ethtool
       - -K
-      - "{{ core.data_iface }}"
+      - "{{ item }}"
       - gro
       - "off"
-  when: inventory_hostname in groups['master_nodes']
+  loop: "{{ router_base_ifaces | default([]) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item in ansible_interfaces
   become: true
 
 - name: check if systemd-networkd is active
@@ -210,190 +385,129 @@
 - name: set whether systemd-networkd is active
   set_fact:
     systemd_networkd_active: "{{ (systemd_networkd_state.stdout | default('') | trim) == 'active' }}"
+    networkd_files: {}
   when: inventory_hostname in groups['master_nodes']
 
-- name: read {{ core.data_iface }} networkctl status
-  command:
-    argv:
-      - networkctl
-      - status
-      - "{{ core.data_iface }}"
-  register: data_iface_networkctl_status
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - systemd_networkd_active
-  become: true
-
-- name: derive {{ core.data_iface }}'s active systemd-networkd file via networkctl
-  set_fact:
-    data_iface_network_file_networkctl: >-
-      {{
-        data_iface_networkctl_status.stdout_lines
-        | default([])
-        | select('match', '^\s*Network File:\s+.*\.network\s*$')
-        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
-        | list
-        | first
-        | default('')
-        | basename
-      }}
+# A macvlan child is declared to systemd-networkd as a drop-in on the file
+# that manages its interface when there is one, and created directly by
+# aether-5gc-macvlan.service otherwise. A VLAN child OnRamp creates has no
+# such file, so networks on one always take the service path.
+- name: find the systemd-networkd file managing each UPF network's interface
+  include_tasks: networkd_file.yml
+  vars:
+    nd_iface: "{{ item }}"
+  loop: "{{ router_parents | default([]) }}"
   when:
     - inventory_hostname in groups['master_nodes']
     - systemd_networkd_active
 
-- name: find {{ core.data_iface }}'s systemd-networkd file by filename
-  find:
-    paths:
-      - /etc/systemd/network
-      - /run/systemd/network
-      - /lib/systemd/network
-      - /usr/lib/systemd/network
-    patterns: "*{{ core.data_iface }}.network"
-    recurse: false
-    file_type: file
-  register: data_iface_network_file_matches
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - systemd_networkd_active
-    - (data_iface_network_file_networkctl | default('') | trim) == ''
-  become: true
-
-- name: derive {{ core.data_iface }}'s systemd-networkd file by filename
+- name: split the networks by how their macvlan child is created
   set_fact:
-    data_iface_network_file_cmd: >-
-      {{
-        data_iface_network_file_matches.files
-        | default([])
-        | map(attribute='path')
-        | map('basename')
-        | sort
-        | first
-        | default('')
-      }}
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - systemd_networkd_active
-    - (data_iface_network_file_networkctl | default('') | trim) == ''
-
-- name: set {{ core.data_iface }}'s systemd-networkd filename
-  set_fact:
-    data_iface_network_filename: >-
-      {{
-        (data_iface_network_file_networkctl | default('') | trim)
-        if (data_iface_network_file_networkctl | default('') | trim) != ''
-        else (data_iface_network_file_cmd | default('') | trim)
-      }}
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - systemd_networkd_active
-
-- name: set empty systemd-networkd filename when systemd-networkd is inactive
-  set_fact:
-    data_iface_network_filename: ''
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not (systemd_networkd_active | default(false))
-
-- name: resolve {{ core.data_iface }}'s systemd-networkd file path
-  find:
-    paths:
-      - /etc/systemd/network
-      - /run/systemd/network
-      - /lib/systemd/network
-      - /usr/lib/systemd/network
-    patterns: "{{ data_iface_network_filename }}"
-    recurse: false
-    file_type: file
-  register: data_iface_network_path_matches
-  changed_when: false
-  failed_when: false
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
-  become: true
-
-- name: set {{ core.data_iface }}'s systemd-networkd file path
-  set_fact:
-    data_iface_network_path: >-
-      {{
-        data_iface_network_path_matches.files
-        | default([])
-        | map(attribute='path')
-        | sort
-        | first
-        | default('')
-      }}
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
-
-- name: read {{ core.data_iface }}'s systemd-networkd file
-  slurp:
-    src: "{{ data_iface_network_path | trim }}"
-  register: data_iface_network_file_content
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (data_iface_network_path | default('') | trim) != ''
-  become: true
-
-- name: set whether {{ core.data_iface }} is managed by systemd-networkd
-  set_fact:
-    data_iface_networkd_managed: >-
-      {{
-        systemd_networkd_active
-        and (data_iface_network_filename | default('') | trim) is match('.*\\.network$')
-        and (
-          (core.data_iface in (data_iface_network_filename | default('') | trim))
-          or (
-            (data_iface_network_file_content.content | default('') | b64decode)
-            is regex('(?ms)^\[Match\][^[]*^Name\s*=\s*' ~ (core.data_iface | regex_escape) ~ '\s*$')
-          )
-        )
-      }}
+    router_managed_parents: "{{ networkd_files | dict2items | rejectattr('value', 'equalto', '') | map(attribute='key') | list }}"
   when: inventory_hostname in groups['master_nodes']
 
-- name: note direct macvlan fallback for {{ core.data_iface }}
+- name: split the networks by how their macvlan child is created
+  set_fact:
+    router_managed_networks: "{{ router_networks | selectattr('parent', 'in', router_managed_parents) | list }}"
+    router_direct_networks: "{{ router_networks | rejectattr('parent', 'in', router_managed_parents) | list }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: note direct macvlan fallback
   debug:
     msg: >-
-      {{ core.data_iface }} is not managed by systemd-networkd. Falling back to direct macvlan interface setup.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not data_iface_networkd_managed
+      {{ item.parent }} is not managed by systemd-networkd. Falling back to direct macvlan interface setup for {{ item.name }}.
+  loop: "{{ router_direct_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: inventory_hostname in groups['master_nodes']
 
-- name: create {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d
+- name: create {{ systemd_network_dir }}/<file>.d for each managed interface
   file:
-    path: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d"
+    path: "{{ systemd_network_dir }}/{{ networkd_files[item] }}.d"
     state: directory
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - data_iface_networkd_managed
+  loop: "{{ router_managed_parents | default([]) }}"
+  when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: copy macvlan.conf to {{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf
+- name: copy macvlan.conf to {{ systemd_network_dir }}/<file>.d/macvlan.conf for each managed interface
   template:
     src: roles/router/templates/macvlan.conf
-    dest: "{{ systemd_network_dir }}/{{ data_iface_network_filename }}.d/macvlan.conf"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - data_iface_networkd_managed
+    dest: "{{ systemd_network_dir }}/{{ networkd_files[item] }}.d/macvlan.conf"
+  vars:
+    nd_parent: "{{ item }}"
+  loop: "{{ router_managed_parents | default([]) }}"
+  when: inventory_hostname in groups['master_nodes']
   become: true
+
+# The two services only exist when they have something to do: a oneshot unit
+# with no ExecStart= is rejected by systemd. With every gateway external (or
+# every UPF side on host-device) there is no macvlan to create and no pool to
+# masquerade, so the units are removed instead.
+- name: check for previously installed router services
+  stat:
+    path: "{{ systemd_system_dir }}/{{ item }}.service"
+  loop:
+    - aether-5gc-macvlan
+    - aether-ue-nat
+  register: router_service_files
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: set what the router services have to do
+  set_fact:
+    router_macvlan_service_needed: "{{ (router_networks | length) > 0 or (router_vlans | length) > 0 }}"
+    router_nat_service_needed: "{{ (router_nat_rules | length) > 0 }}"
+    router_macvlan_service_present: "{{ router_service_files.results[0].stat.exists | default(false) }}"
+    router_nat_service_present: "{{ router_service_files.results[1].stat.exists | default(false) }}"
+  when: inventory_hostname in groups['master_nodes']
 
 - name: copy aether-5gc-macvlan.service to {{ systemd_system_dir }}/aether-5gc-macvlan.service
   template:
     src: roles/router/templates/aether-5gc-macvlan.service
     dest: "{{ systemd_system_dir }}/aether-5gc-macvlan.service"
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_macvlan_service_needed
   become: true
 
 - name: copy aether-ue-nat.service to {{ systemd_system_dir }}/aether-ue-nat.service
   template:
     src: roles/router/templates/aether-ue-nat.service
     dest: "{{ systemd_system_dir }}/aether-ue-nat.service"
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_nat_service_needed
+  become: true
+
+- name: stop and disable router services that have nothing to do
+  systemd:
+    name: "{{ item.name }}.service"
+    enabled: false
+    state: stopped
+  loop:
+    - { name: aether-5gc-macvlan, present: "{{ router_macvlan_service_present }}", needed: "{{ router_macvlan_service_needed }}" }
+    - { name: aether-ue-nat, present: "{{ router_nat_service_present }}", needed: "{{ router_nat_service_needed }}" }
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item.present | bool
+    - not (item.needed | bool)
+  failed_when: false
+  become: true
+
+- name: remove router services that have nothing to do
+  file:
+    path: "{{ systemd_system_dir }}/{{ item.name }}.service"
+    state: absent
+  loop:
+    - { name: aether-5gc-macvlan, needed: "{{ router_macvlan_service_needed }}" }
+    - { name: aether-ue-nat, needed: "{{ router_nat_service_needed }}" }
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (item.needed | bool)
   become: true
 
 - name: force systemd to reread configs
@@ -402,14 +516,16 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: disable aether-5gc-macvlan.service when systemd-networkd manages {{ core.data_iface }}
+- name: disable aether-5gc-macvlan.service when systemd-networkd manages every interface
   systemd:
     name: aether-5gc-macvlan.service
     enabled: false
     state: stopped
   when:
     - inventory_hostname in groups['master_nodes']
-    - data_iface_networkd_managed
+    - router_macvlan_service_needed
+    - (router_direct_networks | length) == 0
+    - (router_vlans | length) == 0
   become: true
 
 - name: enable aether-5gc-macvlan.service for direct macvlan fallback
@@ -419,21 +535,25 @@
     state: restarted
   when:
     - inventory_hostname in groups['master_nodes']
-    - not data_iface_networkd_managed
+    - (router_direct_networks | length) > 0 or (router_vlans | length) > 0
   become: true
 
 - name: enable aether-ue-nat.service
   systemd:
     name: aether-ue-nat.service
     enabled: true
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_nat_service_needed
   become: true
 
 - name: start aether-ue-nat.service
   systemd:
     name: aether-ue-nat.service
     state: started
-  when: inventory_hostname in groups['master_nodes']
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - router_nat_service_needed
   become: true
 
 - name: restart systemd-networkd
@@ -442,7 +562,7 @@
     state: restarted
   when:
     - inventory_hostname in groups['master_nodes']
-    - data_iface_networkd_managed
+    - (router_managed_parents | length) > 0
   become: true
 
 - name: install iptables package
@@ -488,34 +608,39 @@
   when: inventory_hostname in groups['master_nodes']
   become: true
 
-- name: wait for core interface to be ready
-  command: ip link show core
-  register: core_interface_check
+- name: wait for each UPF network's interface to be ready
+  command: ip link show {{ item.name }}
+  register: router_interface_check
   changed_when: false
   failed_when: false
   retries: 15
   delay: 1
-  until: core_interface_check.rc == 0
+  until: router_interface_check.rc == 0
+  loop: "{{ router_networks | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
   when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: wait for access interface to be ready
-  command: ip link show access
-  register: access_interface_check
-  changed_when: false
-  failed_when: false
-  retries: 15
-  delay: 1
-  until: access_interface_check.rc == 0
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - not core.upf.multihop_gnb
   become: true
 
 - name: start 5gc-iptables.service
   systemd:
     name: 5gc-iptables.service
     state: started
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+# The service restores the rules file at boot and stays active afterwards, so
+# starting it on a re-install changes nothing; rules a changed configuration
+# adds are applied here (the module checks before inserting, no duplicates).
+- name: apply the forwarding rules
+  iptables:
+    chain: FORWARD
+    in_interface: "{{ item.in }}"
+    out_interface: "{{ item.out }}"
+    jump: ACCEPT
+  loop: "{{ router_forward_rules | default([]) }}"
+  loop_control:
+    label: "{{ item.in }} -> {{ item.out }}"
   when: inventory_hostname in groups['master_nodes']
   become: true
 
@@ -527,9 +652,30 @@
       - replace
       - "{{ core.ims.ue_ip_pool_ims | ansible.utils.ipaddr('network/prefix') }}"
       - via
-      - "{{ core.upf.default_upf.ip.core }}"
+      - "{{ upf_instances.default.core.ip }}"
       - dev
-      - core
-  when: (inventory_hostname in groups['master_nodes']) and core.ims.ue_ip_pool_ims is defined and core.upf.default_upf.ip.core is defined
+      - "{{ upf_instances.default.core.network }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - core.ims.ue_ip_pool_ims is defined
+    - upf_instances.default.core.host_gateway
   become: true
   ignore_errors: false
+
+# Written last so it describes what was actually built.
+- name: record what this install builds, for uninstall
+  copy:
+    dest: "{{ router_state_file }}"
+    mode: '0600'
+    content: "{{ {'networks': router_networks | map('dict2items') | map('selectattr', 'key', 'in', ['name', 'parent']) | map('items2dict') | list,
+                  'parents': router_parents,
+                  'managed': networkd_files | default({}),
+                  'vlans': router_vlans | map(attribute='parent') | list,
+                  'vlans_created': router_vlans_created,
+                  'base_ifaces': router_base_ifaces,
+                  'nat_rules': router_nat_rules,
+                  'forward_rules': router_forward_rules,
+                  'routes': router_routes} | to_nice_yaml }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+

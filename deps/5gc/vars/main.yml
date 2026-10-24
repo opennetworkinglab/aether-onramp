@@ -4,14 +4,12 @@ airgapped:
   enabled: false                 # set true to skip `apt update_cache` (offline / mirror-only sites)
 
 core:
-  # Name of the data-plane interface on the managed node (e.g. eth0,
-  # enp5s0). Leave empty to auto-derive from the default-route
-  # interface. Any explicit value is honoured as-is. The legacy
-  # role-default placeholder "data" is also treated as unset for
-  # backward compatibility.
-  data_iface: ""
   values_file: "roles/core/templates/sdcore-5g-values.yaml"
-  ran_subnet: "172.20.0.0/16"     # set it to empty to get subnet from 'data_iface'
+
+  # UPF networking is described by core.networks and core.upf.instances in
+  # the top-level vars/main.yml; both are optional and default to the
+  # collapsed single-interface deployment. See README.md. Nothing is set
+  # here because this file is merged into every 5gc play.
 
   helm:
     local_charts: false
@@ -19,24 +17,4 @@ core:
     chart_version: 5.0.0 # Ignored if using local charts (local_charts: true)
 
   upf:
-    access_subnet: "192.168.252.1/24"  # access subnet & gateway
-    core_subnet: "192.168.250.1/24"  # core subnet & gateway
     mode: af_packet      # Options: af_packet or dpdk
-    multihop_gnb: false                 # when set to true, access subnet will be same as data_iface
-    default_upf:
-      ip:
-        access: "192.168.252.3"         # when multihop_gnb set to true, make sure to assign IP from same subnet of data_iface
-        core:   "192.168.250.3"
-      ue_ip_pool: "172.250.0.0/16"
-
-    additional_upfs:
-      "1":
-        ip:
-          access: "192.168.252.6"
-          core:   "192.168.250.6"
-        ue_ip_pool: "172.248.0.0/16"
-      # "2":
-      #   ip:
-      #     access: "192.168.252.7"
-      #     core:   "192.168.250.7"
-      #   ue_ip_pool: "172.248.0.0/16"

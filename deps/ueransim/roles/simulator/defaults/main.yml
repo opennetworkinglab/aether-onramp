@@ -14,8 +14,5 @@ ueransim:
       gnb: "config/custom-gnb.yaml"
       ue: "config/custom-ue.yaml"
 core:
-  upf:
-    core_subnet: "192.168.250.1/24"
-    multihop_gnb: false
   amf:
     ip: "172.16.248.6"

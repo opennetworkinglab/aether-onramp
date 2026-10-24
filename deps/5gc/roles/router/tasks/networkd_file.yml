@@ -1,0 +1,101 @@
+---
+
+# Find the systemd-networkd .network file that manages interface `nd_iface`,
+# and record its basename (or '' when networkd is inactive or does not manage
+# the interface) in `networkd_files[nd_iface]`. Included once per interface by
+# the 5gc router role, which uses the answer to decide whether a macvlan child
+# is declared to networkd as a drop-in on that file or created directly.
+
+- name: read {{ nd_iface }} networkctl status
+  command:
+    argv:
+      - networkctl
+      - status
+      - "{{ nd_iface }}"
+  register: nd_status
+  changed_when: false
+  failed_when: false
+  become: true
+
+- name: derive {{ nd_iface }}'s active systemd-networkd file via networkctl
+  set_fact:
+    nd_file_networkctl: >-
+      {{
+        nd_status.stdout_lines
+        | default([])
+        | select('match', '^\s*Network File:\s+.*\.network\s*$')
+        | map('regex_replace', '^\s*Network File:\s+(.*\.network)\s*$', '\1')
+        | list
+        | first
+        | default('')
+        | basename
+      }}
+
+- name: find {{ nd_iface }}'s systemd-networkd file by filename
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "*{{ nd_iface }}.network"
+    recurse: false
+    file_type: file
+  register: nd_file_matches
+  changed_when: false
+  failed_when: false
+  when: (nd_file_networkctl | trim) == ''
+  become: true
+
+- name: set {{ nd_iface }}'s systemd-networkd filename
+  set_fact:
+    nd_filename: >-
+      {{
+        (nd_file_networkctl | trim)
+        if (nd_file_networkctl | trim) != ''
+        else (nd_file_matches.files | default([]) | map(attribute='path') | map('basename') | sort | first | default(''))
+      }}
+
+- name: resolve {{ nd_iface }}'s systemd-networkd file path
+  find:
+    paths:
+      - /etc/systemd/network
+      - /run/systemd/network
+      - /lib/systemd/network
+      - /usr/lib/systemd/network
+    patterns: "{{ nd_filename }}"
+    recurse: false
+    file_type: file
+  register: nd_path_matches
+  changed_when: false
+  failed_when: false
+  when: (nd_filename | trim) is match('.*\\.network$')
+  become: true
+
+- name: read {{ nd_iface }}'s systemd-networkd file
+  slurp:
+    src: "{{ nd_path_matches.files | map(attribute='path') | sort | first }}"
+  register: nd_file_content
+  when:
+    - (nd_filename | trim) is match('.*\\.network$')
+    - (nd_path_matches.files | default([]) | length) > 0
+  become: true
+
+# Managed when the file is named for the interface, or its [Match] section
+# names it. A file that merely glob-matched the name is otherwise ignored.
+- name: record whether {{ nd_iface }} is managed by systemd-networkd
+  set_fact:
+    networkd_files: >-
+      {{ networkd_files | default({}) | combine({nd_iface: (
+           (nd_filename | trim)
+           if (
+             (nd_filename | trim) is match('.*\\.network$')
+             and (
+               (nd_iface in (nd_filename | trim))
+               or (
+                 (nd_file_content.content | default('') | b64decode)
+                 is regex('(?ms)^\[Match\][^[]*^Name\s*=\s*' ~ (nd_iface | regex_escape) ~ '\s*$')
+               )
+             )
+           ) else ''
+         )}) }}

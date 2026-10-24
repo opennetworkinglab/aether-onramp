@@ -1,4 +1,15 @@
 ---
+
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 - name: ensure {{ ueransim.docker.container.image }} image is present
   # `source: local` reuses the image staged into Docker by the
   # bundle's dockerimages step. Online installs still pull.
@@ -9,7 +20,7 @@
   become: true
 
 - set_fact:
-    subnet: "{{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }}"
+    subnet: "{{ upf_instances.default.access.subnet }}"
   when: inventory_hostname in groups['ueransim_nodes']
 
 - name: configure static route for upf traffic on ueransim node
@@ -22,4 +33,4 @@
       - via
       - "{{ core.amf.ip }}"
   become: true
-  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and core.upf.multihop_gnb == false
+  when: (inventory_hostname in groups['ueransim_nodes']) and (inventory_hostname not in groups['master_nodes']) and upf_instances.default.access.host_gateway

@@ -90,7 +90,7 @@ omec-sub-provision:
                 dnn: internet
                 dns-primary: "8.8.8.8"
                 mtu: 1460
-                ue-ip-pool: "{{ core.upf.default_upf.ue_ip_pool }}"
+                ue-ip-pool: "{{ upf.ue_ip_pool }}"
                 ue-dnn-qos:
                   dnn-mbr-downlink: 20000000
                   dnn-mbr-uplink: 4000000
@@ -141,17 +141,22 @@ omec-user-plane:
         enabled: false
       hugepage:
         enabled: false
-      cniPlugin: macvlan
       ipam: static
       routes:
         - to: {{ ansible_default_ipv4.address }}
           via: 169.254.1.1
       ran:
-        subnet: {{ ran_subnet }} # Subnet for the gNB network
+        subnet: {{ upf.access.ran_subnet }} # Subnet for the gNB network
       access:
-        iface:  {{ core.data_iface }}
+        cniPlugin: {{ upf.access.cni }}
+        iface:  {{ upf.access.iface }}
+        gateway: {{ upf.access.gateway }}
+        ip: {{ upf.access.ip_cidr }}
       core:
-        iface: {{ core.data_iface }}
+        cniPlugin: {{ upf.core.cni }}
+        iface: {{ upf.core.iface }}
+        gateway: {{ upf.core.gateway }}
+        ip: {{ upf.core.ip_cidr }}
       cfgFiles:
         upf.jsonc:
           mode: af_packet

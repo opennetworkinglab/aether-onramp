@@ -1,5 +1,15 @@
 ---
 
+# The UPF's subnets and gateways come from the shared resolver (see
+# deps/common/roles/preflight/tasks/upf_networks.yml) so this role and the
+# 5gc roles read one description of the UPF's networking.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
+  vars:
+    upf_networks_strict: false
+
 - name: declare paths shared with install.yml
   ansible.builtin.set_fact:
     router_sysctl_backup_file: /var/lib/gnbsim-router-sysctl-backup.conf
@@ -115,7 +125,7 @@
       - /usr/sbin/ip
       - route
       - del
-      - "{{ core.upf.access_subnet | ansible.utils.ipaddr('network/prefix') }}"
+      - "{{ upf_instances.default.access.subnet }}"
       - via
       - "{{ core.amf.ip }}"
   when:

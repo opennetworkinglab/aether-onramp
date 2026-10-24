@@ -1,31 +1,18 @@
 ---
 
-# Resolve `core.data_iface` from the default-route interface when it
-# is unset or left at one of the stock defaults. See the router
-# role's install.yml for the full rationale.
-- name: derive core.data_iface from default-route interface when unset
-  ansible.builtin.set_fact:
-    core: "{{ core | combine({'data_iface': ansible_default_ipv4.interface}) }}"
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - ansible_default_ipv4.interface is defined
-    - core.data_iface is not defined or core.data_iface in ['', 'data']
+# Interpret core.networks and core.upf.instances and check them against this
+# host. Shared with the 5gc/core and 5gc/router roles via the preflight role,
+# so additional UPFs are described exactly like the built-in one.
+- name: resolve UPF networking
+  import_role:
+    name: preflight
+    tasks_from: upf_networks.yml
 
-- name: validate core.data_iface is set and exists on this host
-  ansible.builtin.fail:
-    msg: >-
-      core.data_iface (={{ core.data_iface | default('<unset>') | to_json }}) is
-      not a valid network interface on this host. Either it was left
-      at a placeholder and no IPv4 default route was available to
-      derive from, or the configured value does not match any
-      interface in ansible_interfaces ({{ ansible_interfaces | join(', ') }}).
-      Set core.data_iface in vars/main.yml to the data-plane
-      interface name on the target node.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - (core.data_iface is not defined)
-      or (core.data_iface in ['', 'data'])
-      or (core.data_iface not in (ansible_interfaces | default([])))
+# Every instance other than `default` (the built-in UPF, rendered into the
+# sd-core release by 5gc/core) is deployed here as its own bess-upf release.
+- name: list the additional UPF instances
+  ansible.builtin.set_fact:
+    additional_upfs: "{{ upf_instances | dict2items | rejectattr('value.builtin') | list }}"
 
 # kubernetes.core modules used later in this role require the python
 # `kubernetes` client library, which is NOT pulled in by a stock apt
@@ -51,93 +38,31 @@
 # Validate SR-IOV UPF resource pools and VF MAC addresses for the additional
 # UPFs. Shared with the built-in UPF install path (5gc/core) via the
 # preflight role so both paths accept identical configuration and cannot
-# drift. The task file is internally gated on DPDK mode and master_nodes.
+# drift. The task file checks each PF a dpdk UPF attaches through, and does
+# nothing when no UPF is in dpdk mode.
 - name: validate SR-IOV UPF resource pools for additional UPFs
   import_role:
     name: preflight
     tasks_from: sriov_upf_pools.yml
 
-- name: find {{ core.data_iface }}'s subnet for RAN
-  command:
-    argv:
-      - ip
-      - -o
-      - route
-      - show
-      - dev
-      - "{{ core.data_iface }}"
-  register: result
-  changed_when: false
-  failed_when: false
-  when: inventory_hostname in groups['master_nodes']
-  become: true
-
-- name: verify {{ core.data_iface }}'s subnet can be derived for RAN
-  ansible.builtin.assert:
-    that:
-      - result.rc == 0
-      - (result.stdout_lines | default([]) | select('search', ' proto kernel ') | list | length) > 0
-    fail_msg: >-
-      Unable to derive ran_subnet from interface {{ core.data_iface }}.
-      Ensure core.data_iface is valid or set core.ran_subnet explicitly.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.ran_subnet == ''
-
-- set_fact:
-    ran_subnet: >-
-      {{
-        (
-          result.stdout_lines
-          | default([])
-          | select('search', ' proto kernel ')
-          | map('regex_search', '^[^ ]+')
-          | list
-          | first
-          | default('')
-        ) if (core.ran_subnet == '') else core.ran_subnet
-      }}
-  when: inventory_hostname in groups['master_nodes']
-
-- name: validate ran_subnet is in valid CIDR format
-  ansible.builtin.assert:
-    that:
-      - ran_subnet is defined
-      - ran_subnet | length > 0
-      - ran_subnet is match('^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])/[0-9]{1,2}$')
-      - (ran_subnet | split('/') | last | int) >= 8
-      - (ran_subnet | split('/') | last | int) <= 30
-      - >-
-        ((
-          (ran_subnet.split('/')[0].split('.')[0] | int) * 16777216 +
-          (ran_subnet.split('/')[0].split('.')[1] | int) * 65536 +
-          (ran_subnet.split('/')[0].split('.')[2] | int) * 256 +
-          (ran_subnet.split('/')[0].split('.')[3] | int)
-        ) % (2 ** (32 - (ran_subnet.split('/')[1] | int)))) == 0
-    fail_msg: >-
-      Invalid ran_subnet '{{ ran_subnet }}'. Must be in valid CIDR notation
-      with no host bits set (e.g., 172.20.0.0/16) and prefix length between /8 and /30.
-  when: inventory_hostname in groups['master_nodes']
-
 - name: remove /tmp/upf-[].yaml
   file:
     path: "/tmp/upf-{{ item.key }}.yaml"
     state: absent
-  with_dict: "{{ core.upf.additional_upfs}}"
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
 
-- name: copy config files to gnbsim host
+- name: render the values file for each additional UPF
   template:
     src: "{{ ROOT_DIR }}/{{ core.upf.values_file }}"
     dest: /tmp/upf-{{ item.key }}.yaml
   vars:
-    ran_subnet: "{{ran_subnet}}"
-    access_gw: "{{ core.upf.access_subnet | split('/') | first }}"
-    core_gw: "{{ core.upf.core_subnet | split('/') | first }}"
-    upf_access_ip: "{{ item.value.ip.access + '/' + (core.upf.access_subnet | split('/') | last) }}"
-    upf_core_ip: "{{ item.value.ip.core + '/' + (core.upf.core_subnet | split('/') | last) }}"
-    upf_ue_ip_pool: "{{ item.value.ue_ip_pool }}"
-  with_dict: "{{ core.upf.additional_upfs}}"
+    upf: "{{ item.value }}"
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
 
 - name: update helm dependencies
@@ -153,6 +78,79 @@
     upf_helm_requires_repo_update: "{{ (not core.upf.helm.local_charts) and not (core.upf.helm.chart_ref is match('^oci://')) }}"
   when: inventory_hostname in groups['master_nodes']
 
+# Each additional UPF's route and NAT live in a unit of its own, installed and
+# removed with the release, so they persist across reboots and go away with the
+# UPF. Only for UPFs whose core network this host is the gateway for. A unit
+# already present is stopped first, so its ExecStop removes what the previous
+# definition added before a changed pool or egress replaces it; units for
+# UPFs that no longer need host routing (or are no longer configured) go.
+- name: find the route and NAT units of previous installs
+  find:
+    paths: /etc/systemd/system
+    patterns: "aether-upf-*-routes.service"
+    file_type: file
+  register: upf_route_units
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: stop the route and NAT units of previous installs
+  systemd:
+    name: "{{ item.path | basename }}"
+    state: stopped
+  loop: "{{ upf_route_units.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  failed_when: false
+
+- name: remove route and NAT units no additional UPF needs any more
+  systemd:
+    name: "{{ item.path | basename }}"
+    enabled: false
+    state: stopped
+  loop: "{{ upf_route_units.files | default([]) | rejectattr('path', 'in', additional_upfs | selectattr('value.core.host_gateway') | map(attribute='key') | map('regex_replace', '^(.*)$', '/etc/systemd/system/aether-upf-\\1-routes.service') | list) | list }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+  failed_when: false
+
+- name: delete route and NAT units no additional UPF needs any more
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ upf_route_units.files | default([]) | rejectattr('path', 'in', additional_upfs | selectattr('value.core.host_gateway') | map(attribute='key') | map('regex_replace', '^(.*)$', '/etc/systemd/system/aether-upf-\\1-routes.service') | list) | list }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: install the UE pool route and NAT unit for each additional UPF
+  template:
+    src: roles/upf/templates/aether-upf-routes.service
+    dest: /etc/systemd/system/aether-upf-{{ item.key }}-routes.service
+  vars:
+    upf: "{{ item.value }}"
+    upf_egress: "{{ [ansible_default_ipv4.interface | default(''), upf_networks[item.value.core.network].parent] | reject('equalto', '') | unique | list }}"
+  loop: "{{ additional_upfs | selectattr('value.core.host_gateway') | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
+- name: enable and start each additional UPF's route and NAT unit
+  systemd:
+    name: aether-upf-{{ item.key }}-routes.service
+    enabled: true
+    state: restarted
+    daemon_reload: true
+  loop: "{{ additional_upfs | selectattr('value.core.host_gateway') | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: inventory_hostname in groups['master_nodes']
+  become: true
+
 - name: deploy upf
   kubernetes.core.helm:
     update_repo_cache: "{{ upf_helm_requires_repo_update }}"
@@ -162,35 +160,11 @@
     chart_ref: "{{ core.upf.helm.chart_ref }}"
     chart_version: "{{ core.upf.helm.chart_version if core.upf.helm.local_charts == false else omit }}"
     values_files:
-      - /tmp/upf-{{item.key}}.yaml
+      - /tmp/upf-{{ item.key }}.yaml
     wait: true
     wait_timeout: "1m30s"
     force: true
-  with_dict: "{{ core.upf.additional_upfs}}"
+  loop: "{{ additional_upfs }}"
+  loop_control:
+    label: "{{ item.key }}"
   when: inventory_hostname in groups['master_nodes']
-
-- name: configure route for upf traffic on gnbsim node
-  command:
-    argv:
-      - ip
-      - route
-      - add
-      - "{{ item.value.ue_ip_pool }}"
-      - via
-      - "{{ item.value.ip.core }}"
-  when: inventory_hostname in groups['master_nodes']
-  with_dict: "{{ core.upf.additional_upfs}}"
-  become: true
-  # ignore_errors: yes
-
-- name: configure NAT for upf traffic
-  iptables:
-    table: nat
-    chain: POSTROUTING
-    source: "{{ item.value.ue_ip_pool }}"
-    out_interface: "{{ core.data_iface }}"
-    jump: MASQUERADE
-  when: inventory_hostname in groups['master_nodes']
-  with_dict: "{{ core.upf.additional_upfs}}"
-  become: true
-  # ignore_errors: yes

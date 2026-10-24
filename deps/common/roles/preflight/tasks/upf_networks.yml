@@ -1,0 +1,260 @@
+---
+
+# Resolve `core.networks` and `core.upf.instances` into two facts every 5GC
+# role reads instead of interpreting the config itself:
+#
+#   upf_networks   one entry per network a UPF uses: the interface it attaches
+#                  to, its subnet and gateway, whether this host provides that
+#                  gateway, and how the UPF attaches (macvlan or host-device).
+#   upf_instances  one entry per UPF: its mode, UE pool, and for each side the
+#                  network, address, gateway, CNI plugin and interface.
+#
+# The shape and every default live in filter_plugins/upf_networks.py, which is
+# a pure function of the config and is unit-tested in tests/. Leaving both keys
+# out resolves to the collapsed single-interface deployment OnRamp has always
+# shipped. This file adds the steps only a host can answer: deriving
+# `ran_subnet` from an interface, checking interfaces exist, and refusing to
+# move the interface carrying the host's own default route into a pod.
+#
+# The pure part runs on every host because RAN-side roles need the UPF's
+# subnets and gateways too; everything that touches the host runs on master
+# nodes only.
+#
+# `upf_networks_strict: false` (set by the uninstall paths) keeps the resolution
+# but skips the checks that would refuse to proceed: cleanup should not be
+# blocked by an interface that has since been renamed or moved.
+
+- name: look for retired UPF networking keys
+  ansible.builtin.set_fact:
+    upf_retired_present: >-
+      {{ (core | list | intersect(core_retired | list))
+         + ((core.upf | default({})) | list | intersect(upf_retired | list)) }}
+    upf_retired_message: >-
+      UPF networking is configured through core.networks and core.upf.instances
+      (see deps/5gc/README.md). These keys are no longer read and must be removed:
+      {% for k, use in core_retired.items() if k in core %}
+      core.{{ k }} -> {{ use }};
+      {% endfor %}
+      {% for k, use in upf_retired.items() if k in (core.upf | default({})) %}
+      core.upf.{{ k }} -> {{ use }};
+      {% endfor %}
+  vars:
+    core_retired:
+      data_iface: core.networks.<name>.iface (defaults to the default-route interface)
+      data_iface_n6: core.networks.core.iface
+      ran_subnet: core.networks.access.ran_subnet
+    upf_retired:
+      access_subnet: core.networks.access.subnet and .gateway
+      core_subnet: core.networks.core.subnet and .gateway
+      multihop_gnb: core.networks.access.gateway set to the router's address (no host-side overlay)
+      access_overlay: core.networks.access.gateway set to the router's address (no host-side overlay)
+      access_resource_name: core.networks.access.resource_name
+      core_resource_name: core.networks.core.resource_name
+      access_cni_plugin: core.networks.access.attach
+      core_cni_plugin: core.networks.core.attach
+      default_upf: core.upf.instances.default (access.ip, core.ip, ue_ip_pool)
+      additional_upfs: core.upf.instances.<name>
+
+- name: reject retired UPF networking keys
+  ansible.builtin.fail:
+    msg: "{{ upf_retired_message }}"
+  when:
+    - upf_networks_strict | default(true) | bool
+    - upf_retired_present | length > 0
+
+# Cleanup and RAN-side roles must not be blocked by an old vars file; they
+# resolve with the defaults and say so.
+- name: warn about retired UPF networking keys
+  ansible.builtin.debug:
+    msg: "WARNING: {{ upf_retired_message }} The retired keys are ignored here and the defaults used in their place."
+  when:
+    - not (upf_networks_strict | default(true) | bool)
+    - upf_retired_present | length > 0
+
+# Only master nodes build the UPF's host side, and only their default route
+# says anything about the UPF's interfaces; other hosts resolve non-strictly
+# and derive no interface at all, since all they need are the networks'
+# addresses (and their own default route could collide with the core's).
+- name: resolve UPF networks and instances
+  ansible.builtin.set_fact:
+    upf_resolved: "{{ core | resolve_upf_networks(upf_default_iface, strict=((upf_networks_strict | default(true) | bool) and inventory_hostname in groups['master_nodes'])) }}"
+  vars:
+    upf_default_iface: "{{ (ansible_default_ipv4.interface | default('')) if inventory_hostname in groups['master_nodes'] else '' }}"
+
+# `ran_subnet` is the gNB network the UPF needs a downlink route for. When an
+# access network leaves it empty it is taken from the interface's own subnet,
+# which is right whenever the gNBs sit on that interface's L2.
+- name: derive ran_subnet from the access interface where it is left empty
+  ansible.builtin.command:
+    argv:
+      - ip
+      - -o
+      - route
+      - show
+      - dev
+      - "{{ item.parent }}"
+  loop: "{{ upf_resolved.networks.values() | selectattr('needs_ran_subnet') | rejectattr('parent', 'equalto', '') | list }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.parent }})"
+  register: upf_ran_routes
+  changed_when: false
+  failed_when: false
+  become: true
+  when: inventory_hostname in groups['master_nodes']
+
+- name: collect derived ran_subnets
+  ansible.builtin.set_fact:
+    upf_ran_subnets: >-
+      {{ upf_ran_subnets | default({}) | combine({item.item.name:
+           (item.stdout_lines | default([]) | select('search', ' proto kernel ')
+            | map('regex_search', '^[^ ]+') | list | first | default(''))}) }}
+  loop: "{{ upf_ran_routes.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('') }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - item.rc is defined
+
+- name: resolve UPF networks and instances with derived ran_subnets
+  ansible.builtin.set_fact:
+    upf_resolved: "{{ core | resolve_upf_networks(ansible_default_ipv4.interface | default(''), upf_ran_subnets | default({}), strict=(upf_networks_strict | default(true) | bool)) }}"
+  when: inventory_hostname in groups['master_nodes']
+
+- name: fail where ran_subnet could not be derived
+  ansible.builtin.fail:
+    msg: >-
+      core.networks.{{ item.name }}: could not derive ran_subnet from {{ item.parent }},
+      which has no kernel route on this host (not up, no address, or already
+      moved into the UPF pod by host-device). Set
+      core.networks.{{ item.name }}.ran_subnet to the gNB network explicitly.
+  loop: "{{ upf_resolved.networks.values() | selectattr('needs_ran_subnet') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - upf_networks_strict | default(true) | bool
+    - inventory_hostname in groups['master_nodes']
+
+- name: publish upf_networks and upf_instances
+  ansible.builtin.set_fact:
+    upf_networks: "{{ upf_resolved.networks }}"
+    upf_instances: "{{ upf_resolved.instances }}"
+
+# A host-device interface without a VLAN is the one case where absence is
+# legitimate: the UPF pod holds it for as long as it runs, so requiring it
+# here would refuse to re-install a working deployment. With a VLAN the base
+# interface stays on the host and only the tagged child moves.
+- name: check each UPF network's interface exists on this host
+  ansible.builtin.fail:
+    msg: >-
+      core.networks.{{ item.name }}: interface {{ item.iface | to_json }} is not on
+      this host (ansible_interfaces: {{ ansible_interfaces | default([]) | join(', ') }}).
+      {% if item.name in (core.networks | default({})) and 'iface' in (core.networks[item.name] | default({}, true)) %}
+      Set core.networks.{{ item.name }}.iface to an interface on the target node.
+      {% else %}
+      It was taken from this host's default route; set core.networks.{{ item.name }}.iface
+      to the data-plane interface on the target node.
+      {% endif %}
+  loop: "{{ upf_networks.values() | list }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.iface }})"
+  when:
+    - upf_networks_strict | default(true) | bool
+    - upf_networks_strict | default(true) | bool
+    - inventory_hostname in groups['master_nodes']
+    - item.iface not in (ansible_interfaces | default([]))
+    - not (item.attach == 'host-device' and item.vlan is none)
+
+# A network's name becomes a macvlan interface on its parent. If an interface
+# of that name already exists and is not a macvlan (the one a previous install
+# created, possibly on another parent), building the network would
+# reconfigure - and uninstall would delete - something else.
+- name: check the kind of any existing interface named like a UPF network
+  ansible.builtin.command:
+    argv:
+      - ip
+      - -d
+      - -o
+      - link
+      - show
+      - "{{ item.name }}"
+  loop: "{{ upf_networks.values() | selectattr('host_gateway') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: upf_network_kinds
+  changed_when: false
+  failed_when: false
+  when:
+    - upf_networks_strict | default(true) | bool
+    - inventory_hostname in groups['master_nodes']
+    - item.name in (ansible_interfaces | default([]))
+
+- name: refuse a UPF network named after an unrelated interface
+  ansible.builtin.fail:
+    msg: >-
+      core.networks.{{ item.item.name }}: an interface named {{ item.item.name }}
+      already exists on this host and is not a macvlan, so it is not one this
+      role created. Rename the network.
+  loop: "{{ upf_network_kinds.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('') }}"
+  when:
+    - item.rc is defined
+    - item.rc == 0
+    - "' macvlan ' not in (item.stdout | default(''))"
+
+# host-device takes the interface out of the host's namespace. If that
+# interface - or anything beneath it: a VLAN's base, a bridge or bond member -
+# carries the host's default route, the node loses its own connectivity and
+# cannot be reached to undo it. Compare against the whole lower chain, not
+# just the name of the default-route interface.
+- name: list the interfaces beneath this host's default route
+  ansible.builtin.shell: |
+    seen=""; todo="{{ ansible_default_ipv4.interface }}"
+    while [ -n "$todo" ]; do
+      next=""
+      for d in $todo; do
+        seen="$seen $d"
+        for l in /sys/class/net/"$d"/lower_*; do
+          [ -e "$l" ] && next="$next ${l##*/lower_}"
+        done
+      done
+      todo="$next"
+    done
+    echo $seen
+  register: upf_default_route_chain
+  changed_when: false
+  when:
+    - upf_networks_strict | default(true) | bool
+    - inventory_hostname in groups['master_nodes']
+    - ansible_default_ipv4.interface is defined
+    - upf_networks.values() | selectattr('attach', 'equalto', 'host-device') | list | length > 0
+
+- name: refuse to move the default-route interface into the UPF pod
+  ansible.builtin.fail:
+    msg: >-
+      core.networks.{{ item.name }} attaches with host-device on {{ item.parent }},
+      which carries this host's default route (via {{ ansible_default_ipv4.interface }}
+      {%- if item.parent != ansible_default_ipv4.interface %} over {{ item.parent }}{% endif %}).
+      Moving it into the UPF pod would take the node's own connectivity with it.
+      Use a dedicated interface for this network.
+  loop: "{{ upf_networks.values() | selectattr('attach', 'equalto', 'host-device') | list }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.parent }})"
+  when:
+    - upf_networks_strict | default(true) | bool
+    - inventory_hostname in groups['master_nodes']
+    - item.parent in (upf_default_route_chain.stdout | default('') | split)
+
+- name: show the resolved UPF networking
+  ansible.builtin.debug:
+    msg: >-
+      {% for n in upf_networks.values() -%}
+      network {{ n.name }}: {{ n.subnet }} on {{ n.parent }} via {{ n.attach }},
+      gateway {{ n.gateway }} ({{ 'this host' if n.host_gateway else 'external' }})
+      {%- if n.role == 'access' %}, ran_subnet {{ n.ran_subnet }}{% endif %};
+      {% endfor %}
+      {%- for u in upf_instances.values() -%}
+      upf {{ u.name }}: {{ u.mode }}, access {{ u.access.ip_cidr }} on {{ u.access.network }},
+      core {{ u.core.ip_cidr }} on {{ u.core.network }}, UE pool {{ u.ue_ip_pool }};
+      {% endfor %}
+  when: inventory_hostname in groups['master_nodes']

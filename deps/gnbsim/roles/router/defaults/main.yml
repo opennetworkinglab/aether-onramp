@@ -8,7 +8,5 @@ gnbsim:
       subnet_prefix: "172.20"
 
 core:
-  upf:
-    access_subnet: "192.168.252.1/24"
   amf:
     ip: "172.16.248.6"

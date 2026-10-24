@@ -3,8 +3,9 @@
 
 [Unit]
 Description=5GC iptables rules
-After=network-online.target aether-5gc-macvlan.service sys-subsystem-net-devices-core.device{% if not core.upf.multihop_gnb %} sys-subsystem-net-devices-access.device{% endif %}
-Wants=network-online.target sys-subsystem-net-devices-core.device{% if not core.upf.multihop_gnb %} sys-subsystem-net-devices-access.device{% endif %}
+After=network-online.target aether-5gc-macvlan.service{% for n in router_networks | sort(attribute='role', reverse=true) %} sys-subsystem-net-devices-{{ n.name | replace('-', '\\x2d') }}.device{% endfor %}
+
+Wants=network-online.target{% for n in router_networks | sort(attribute='role', reverse=true) %} sys-subsystem-net-devices-{{ n.name | replace('-', '\\x2d') }}.device{% endfor %}
 
 [Service]
 Type=oneshot

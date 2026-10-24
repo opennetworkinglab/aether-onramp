@@ -1,0 +1,15 @@
+# Copyright 2022-present Open Networking Foundation
+# SPDX-License-Identifier: Apache-2.0
+
+[Match]
+Name={{ net.name }}
+
+[Network]
+IPForward=yes
+Address={{ net.gateway }}/{{ net.prefix }}
+{% for u in router_nat_instances if u.core.network == net.name %}
+
+[Route]
+Gateway={{ u.core.ip }}
+Destination={{ u.ue_ip_pool }}
+{% endfor %}
