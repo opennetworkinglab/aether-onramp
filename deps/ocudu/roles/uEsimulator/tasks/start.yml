@@ -61,7 +61,8 @@
     dest: /var/lib/ocudu/conf/ue_zmq.conf
     owner: root
     group: root
-    mode: '0644'
+    # the UE config carries milenage key material (k, opc) and the IMSI
+    mode: '0600'
   register: ocudu_ue_config
   vars:
     server_index: "{{ groups['ocudu_nodes'].index(inventory_hostname) }}"
@@ -88,7 +89,7 @@
     # A re-render does not reach an already running container, and the
     # module leaves an otherwise unchanged container alone, so bounce it
     # exactly when the rendered config changed.
-    restart: "{{ ocudu_ue_config is changed }}"
+    restart: "{{ ocudu_ue_config.changed | default(false) }}"
     restart_policy: unless-stopped
     state: started
     detach: true

@@ -102,7 +102,7 @@
     # A re-render does not reach an already running container, and the
     # module leaves an otherwise unchanged container alone, so bounce it
     # exactly when the rendered config changed.
-    restart: "{{ srsran_gnb_config is changed }}"
+    restart: "{{ srsran_gnb_config.changed | default(false) }}"
     restart_policy: unless-stopped
     state: started
     detach: true
