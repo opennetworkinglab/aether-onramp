@@ -272,40 +272,37 @@
     reload: true
   become: true
 
-- name: disable DRM KMS helper polling
-  ansible.builtin.shell: |
-    set -eu
-    POLL_PATH=/sys/module/drm_kms_helper/parameters/poll
-    if [ ! -e "$POLL_PATH" ]; then
-      echo unchanged
-    elif [ "$(cat "$POLL_PATH")" = "N" ]; then
-      echo unchanged
-    else
-      echo N | tee "$POLL_PATH" >/dev/null
-      echo changed
-    fi
-  args:
-    executable: /bin/bash
-  register: drm_poll_result
-  changed_when: drm_poll_result.stdout | trim == "changed"
+# The CPU governor and the DRM polling knob are sysfs values that reset on
+# every boot. Setting them from a task leaves a rebooted node with the kernel
+# command line's isolation still in place but the CPUs back on the default
+# governor, which shows up as RF underflow. A unit keeps them, the same way
+# vf-bootstrap, pf-tuning and ptp4l keep theirs.
+- name: install host runtime tuning helper
+  ansible.builtin.copy:
+    src: runtime-tuning.sh
+    dest: /usr/local/bin/ocudu-runtime-tuning.sh
+    owner: root
+    group: root
+    mode: '0755'
   become: true
+  notify: restart runtime-tuning
 
-- name: set CPU scaling governor to performance
-  ansible.builtin.shell: |
-    set -eu
-    CHANGED=false
-    for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-      [ -f "$f" ] || continue
-      if [ "$(cat "$f")" != "performance" ]; then
-        echo performance | tee "$f" >/dev/null
-        CHANGED=true
-      fi
-    done
-    $CHANGED && echo changed || echo unchanged
-  args:
-    executable: /bin/bash
-  register: cpu_governor_result
-  changed_when: cpu_governor_result.stdout | trim == "changed"
+- name: deploy host runtime tuning systemd service
+  ansible.builtin.template:
+    src: runtime-tuning.service.j2
+    dest: /etc/systemd/system/ocudu-runtime-tuning.service
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: restart runtime-tuning
+
+- name: enable and start host runtime tuning
+  ansible.builtin.systemd:
+    name: ocudu-runtime-tuning.service
+    enabled: true
+    state: started
+    daemon_reload: true
   become: true
 
 - name: create /etc/linuxptp directory
