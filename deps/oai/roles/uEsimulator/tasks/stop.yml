@@ -14,12 +14,8 @@
 
 - name: remove the rendered UE config
   file:
-    path: "{{ item }}"
+    path: /var/lib/oai/conf/nr-ue.conf
     state: absent
-  loop:
-    - /var/lib/oai/conf/nr-ue.conf
-    # the pre-/var/lib location, cleaned up on upgrade
-    - /tmp/oai-ue.conf
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
