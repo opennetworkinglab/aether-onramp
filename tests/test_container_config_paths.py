@@ -5,8 +5,8 @@
 A config rendered to /tmp does not survive a reboot: /tmp is a tmpfs on many
 hosts and is cleared by systemd-tmpfiles after 10 days on the rest. A
 container with `restart_policy: unless-stopped` then restarts with Docker
-having created an empty directory at the missing bind source, and the process
-reports a config parse failure rather than a missing file.
+having created an empty directory at the missing bind source, cannot read its
+config, and ends up stopped rather than reporting a missing file.
 
 The ocudu, srsran and oai gNB and UE containers render to /var/lib/<dep>/conf
 instead. Three deps have not been migrated and are listed in NOT_MIGRATED with

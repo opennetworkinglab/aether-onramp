@@ -34,7 +34,9 @@
 # tmpfs on many hosts and is cleared by systemd-tmpfiles after 10 days on the
 # rest; a container with restart_policy: unless-stopped then restarts with
 # Docker having created an empty directory where its config file should be,
-# and the gNB fails to parse it in a loop. /var/lib is also root-owned rather
+# cannot read its config, and ends up stopped. Measured on a rebooted VM: the
+# container is `exited` with RestartCount 0 and stays there, and recovering
+# needs a re-run of the role. /var/lib is also root-owned rather
 # than world-writable 1777, so a privileged container no longer takes its
 # configuration from a directory every local user can write to. Under the old
 # layout that was safe only by virtue of /tmp's sticky bit and the template
