@@ -12,10 +12,14 @@
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
-- name: remove /tmp/oai-gnb.conf
+- name: remove the rendered gNB config
   file:
-    path: "/tmp/oai-gnb.conf"
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /var/lib/oai/conf/gnb.conf
+    # the pre-/var/lib location, cleaned up on upgrade
+    - /tmp/oai-gnb.conf
   when: inventory_hostname in groups['oai_nodes']
   become: true
 

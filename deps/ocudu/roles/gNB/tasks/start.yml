@@ -53,10 +53,28 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- name: remove /tmp/gnb_config.yaml
+# Rendered configs live under /var/lib so they survive a reboot. /tmp is a
+# tmpfs on many hosts and is cleared by systemd-tmpfiles after 10 days on the
+# rest; a container with restart_policy: unless-stopped then restarts with
+# Docker having created an empty directory where its config file should be,
+# and the gNB fails to parse it in a loop. /var/lib is also root-owned rather
+# than world-writable 1777, so a privileged container no longer takes its
+# configuration from a directory every local user can write to. Under the old
+# layout that was safe only by virtue of /tmp's sticky bit and the template
+# module's default of not following symlinks, neither of which this role
+# states as a requirement. The render also sets an explicit root:root 0644
+# instead of leaving the mode to the remote user's umask.
+- name: create OCUDU runtime directories
   file:
-    path: "/tmp/gnb_config.yaml"
-    state: absent
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /var/lib/ocudu, mode: '0755' }
+    - { path: /var/lib/ocudu/conf, mode: '0755' }
+    - { path: /var/lib/ocudu/pcap, mode: '0750' }
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
@@ -96,10 +114,14 @@
     - inventory_hostname in groups['ocudu_nodes']
     - server_dpdk_enabled
 
-- name : copy gnb config file to /tmp/gnb_config.yaml
+- name: render gNB config to /var/lib/ocudu/conf/gnb_config.yaml
   template:
     src: "{{ ocudu.servers[server_index | int].gnb_conf }}"
-    dest: /tmp/gnb_config.yaml
+    dest: /var/lib/ocudu/conf/gnb_config.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  register: ocudu_gnb_config
   vars:
     gnb_ip: "{{ ocudu.servers[server_index | int].gnb_ip }}"
     gnb_id: "{{ (groups['ocudu_nodes'].index(inventory_hostname) | int) + 1000 }}"
@@ -114,7 +136,10 @@
     networks:
       - name: "{{ ocudu.docker.network.name }}"
     volumes:
-      - /tmp/gnb_config.yaml:/opt/gnb_config.yaml
+      # the config directory, read-only: srsRAN only ever reads it, and a
+      # directory mount keeps a missing file reporting as a missing file
+      - /var/lib/ocudu/conf:/etc/ocudu:ro
+      - /var/lib/ocudu/pcap:/var/log/ocudu
       - /dev/hugepages:/dev/hugepages
       - /dev/bus/usb:/dev/bus/usb
     devices:
@@ -124,11 +149,15 @@
       - SYS_NICE
       - IPC_LOCK
     privileged: true
+    # A re-render does not reach an already running container, and the
+    # module leaves an otherwise unchanged container alone, so bounce it
+    # exactly when the rendered config changed.
+    restart: "{{ ocudu_gnb_config is changed }}"
     restart_policy: unless-stopped
     state: started
     detach: true
     interactive: false
     tty: false
-    command: "{{ 'chrt -f 90 gnb -c /opt/gnb_config.yaml' if server_dpdk_enabled else 'gnb -c /opt/gnb_config.yaml' }}"
+    command: "{{ 'chrt -f 90 gnb -c /etc/ocudu/gnb_config.yaml' if server_dpdk_enabled else 'gnb -c /etc/ocudu/gnb_config.yaml' }}"
   when: inventory_hostname in groups['ocudu_nodes']
   become: true

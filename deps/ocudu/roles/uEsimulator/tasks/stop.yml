@@ -12,10 +12,14 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- name: remove /tmp/ue_zmq.conf
+- name: remove the rendered UE config
   file:
-    path: "/tmp/ue_zmq.conf"
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /var/lib/ocudu/conf/ue_zmq.conf
+    # the pre-/var/lib location, cleaned up on upgrade
+    - /tmp/ue_zmq.conf
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 

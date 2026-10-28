@@ -12,10 +12,14 @@
   when: inventory_hostname in groups['srsran_nodes']
   become: true
 
-- name: remove /tmp/gnb_config.yaml
+- name: remove the rendered gNB config
   file:
-    path: "/tmp/gnb_config.yaml"
+    path: "{{ item }}"
     state: absent
+  loop:
+    - /var/lib/srsran/conf/gnb_config.yaml
+    # the pre-/var/lib location, cleaned up on upgrade
+    - /tmp/gnb_config.yaml
   when: inventory_hostname in groups['srsran_nodes']
   become: true
 
