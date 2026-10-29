@@ -14,7 +14,7 @@ core:
   helm:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 5.0.0 # Ignored if using local charts (local_charts: true)
+    chart_version: 5.1.0 # Ignored if using local charts (local_charts: true)
 
   upf:
     mode: af_packet      # Options: af_packet or dpdk
