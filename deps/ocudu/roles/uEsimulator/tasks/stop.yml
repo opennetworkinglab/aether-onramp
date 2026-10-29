@@ -12,9 +12,9 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- name: remove /tmp/ue_zmq.conf
+- name: remove the rendered UE config
   file:
-    path: "/tmp/ue_zmq.conf"
+    path: /var/lib/ocudu/conf/ue_zmq.conf
     state: absent
   when: inventory_hostname in groups['ocudu_nodes']
   become: true

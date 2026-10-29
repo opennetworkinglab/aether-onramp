@@ -42,3 +42,9 @@ To install srsRAN gNB in one go, run `make srsran-gnb-install`.
 
 ### Uninstall
 To uninstall srsRAN gNB, run `make srsran-gnb-uninstall`.
+
+This removes the rendered config from `/var/lib/srsran/conf/`, but **keeps**
+`/var/lib/srsran/pcap/` and anything in it. Stop is not only used for teardown,
+so captures are treated as evidence rather than as scratch. They hold
+subscriber identifiers and nothing deletes them for you: remove them yourself
+when a site is decommissioned.

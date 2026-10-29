@@ -1,0 +1,12 @@
+[Unit]
+Description=OCUDU host runtime tuning (CPU governor, DRM polling)
+After=sysinit.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ocudu-runtime-tuning.sh
+
+[Install]
+WantedBy=multi-user.target

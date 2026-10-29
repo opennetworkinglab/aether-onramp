@@ -29,17 +29,41 @@
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
-- name: remove /tmp/oai-ue.conf
+# Rendered configs live under /var/lib so they survive a reboot. /tmp is a
+# tmpfs on many hosts and is cleared by systemd-tmpfiles after 10 days on the
+# rest; a container with restart_policy: unless-stopped then restarts with
+# Docker having created an empty directory where its config file should be,
+# cannot read its config, and ends up stopped. Measured on a rebooted VM: the
+# container is `exited` with RestartCount 0 and stays there, and recovering
+# needs a re-run of the role. /var/lib is also root-owned rather
+# than world-writable 1777, so a privileged container no longer takes its
+# configuration from a directory every local user can write to. Under the old
+# layout that was safe only by virtue of /tmp's sticky bit and the template
+# module's default of not following symlinks, neither of which this role
+# states as a requirement. The render also sets an explicit root:root 0644
+# instead of leaving the mode to the remote user's umask.
+- name: create OAI runtime directories
   file:
-    path: "/tmp/oai-ue.conf"
-    state: absent
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /var/lib/oai, mode: '0755' }
+    - { path: /var/lib/oai/conf, mode: '0755' }
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
-- name : copy oai-ue config file to /tmp/oai-ue.conf
+- name: render UE config to /var/lib/oai/conf/nr-ue.conf
   template:
     src: "{{ ROOT_DIR }}/{{ oai.servers[server_index | int].ue_conf }}"
-    dest: /tmp/oai-ue.conf
+    dest: /var/lib/oai/conf/nr-ue.conf
+    owner: root
+    group: root
+    # the UE config carries milenage key material (k, opc) and the IMSI
+    mode: '0600'
+  register: oai_ue_config
   vars:
     server_index: "{{ groups['oai_nodes'].index(inventory_hostname) }}"
   when: inventory_hostname in groups['oai_nodes']
@@ -54,13 +78,19 @@
     env:
       USE_ADDITIONAL_OPTIONS: "-r 106 --numerology 1 --band 78 -C 3619200000  --rfsim --ssb 516 --rfsimulator.serveraddr {{ gnb_ip }}"
     volumes:
-      - /tmp/oai-ue.conf:/opt/oai-nr-ue/etc/nr-ue.conf
+      # OAI's entrypoint rewrites this file in place, so it stays a writable
+      # single-file mount at the path the image expects
+      - /var/lib/oai/conf/nr-ue.conf:/opt/oai-nr-ue/etc/nr-ue.conf
     devices:
       - /dev/net/tun:/dev/net/tun
     privileged: true
     capabilities:
     - NET_ADMIN
     - NET_RAW
+    # A re-render does not reach an already running container, and the
+    # module leaves an otherwise unchanged container alone, so bounce it
+    # exactly when the rendered config changed.
+    restart: "{{ oai_ue_config.changed | default(false) }}"
     restart_policy: unless-stopped
     state: started
     detach: true

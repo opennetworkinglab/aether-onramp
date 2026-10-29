@@ -12,9 +12,9 @@
   when: inventory_hostname in groups['srsran_nodes']
   become: true
 
-- name: remove /tmp/gnb_config.yaml
+- name: remove the rendered gNB config
   file:
-    path: "/tmp/gnb_config.yaml"
+    path: /var/lib/srsran/conf/gnb_config.yaml
     state: absent
   when: inventory_hostname in groups['srsran_nodes']
   become: true

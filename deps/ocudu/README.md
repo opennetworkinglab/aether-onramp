@@ -184,7 +184,7 @@ make ocudu-dpdk-verify
 The verifier checks:
 
 - `/var/lib/ocudu/dpdk-ready`
-- `pf-tuning.service`, `ocudu-ptp4l.service`, and `ocudu-phc2sys.service` are enabled and active
+- `pf-tuning.service`, `ocudu-runtime-tuning.service`, `ocudu-ptp4l.service`, and `ocudu-phc2sys.service` are enabled and active
 - conflicting time synchronization services are disabled
 - 1G hugepages are present
 - a VF is bound to `vfio-pci`
@@ -266,6 +266,18 @@ Relevant environment variables:
 - The gNB container is created as `ocudu-gnb`.
 - The UE simulator container is created as `rfsim5g-nr-ue`.
 - The gNB start playbook mounts `/dev/hugepages` and `/dev/vfio` and runs the container in privileged mode.
+- Rendered configs are written to `/var/lib/ocudu/conf/` (root-owned `0755`, files `0644`) and mounted
+  read-only at `/etc/ocudu/` in the gNB container, so they survive a reboot and a privileged container no
+  longer reads its configuration out of world-writable `/tmp`.
+- Captures and the UE log go to `/var/lib/ocudu/pcap/` on the host, mounted at `/var/log/ocudu/`, so they
+  outlive the container instead of dying with its filesystem. The directory is `0750` because MAC, NGAP and
+  NAS captures carry subscriber identifiers.
+- `make ocudu-gnb-stop` and `make ocudu-gnb-uninstall` remove the rendered config but **keep**
+  `/var/lib/ocudu/pcap/` and anything in it. Stop is not only used for teardown, so captures are treated as
+  evidence rather than as scratch. They hold subscriber identifiers and are not cleaned up for you: delete
+  them yourself when a site is decommissioned.
+- `ocudu-runtime-tuning.service` reapplies the performance CPU governor and disables DRM polling on every
+  boot. Both are sysfs values that reset otherwise, and losing the governor shows up as RF underflow.
 - The router playbook updates ARP and reverse-path filtering sysctls on OCUDU nodes.
 - The UE simulator start playbook adds a default route inside `ue1` and runs a ping test after startup.
 

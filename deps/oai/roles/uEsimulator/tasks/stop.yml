@@ -12,9 +12,9 @@
   when: inventory_hostname in groups['oai_nodes']
   become: true
 
-- name: remove /tmp/oai-ue.conf
+- name: remove the rendered UE config
   file:
-    path: "/tmp/oai-ue.conf"
+    path: /var/lib/oai/conf/nr-ue.conf
     state: absent
   when: inventory_hostname in groups['oai_nodes']
   become: true

@@ -40,9 +40,9 @@ log:
   rrc_level: info                   # Logging level applied to RRC layer.
 
 pcap:
-  mac_enable: false                 # Set to true to enable MAC-layer PCAPs.
-  mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
-  ngap_enable: false                # Set to true to enable NGAP PCAPs.
-  ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
-  f1ap_enable: false                # Set to true to enable F1AP PCAPs.
-  f1ap_filename: /tmp/gnb_f1ap.pcap # Path where the F1AP PCAP is stored.
+  mac_enable: false                            # Set to true to enable MAC-layer PCAPs.
+  mac_filename: /var/log/srsran/gnb_mac.pcap   # Path where the MAC PCAP is stored.
+  ngap_enable: false                           # Set to true to enable NGAP PCAPs.
+  ngap_filename: /var/log/srsran/gnb_ngap.pcap # Path where the NGAP PCAP is stored.
+  f1ap_enable: false                           # Set to true to enable F1AP PCAPs.
+  f1ap_filename: /var/log/srsran/gnb_f1ap.pcap # Path where the F1AP PCAP is stored.

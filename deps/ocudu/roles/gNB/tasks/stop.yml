@@ -12,9 +12,9 @@
   when: inventory_hostname in groups['ocudu_nodes']
   become: true
 
-- name: remove /tmp/gnb_config.yaml
+- name: remove the rendered gNB config
   file:
-    path: "/tmp/gnb_config.yaml"
+    path: /var/lib/ocudu/conf/gnb_config.yaml
     state: absent
   when: inventory_hostname in groups['ocudu_nodes']
   become: true

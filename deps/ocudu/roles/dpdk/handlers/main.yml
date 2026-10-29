@@ -27,3 +27,10 @@
     state: restarted
     daemon_reload: true
   become: true
+
+- name: restart runtime-tuning
+  ansible.builtin.systemd:
+    name: ocudu-runtime-tuning.service
+    state: restarted
+    daemon_reload: true
+  become: true

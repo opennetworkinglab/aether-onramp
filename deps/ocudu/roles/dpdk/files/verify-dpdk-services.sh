@@ -289,6 +289,7 @@ main() {
   check_marker
   check_unit_enabled_active vf-bootstrap.service active
   check_unit_enabled_active pf-tuning.service active
+  check_unit_enabled_active ocudu-runtime-tuning.service active
   check_unit_enabled_active "$ptp4l_unit" active
   check_unit_enabled_active "$phc2sys_unit" active
   check_time_sync_conflicts
@@ -313,6 +314,7 @@ main() {
   check_phc_device "$phc_device"
 
   check_recent_logs vf-bootstrap.service
+  check_recent_logs ocudu-runtime-tuning.service
   check_recent_logs pf-tuning.service
   check_recent_logs "$ptp4l_unit"
   check_recent_logs "$phc2sys_unit"
