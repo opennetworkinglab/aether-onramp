@@ -3,5 +3,5 @@ core:
     helm:
       local_charts: false
       chart_ref: oci://ghcr.io/omec-project/bess-upf
-      chart_version: 2.0.0
+      chart_version: 5.1.0
     values_file: "roles/upf/templates/upf-5g-values.yaml"
