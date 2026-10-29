@@ -5,3 +5,35 @@ core:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
     chart_version: 5.1.0 # Ignored if using local charts (local_charts: true)
+
+  # MongoDB and Kafka run from their community operators (see
+  # templates/sdcore-5g-values.yaml); tasks/install.yml installs the operators,
+  # so their Helm settings live here rather than in that template.
+  mongodb:
+    # MongoDB Controllers for Kubernetes (MCK), the operator and CRDs that
+    # 5g-control-plane's mongodbCommunity path requires in the cluster before
+    # the sd-core chart is installed. Every member needs a PersistentVolume,
+    # so install.yml provisions local-path-provisioner as the default
+    # StorageClass when the cluster has none.
+    operator:
+      helm:
+        chart_ref: mongodb/mongodb-kubernetes
+        chart_version: ""   # empty = latest
+      # local-path-provisioner version used to supply a default StorageClass
+      # when none exists. Mirrors deps/sdran/vars/default.yml's
+      # sdran.platform.store.lpp.version.
+      lpp:
+        version: v0.0.24
+
+  kafka:
+    # Strimzi Kafka operator and CRDs that 5g-control-plane's kafkaStrimzi
+    # path requires in the cluster before the sd-core chart is installed.
+    operator:
+      helm:
+        repo_url: https://strimzi.io/charts/
+        chart_ref: strimzi/strimzi-kafka-operator
+        # The 5g-control-plane chart renders kafka.strimzi.io/v1beta2, which
+        # operator/CRDs >= 1.0 no longer serve (v1 only), and 0.50+ dropped
+        # Kafka 4.0.0 (kafkaStrimzi.version). 0.49.1 serves both v1 and v1beta2
+        # and supports Kafka 4.0.0.
+        chart_version: "0.49.1"
