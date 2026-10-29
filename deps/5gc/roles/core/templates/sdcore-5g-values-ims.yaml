@@ -26,39 +26,34 @@ omec-control-plane:
   #   tags:
   #     amf: <amf image tag>
 
-  kafka:
-    deploy: true
+  # Kafka and MongoDB run from their community operators (Strimzi and MongoDB
+  # Controllers for Kubernetes), installed by roles/core/tasks/install.yml. The
+  # Bitnami charts are not used. Kafka is reachable as Service "kafka:9092",
+  # which the NF configs expect.
+  kafkaStrimzi:
+    enabled: true
     # Enable nodeSelector if needed to control where to deploy the kafka instance(s)
-    # controller:
-    #   nodeSelector:
-    #     node-role.aetherproject.org/5gc: "true"
-
-  mongodb:
-    usePassword: false
-    persistence:
-      enabled: false
-    architecture: replicaset
-    # Override core.mongodb.replicaCount/resources (e.g., from CI) to shrink the
-    # footprint on constrained runners; when unset this template falls back to 2.
-    replicaCount: {{ core.get('mongodb', {}).get('replicaCount', 2) }}
-{% set mdb_requests = core.get('mongodb', {}).get('resources', {}).get('requests', {}) %}
-{% set mdb_limits = core.get('mongodb', {}).get('resources', {}).get('limits', {}) %}
-{% if mdb_requests.get('cpu') and mdb_requests.get('memory') and mdb_limits.get('cpu') and mdb_limits.get('memory') %}
-    resourcesPreset: "none"
-    resources:
-      requests:
-        cpu: {{ mdb_requests.cpu }}
-        memory: {{ mdb_requests.memory }}
-      limits:
-        cpu: {{ mdb_limits.cpu }}
-        memory: {{ mdb_limits.memory }}
-{% endif %}
-    # Enable nodeSelector if needed to control where to deploy the mongodb instances
     # nodeSelector:
     #   node-role.aetherproject.org/5gc: "true"
-    # arbiter:
-    #   nodeSelector:
-    #     node-role.aetherproject.org/5gc: "true"
+
+  mongodb:
+    deploy: false
+
+  mongodbCommunity:
+    enabled: true
+    password: "test"
+    # Override core.mongodb.members/arbiters/resources (e.g., from CI) to shrink
+    # the footprint on constrained runners; when unset the chart's defaults
+    # apply. resources takes the chart's mongod/agent requests/limits layout.
+{% if core.get('mongodb', {}).get('members') is not none %}
+    members: {{ core.mongodb.members }}
+{% endif %}
+{% if core.get('mongodb', {}).get('arbiters') is not none %}
+    arbiters: {{ core.mongodb.arbiters }}
+{% endif %}
+{% if core.get('mongodb', {}).get('resources') %}
+    resources: {{ core.mongodb.resources | to_json }}
+{% endif %}
 
   resources:
     enabled: false

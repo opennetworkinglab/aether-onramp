@@ -31,6 +31,48 @@
   when: inventory_hostname in groups['master_nodes']
   ignore_errors: yes
 
+# Deployed separately in tasks/install.yml ("deploy mongodb-kubernetes
+# operator and CRDs"), so removing the sd-core release above never touches
+# it; its pod is then the only thing left in aether-5gc, which makes the
+# "waiting for aether pods to terminate" task below time out waiting on it.
+- name: remove mongodb-kubernetes operator
+  kubernetes.core.helm:
+    name: mongodb-kubernetes
+    release_namespace: aether-5gc
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+# Deployed separately in tasks/install.yml ("deploy strimzi kafka operator
+# and CRDs"); removed after sd-core so the operator is still around to
+# finalize the Kafka resources that release created.
+- name: remove strimzi kafka operator
+  kubernetes.core.helm:
+    name: strimzi-kafka-operator
+    release_namespace: aether-5gc
+    state: absent
+    wait: true
+  when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+# Helm never deletes CRDs shipped in a chart's crds/ directory, and they are
+# cluster-scoped, so neither the release removal above nor deleting the
+# namespace below touches them. Left behind, they are silently reused by the
+# next install, which then breaks if the operator version changed (e.g. an
+# older operator crash-loops against CRDs that serve only kafka.strimzi.io/v1).
+# Deleting a CRD deletes all its custom resources cluster-wide, which is fine
+# here because this role owns the operator install.
+- name: remove strimzi CRDs
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubectl get crd -o name | grep -E '\.strimzi\.io$' | xargs -r kubectl delete --wait=true
+  args:
+    executable: /bin/bash
+  when:
+    - inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
 - name: waiting for aether pods to terminate
   command:
     argv:
@@ -55,5 +97,60 @@
       - namespace
       - aether-5gc
   when: inventory_hostname in groups['master_nodes']
+  ignore_errors: yes
+
+# mongodb's own PVCs/PVs were just reclaimed above: they lived in aether-5gc,
+# the local-path StorageClass has reclaimPolicy Delete, and `kubectl delete
+# namespace` waits for the cascade to finish. What's left is the cluster-wide
+# local-path-provisioner (see tasks/install.yml) itself, which isn't
+# namespaced under aether-5gc. Only remove it if nothing else in the cluster
+# still has a PVC bound through it, since other components (e.g. sdran) may
+# share it.
+- name: check for PVCs still referencing the local-path StorageClass
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+  register: core_remaining_pvcs
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+  ignore_errors: yes
+
+- name: set fact for other workloads still using the local-path StorageClass
+  set_fact:
+    core_local_path_in_use_elsewhere: >-
+      {%- set found = [] -%}
+      {%- for pvc in core_remaining_pvcs.resources | default([]) -%}
+      {%-   if (pvc.spec.storageClassName | default('')) == 'local-path' -%}
+      {%-     set _ = found.append(1) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ (found | length > 0) | bool }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: notice | local-path-provisioner left in place, still in use elsewhere
+  ansible.builtin.debug:
+    msg: >-
+      Other PersistentVolumeClaims in the cluster still reference the
+      local-path StorageClass, so it was left installed.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - core_local_path_in_use_elsewhere | default(false)
+
+- name: remove local-path-provisioner
+  command:
+    argv:
+      - kubectl
+      - delete
+      - -f
+      - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ core.get('mongodb', {}).get('operator', {}).get('lpp', {}).get('version', 'v0.0.24') }}/deploy/local-path-storage.yaml"
+      - --wait=true
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - not (core_local_path_in_use_elsewhere | default(false))
   ignore_errors: yes
 

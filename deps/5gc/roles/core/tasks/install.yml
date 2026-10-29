@@ -206,6 +206,186 @@
       - "{{ local_sd_core_chart_path }}"
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
+# The mongodb-kubernetes operator's MongoDBCommunity StatefulSet requests a
+# PersistentVolumeClaim per member, and relies on the cluster having a
+# default StorageClass to dynamically provision them (the chart's generated
+# manifest sets no storageClassName). onramp/deps/k8s (RKE2) does not ship
+# one, unlike k3s, so without this the PVCs stay Pending and the mongodb-0
+# pod never schedules ("pod has unbound immediate PersistentVolumeClaims").
+# Mirrors deps/sdran/roles/platform's local-path-provisioner install; skipped
+# when some other default StorageClass is already present so we don't end up
+# with two StorageClasses both annotated as default.
+- name: check for an existing default StorageClass
+  kubernetes.core.k8s_info:
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+  register: core_storage_classes
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: set fact for presence of a default StorageClass
+  set_fact:
+    core_has_default_storage_class: >-
+      {%- set found = [] -%}
+      {%- for sc in core_storage_classes.resources | default([]) -%}
+      {%-   if (sc.metadata.annotations | default({})).get('storageclass.kubernetes.io/is-default-class', 'false') == 'true' -%}
+      {%-     set _ = found.append(1) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ (found | length > 0) | bool }}
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: apply local-path-provisioner manifest for mongodb-kubernetes PVCs
+  command:
+    argv:
+      - kubectl
+      - apply
+      - -f
+      - "https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ core.get('mongodb', {}).get('operator', {}).get('lpp', {}).get('version', 'v0.0.24') }}/deploy/local-path-storage.yaml"
+      - --wait=true
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - not core_has_default_storage_class
+
+- name: patch local-path StorageClass as default
+  command:
+    argv:
+      - kubectl
+      - patch
+      - storageclass
+      - local-path
+      - -p
+      - '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - not core_has_default_storage_class
+
+# The 5g-control-plane chart's mongodbCommunity path only renders a
+# MongoDBCommunity custom resource; it expects the MongoDB Controllers for
+# Kubernetes (MCK) operator already watching the release namespace, exactly
+# as sdcore-helm-charts documents next to mongodbCommunity in
+# 5g-control-plane/values.yaml. Without it, the helm install below fails with
+# "no matches for kind MongoDBCommunity ... ensure CRDs are installed first".
+- name: add mongodb helm repo
+  kubernetes.core.helm_repository:
+    name: mongodb
+    repo_url: "https://mongodb.github.io/helm-charts"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: deploy mongodb-kubernetes operator and CRDs
+  kubernetes.core.helm:
+    update_repo_cache: true
+    name: mongodb-kubernetes
+    release_namespace: aether-5gc
+    create_namespace: true
+    chart_ref: "{{ core.get('mongodb', {}).get('operator', {}).get('helm', {}).get('chart_ref') | default('mongodb/mongodb-kubernetes', true) }}"
+    chart_version: "{{ core.get('mongodb', {}).get('operator', {}).get('helm', {}).get('chart_version') | default(omit, true) }}"
+    values:
+      operator:
+        watchNamespace: aether-5gc
+    wait: true
+    wait_timeout: "5m0s"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+# Mirrors amp/monitor's airgap notice: this role has no offline bundle for
+# the mongodb-kubernetes chart today, so the operator install is skipped
+# rather than half-applied.
+- name: notice | mongodb-kubernetes operator skipped in airgap mode
+  ansible.builtin.debug:
+    msg: |
+      airgapped.enabled is true, so the mongodb-kubernetes operator/CRDs were
+      not installed from https://mongodb.github.io/helm-charts. The sd-core
+      deploy below will fail with "no matches for kind MongoDBCommunity" unless the
+      operator and its CRDs are already present in the cluster (e.g.
+      pre-loaded from an offline bundle).
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
+# The 5g-control-plane chart's kafkaStrimzi path only renders Kafka
+# and KafkaNodePool custom resources; it expects the Strimzi operator already
+# watching the release namespace. Without it, the helm install below fails
+# with "no matches for kind Kafka ... ensure CRDs are installed first".
+- name: add strimzi helm repo
+  kubernetes.core.helm_repository:
+    name: strimzi
+    repo_url: "{{ core.get('kafka', {}).get('operator', {}).get('helm', {}).get('repo_url') | default('https://strimzi.io/charts/', true) }}"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+# Helm installs a chart's crds/ only when the CRDs don't exist yet and never
+# upgrades them, so CRDs left over from another operator version are reused as
+# is. The 5g-control-plane chart renders kafka.strimzi.io/v1beta2, which
+# operators >= 1.0 no longer serve; an older operator against v1-only CRDs
+# crash-loops ("GET .../v1beta2/... Not Found"). Fail here, with the fix,
+# instead of after the operator's 5m helm wait times out.
+- name: look up existing strimzi Kafka CRD
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: kafkas.kafka.strimzi.io
+  register: core_strimzi_kafka_crd
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: fail when existing strimzi CRDs do not serve kafka.strimzi.io/v1beta2
+  ansible.builtin.fail:
+    msg: >-
+      The cluster already has Strimzi CRDs that do not serve
+      kafka.strimzi.io/v1beta2 (served versions:
+      {{ core_strimzi_kafka_crd.resources[0].spec.versions | selectattr('served') | map(attribute='name') | list }}),
+      which the sd-core 5g-control-plane chart needs. Helm does not replace
+      existing CRDs. Run 'make aether-5gc-uninstall' (removes the Strimzi
+      CRDs) or delete them with
+      "kubectl get crd -o name | grep strimzi.io | xargs kubectl delete",
+      then rerun the install.
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+    - core_strimzi_kafka_crd.resources | default([]) | length > 0
+    - "'v1beta2' not in (core_strimzi_kafka_crd.resources[0].spec.versions | selectattr('served') | map(attribute='name') | list)"
+
+- name: deploy strimzi kafka operator and CRDs
+  kubernetes.core.helm:
+    update_repo_cache: true
+    name: strimzi-kafka-operator
+    release_namespace: aether-5gc
+    create_namespace: true
+    chart_ref: "{{ core.get('kafka', {}).get('operator', {}).get('helm', {}).get('chart_ref') | default('strimzi/strimzi-kafka-operator', true) }}"
+    chart_version: "{{ core.get('kafka', {}).get('operator', {}).get('helm', {}).get('chart_version') | default(omit, true) }}"
+    # No watchNamespaces: the operator watches its release namespace
+    # (aether-5gc) by default. Listing that same namespace explicitly makes
+    # the chart render every RoleBinding twice, and the install fails with
+    # "rolebindings ... already exists".
+    wait: true
+    wait_timeout: "5m0s"
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - not (airgapped.enabled | default(false) | bool)
+
+- name: notice | strimzi kafka operator skipped in airgap mode
+  ansible.builtin.debug:
+    msg: |
+      airgapped.enabled is true, so the Strimzi operator/CRDs were not
+      installed from https://strimzi.io/charts/. The sd-core deploy below
+      will fail with "no matches for kind Kafka" unless the operator and its
+      CRDs are already present in the cluster (e.g. pre-loaded from an
+      offline bundle).
+  when:
+    - inventory_hostname in groups['master_nodes']
+    - airgapped.enabled | default(false) | bool
+
 # TODO: add systems check to avoid issues (e.g., mongodb needing avx support)
 - name: deploy aether 5gc
   block:
