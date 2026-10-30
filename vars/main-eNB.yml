@@ -28,7 +28,7 @@ core:
       ran_subnet: ""   # eNB network; "" derives it from the access interface
   helm:
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 5.1.0
+    chart_version: 6.0.0
   upf:
     mode: af_packet      # Options: af_packet or dpdk
   mme:

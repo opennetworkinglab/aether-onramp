@@ -149,54 +149,6 @@
     var: local_sd_core_chart_path
   when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
 
-- name: read local 5gc-cp Chart.yaml
-  slurp:
-    src: /tmp/sdcore-helm-charts/5g-control-plane/Chart.yaml
-  register: core_cp_chart_yaml
-  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
-
-- name: derive local 5gc-cp chart dependency names
-  set_fact:
-    core_cp_dependency_names: >-
-      {{
-        ((core_cp_chart_yaml.content | b64decode | from_yaml).dependencies | default([]))
-        | map(attribute='name')
-        | list
-      }}
-  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
-
-- name: check local 5gc-cp charts directory
-  stat:
-    path: /tmp/sdcore-helm-charts/5g-control-plane/charts
-  register: core_cp_charts_dir
-  when: inventory_hostname in groups['master_nodes'] and core.helm.local_charts
-
-- name: check local 5gc-cp chart dependencies
-  find:
-    paths: /tmp/sdcore-helm-charts/5g-control-plane/charts
-    patterns: "{{ item }}-*"
-    recurse: false
-  loop: "{{ core_cp_dependency_names }}"
-  register: core_cp_chart_dependencies
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.helm.local_charts
-    - core_cp_charts_dir.stat.exists
-    - core_cp_dependency_names | length > 0
-
-- name: require manual 5gc-cp helm dependency update when charts are missing
-  fail:
-    msg: >-
-      Missing 5g-control-plane chart dependencies under
-      /tmp/sdcore-helm-charts/5g-control-plane/charts. Run
-      'helm dep up {{ local_sd_core_chart_root }}/5g-control-plane' before
-      deploying with local SD-Core charts.
-      Missing: {{ core_cp_chart_dependencies.results | default([]) | selectattr('matched', 'equalto', 0) | map(attribute='item') | join(', ') }}.
-  when:
-    - inventory_hostname in groups['master_nodes']
-    - core.helm.local_charts
-    - not core_cp_charts_dir.stat.exists or (core_cp_chart_dependencies.results | default([]) | selectattr('matched', 'equalto', 0) | list | length) > 0
-
 - name: update aether 5gc helm dependencies
   command:
     argv:

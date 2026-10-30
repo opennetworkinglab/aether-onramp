@@ -29,13 +29,13 @@ core:
   helm:
     local_charts: false      # set chart_ref to local path name if true
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 5.1.0
+    chart_version: 6.0.0
   upf:
     mode: af_packet      # Options: af_packet or dpdk
     helm:
       local_charts: false
       chart_ref: oci://ghcr.io/omec-project/bess-upf
-      chart_version: 5.1.0
+      chart_version: 6.0.0
     values_file: "deps/5gc/roles/upf/templates/upf-5g-values.yaml"
     instances:
       default:
