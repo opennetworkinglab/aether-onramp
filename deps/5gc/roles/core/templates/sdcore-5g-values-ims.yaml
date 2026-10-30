@@ -30,18 +30,14 @@ omec-control-plane:
   # Controllers for Kubernetes), installed by roles/core/tasks/install.yml. The
   # Bitnami charts are not used. Kafka is reachable as Service "kafka:9092",
   # which the NF configs expect.
-  kafkaStrimzi:
+  kafka:
     enabled: true
-    # Enable nodeSelector if needed to control where to deploy the kafka instance(s)
-    # nodeSelector:
-    #   node-role.aetherproject.org/5gc: "true"
 
+  # The chart builds the NFs' MongoDB URL itself (Service <name>-svc, with the
+  # credentials below), so config.mongodb.url/authUrl are not set.
   mongodb:
-    deploy: false
-
-  mongodbCommunity:
     enabled: true
-    password: "test"
+    password: "aether-sd-core"
     # Override core.mongodb.members/arbiters/resources (e.g., from CI) to shrink
     # the footprint on constrained runners; when unset the chart's defaults
     # apply. resources takes the chart's mongod/agent requests/limits layout.
@@ -69,9 +65,7 @@ omec-control-plane:
 
     mongodb:
       name: aether
-      url: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
       authKeysDbName: authentication
-      authUrl: mongodb://mongodb-headless:27017/?replicaSet=rs0 # note that architecture: replicaset
 
     managedByConfigPod:
       enabled: true
