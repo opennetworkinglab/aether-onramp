@@ -175,7 +175,7 @@ defaults:
   helm:
     local_charts: false
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 6.0.0
+    chart_version: 6.1.0
   upf:
     mode: af_packet
     instances:
