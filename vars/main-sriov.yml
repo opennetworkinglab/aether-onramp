@@ -29,7 +29,7 @@ core:
   helm:
     local_charts: false      # set chart_ref to local path name if true
     chart_ref: oci://ghcr.io/omec-project/sd-core
-    chart_version: 6.0.0
+    chart_version: 6.1.0
   upf:
     mode: dpdk        # Options: af_packet or dpdk
     # If mode set to 'dpdk':
