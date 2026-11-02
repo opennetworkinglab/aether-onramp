@@ -263,7 +263,7 @@
     - inventory_hostname in groups['master_nodes']
     - airgapped.enabled | default(false) | bool
 
-# The 5g-control-plane chart's kafkaStrimzi path only renders Kafka
+# The 5g-control-plane chart's kafka path only renders Kafka
 # and KafkaNodePool custom resources; it expects the Strimzi operator already
 # watching the release namespace. Without it, the helm install below fails
 # with "no matches for kind Kafka ... ensure CRDs are installed first".
@@ -277,10 +277,7 @@
 
 # Helm installs a chart's crds/ only when the CRDs don't exist yet and never
 # upgrades them, so CRDs left over from another operator version are reused as
-# is. The 5g-control-plane chart renders kafka.strimzi.io/v1beta2, which
-# operators >= 1.0 no longer serve; an older operator against v1-only CRDs
-# crash-loops ("GET .../v1beta2/... Not Found"). Fail here, with the fix,
-# instead of after the operator's 5m helm wait times out.
+# is.
 - name: look up existing strimzi Kafka CRD
   kubernetes.core.k8s_info:
     api_version: apiextensions.k8s.io/v1
@@ -291,11 +288,11 @@
     - inventory_hostname in groups['master_nodes']
     - not (airgapped.enabled | default(false) | bool)
 
-- name: fail when existing strimzi CRDs do not serve kafka.strimzi.io/v1beta2
+- name: fail when existing strimzi CRDs do not serve kafka.strimzi.io/v1
   ansible.builtin.fail:
     msg: >-
       The cluster already has Strimzi CRDs that do not serve
-      kafka.strimzi.io/v1beta2 (served versions:
+      kafka.strimzi.io/v1 (served versions:
       {{ core_strimzi_kafka_crd.resources[0].spec.versions | selectattr('served') | map(attribute='name') | list }}),
       which the sd-core 5g-control-plane chart needs. Helm does not replace
       existing CRDs. Run 'make aether-5gc-uninstall' (removes the Strimzi
@@ -306,7 +303,7 @@
     - inventory_hostname in groups['master_nodes']
     - not (airgapped.enabled | default(false) | bool)
     - core_strimzi_kafka_crd.resources | default([]) | length > 0
-    - "'v1beta2' not in (core_strimzi_kafka_crd.resources[0].spec.versions | selectattr('served') | map(attribute='name') | list)"
+    - "'v1' not in (core_strimzi_kafka_crd.resources[0].spec.versions | selectattr('served') | map(attribute='name') | list)"
 
 - name: deploy strimzi kafka operator and CRDs
   kubernetes.core.helm:
