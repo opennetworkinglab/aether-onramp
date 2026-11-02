@@ -29,6 +29,7 @@ omec-control-plane:
   # which the NF configs expect.
   kafka:
     enabled: true
+    version: "4.3.1"
 
   # The chart builds the NFs' MongoDB URL itself (Service <name>-svc, with the
   # credentials below), so config.mongodb.url/authUrl are not set.

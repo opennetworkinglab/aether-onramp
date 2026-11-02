@@ -60,7 +60,7 @@
 # cluster-scoped, so neither the release removal above nor deleting the
 # namespace below touches them. Left behind, they are silently reused by the
 # next install, which then breaks if the operator version changed (e.g. an
-# older operator crash-loops against CRDs that serve only kafka.strimzi.io/v1).
+# older operator lacks the kafka.strimzi.io/v1 version the sd-core chart renders).
 # Deleting a CRD deletes all its custom resources cluster-wide, which is fine
 # here because this role owns the operator install.
 - name: remove strimzi CRDs
