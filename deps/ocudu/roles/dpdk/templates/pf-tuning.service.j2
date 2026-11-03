@@ -8,7 +8,7 @@ StartLimitIntervalSec=0
 Type=oneshot
 RemainAfterExit=yes
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=ethtool -A {{ pf_iface }} rx on tx on
+ExecStart=ethtool -A {{ pf_iface }} rx off tx off
 ExecStart=tc qdisc replace dev {{ pf_iface }} root fq flow_limit 100000 quantum 1514 buckets 4096 orphan_mask 1023
 ExecStart=ip link set dev {{ pf_iface }} txqueuelen 10000
 ExecStart=ethtool -K {{ pf_iface }} tso on gso on gro on lro off rxvlan on txvlan on
