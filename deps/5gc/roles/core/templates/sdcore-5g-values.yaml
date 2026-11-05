@@ -385,9 +385,6 @@ omec-sub-provision:
               ip-domains:
                 - dnn: internet
                   dns-primary: "8.8.8.8"        # Value is sent to UE
-                  # N3 MTU (1500) minus 44 bytes of GTP-U encapsulation (outer IPv4 20,
-                  # UDP 8, GTP-U 8, PDU Session Container 8). The UPF does not fragment,
-                  # so a larger value lets UEs send downlink-sized packets that are lost.
                   mtu: 1456                     # Value is sent to UE when PDU Session Established
                   ue-ip-pool: {{ upf.ue_ip_pool }}  # IP address pool for subscribers
                   ue-dnn-qos:
