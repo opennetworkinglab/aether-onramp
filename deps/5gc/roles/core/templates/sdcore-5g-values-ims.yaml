@@ -459,7 +459,7 @@ omec-sub-provision:
                       pelr: 6
                 - dnn: internet
                   dns-primary: "8.8.8.8"        # Value is sent to UE
-                  mtu: 1460                     # Value is sent to UE when PDU Session Established
+                  mtu: 1456                     # Value is sent to UE when PDU Session Established
                   ue-ip-pool: {{ upf.ue_ip_pool }}  # IP address pool for subscribers
                   ue-dnn-qos:
                     dnn-mbr-downlink: 1000      # UE level downlink QoS (Maximum bit rate per UE)
