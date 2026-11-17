@@ -62,6 +62,21 @@
   when: inventory_hostname in groups['n3iwf_nodes']
   become: true
 
+# The N3IWF image runs as UID 1000 (non-root), so the mounted files must be
+# readable by that user. The private key stays 0600, owned by UID 1000.
+- name: set ownership and permissions on n3iwf key and certificate
+  file:
+    path: "{{ item.path }}"
+    owner: "1000"
+    group: "1000"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /tmp/n3iwf.key, mode: "0600" }
+    - { path: /tmp/n3iwf.crt, mode: "0644" }
+    - { path: /tmp/n3iwf-config.yaml, mode: "0644" }
+  when: inventory_hostname in groups['n3iwf_nodes']
+  become: true
+
 - name: create {{ n3iwf.docker.image }} containers
   community.docker.docker_container:
     name: "n3iwf"
